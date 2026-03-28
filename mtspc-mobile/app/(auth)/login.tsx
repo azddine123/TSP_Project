@@ -1,92 +1,72 @@
 /**
- * ÉCRAN DE LOGIN — Authentification Keycloak via PKCE
- * ====================================================
- * Flux : Bouton "Se connecter" → ouvre le navigateur système sur la page
- * de login Keycloak → Keycloak redirige vers logistique://callback →
- * expo-auth-session intercepte le code → échange contre un JWT →
- * JWT stocké chiffré dans expo-secure-store → navigation vers l'app.
- *
- * Inspiré de labcollect-mobile/app/(auth)/login.tsx
+ * ÉCRAN DE LOGIN PERSONNALISÉ — Formulaire username / password
+ * =============================================================
+ * Appel direct à l'endpoint token Keycloak (grant_type=password).
+ * Pas de redirection navigateur — tout se passe dans l'app.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator,
-  TouchableOpacity, Alert, Image, StatusBar,
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, ActivityIndicator, Alert,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import * as AuthSession from 'expo-auth-session';
-import * as Crypto      from 'expo-crypto';
-import { useRouter }    from 'expo-router';
-import { useAuth }      from '../contexts/AuthContext';
-import { AuthUser }     from '../types/app';
+import { useAuth }    from '../contexts/AuthContext';
+import { useRouter }  from 'expo-router';
+import { AuthUser }   from '../types/app';
 import {
-  KEYCLOAK_SERVER, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID, REDIRECT_URI,
+  KEYCLOAK_SERVER, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID,
 } from '../config/keycloakConfig';
 
-const DISCOVERY = {
-  authorizationEndpoint:
-    `${KEYCLOAK_SERVER}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth`,
-  tokenEndpoint:
-    `${KEYCLOAK_SERVER}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
-  revocationEndpoint:
-    `${KEYCLOAK_SERVER}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout`,
-};
-
 export default function LoginScreen() {
-  const { saveSession }  = useAuth();
-  const router           = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { saveSession }         = useAuth();
+  const router                  = useRouter();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading,  setLoading]  = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
-  const handleLogin = useCallback(async () => {
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('Champs requis', 'Veuillez saisir votre identifiant et mot de passe.');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Générer le code_verifier PKCE (sécurité contre l'interception du code)
-      const codeVerifier  = AuthSession.generateHmac
-        ? await Crypto.digestStringAsync(
-            Crypto.CryptoDigestAlgorithm.SHA256,
-            Math.random().toString(),
-          )
-        : AuthSession.generateHmac;
+      const tokenUrl = `${KEYCLOAK_SERVER}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
 
-      const request = new AuthSession.AuthRequest({
-        clientId:            KEYCLOAK_CLIENT_ID,
-        redirectUri:         REDIRECT_URI,
-        scopes:              ['openid', 'profile', 'email'],
-        usePKCE:             true,
-        responseType:        AuthSession.ResponseType.Code,
+      const body = new URLSearchParams({
+        grant_type: 'password',
+        client_id:  KEYCLOAK_CLIENT_ID,
+        username:   username.trim(),
+        password:   password,
+        scope:      'openid profile email',
       });
 
-      const result = await request.promptAsync(DISCOVERY);
+      const response = await fetch(tokenUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    body.toString(),
+      });
 
-      if (result.type !== 'success') {
-        if (result.type === 'cancel') {
-          setLoading(false);
-          return;
-        }
-        throw new Error(`Authentification échouée : ${result.type}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        const msg = data.error_description || data.error || 'Identifiants incorrects.';
+        Alert.alert('Connexion refusée', msg);
+        return;
       }
 
-      // Échanger le code d'autorisation contre un JWT
-      const tokenResponse = await AuthSession.exchangeCodeAsync(
-        {
-          code:         result.params.code,
-          clientId:     KEYCLOAK_CLIENT_ID,
-          redirectUri:  REDIRECT_URI,
-          extraParams:  { code_verifier: request.codeVerifier || '' },
-        },
-        DISCOVERY,
-      );
-
-      if (!tokenResponse.accessToken) {
-        throw new Error('Token non reçu depuis Keycloak.');
+      if (!data.access_token) {
+        Alert.alert('Erreur', 'Token non reçu depuis le serveur.');
+        return;
       }
 
-      // Décoder le payload JWT pour extraire l'utilisateur et ses rôles
-      const payload = JSON.parse(
-        atob(tokenResponse.accessToken.split('.')[1]),
-      );
+      // Décoder le JWT pour extraire le profil et les rôles
+      const payload = parseJWT(data.access_token);
 
       const roles: string[] = [
-        ...(payload.roles || []),
+        ...(payload.roles               || []),
         ...(payload.realm_access?.roles || []),
       ].filter((r: string) =>
         ['SUPER_ADMIN', 'ADMIN_ENTREPOT', 'DISTRIBUTEUR'].includes(r),
@@ -95,88 +75,132 @@ export default function LoginScreen() {
       if (!roles.includes('DISTRIBUTEUR')) {
         Alert.alert(
           'Accès Refusé',
-          `L'application mobile est réservée aux Distributeurs.\nVotre rôle : ${roles[0] || 'inconnu'}`,
+          `L'application mobile est réservée aux Distributeurs.\nRôle détecté : ${roles[0] || 'aucun'}`,
         );
-        setLoading(false);
         return;
       }
 
-      const authUser: AuthUser = {
+      const user: AuthUser = {
         userId:   payload.sub,
         username: payload.preferred_username,
         email:    payload.email || '',
         roles,
       };
 
-      // Stocker le JWT chiffré via expo-secure-store
-      await saveSession(
-        tokenResponse.accessToken,
-        tokenResponse.refreshToken || '',
-        authUser,
-      );
-
+      await saveSession(data.access_token, data.refresh_token || '', user);
       router.replace('/(tabs)/home');
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('[Login]', err);
-      Alert.alert(
-        'Erreur de connexion',
-        err.message || 'Impossible de contacter le serveur Keycloak.',
-        [{ text: 'Réessayer' }],
-      );
+      Alert.alert('Erreur réseau', 'Impossible de contacter le serveur. Vérifiez votre connexion.');
     } finally {
       setLoading(false);
     }
-  }, [saveSession, router]);
+  };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <StatusBar barStyle="light-content" backgroundColor="#0D47A1" />
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* En-tête */}
+        <View style={styles.header}>
+          <Text style={styles.emoji}>🏔️</Text>
+          <Text style={styles.title}>ReliefChain</Text>
+          <Text style={styles.subtitle}>Logistique Humanitaire</Text>
+          <Text style={styles.region}>Région Béni Mellal-Khénifra</Text>
+        </View>
 
-      {/* Logo / En-tête institutionnel */}
-      <View style={styles.header}>
-        <Text style={styles.emoji}>🏔️</Text>
-        <Text style={styles.title}>MTSPC26</Text>
-        <Text style={styles.subtitle}>Logistique Humanitaire</Text>
-        <Text style={styles.region}>Région Béni Mellal-Khénifra</Text>
-      </View>
+        {/* Carte formulaire */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Espace Distributeur</Text>
+          <Text style={styles.cardDesc}>
+            Connectez-vous avec votre compte institutionnel.
+          </Text>
 
-      {/* Carte de connexion */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Espace Distributeur</Text>
-        <Text style={styles.cardDesc}>
-          Connectez-vous avec votre compte institutionnel pour accéder
-          à vos missions de livraison.
+          {/* Champ identifiant */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Identifiant</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="ex : distributeur.khenifra"
+              placeholderTextColor="#aaa"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+            />
+          </View>
+
+          {/* Champ mot de passe */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Mot de passe</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="••••••••"
+                placeholderTextColor="#aaa"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPass}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPass(v => !v)}
+                style={styles.eyeBtn}
+              >
+                <Text style={styles.eyeText}>{showPass ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Bouton connexion */}
+          <TouchableOpacity
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.loginButtonText}>Se connecter</Text>
+            }
+          </TouchableOpacity>
+
+          <Text style={styles.securityNote}>
+            🔒 Authentification sécurisée · Keycloak SSO
+          </Text>
+        </View>
+
+        <Text style={styles.footer}>
+          Plateforme sécurisée de gestion des données
         </Text>
-
-        <TouchableOpacity
-          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.loginButtonText}>🔐  Se connecter via Keycloak</Text>
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.securityNote}>
-          🔒 Authentification SSO sécurisée · OAuth 2.0 / PKCE
-        </Text>
-      </View>
-
-      <Text style={styles.footer}>
-        Plateforme sécurisée de gestion des données
-      </Text>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
+// ── Utilitaire JWT ─────────────────────────────────────────────────────────────
+
+function parseJWT(token: string): Record<string, any> {
+  const base64Url = token.split('.')[1];
+  const base64    = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded    = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+  return JSON.parse(atob(padded));
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
-    flex:            1,
+    flexGrow:        1,
     backgroundColor: '#0D47A1',
     alignItems:      'center',
     justifyContent:  'center',
@@ -184,26 +208,26 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems:   'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   emoji: {
-    fontSize:     64,
-    marginBottom: 12,
+    fontSize:     56,
+    marginBottom: 10,
   },
   title: {
-    fontSize:    32,
-    fontWeight:  '800',
-    color:       '#fff',
+    fontSize:      30,
+    fontWeight:    '800',
+    color:         '#fff',
     letterSpacing: 2,
   },
   subtitle: {
-    fontSize:   18,
+    fontSize:   16,
     color:      'rgba(255,255,255,0.85)',
     fontWeight: '500',
     marginTop:  4,
   },
   region: {
-    fontSize:  13,
+    fontSize:  12,
     color:     'rgba(255,255,255,0.6)',
     marginTop: 4,
   },
@@ -211,8 +235,7 @@ const styles = StyleSheet.create({
     width:           '100%',
     backgroundColor: '#fff',
     borderRadius:    16,
-    padding:         28,
-    alignItems:      'center',
+    padding:         24,
     shadowColor:     '#000',
     shadowOffset:    { width: 0, height: 4 },
     shadowOpacity:   0.2,
@@ -220,24 +243,55 @@ const styles = StyleSheet.create({
     elevation:       8,
   },
   cardTitle: {
-    fontSize:     22,
+    fontSize:     20,
     fontWeight:   '700',
     color:        '#1A237E',
-    marginBottom: 10,
+    marginBottom: 6,
+    textAlign:    'center',
   },
   cardDesc: {
-    fontSize:     14,
+    fontSize:     13,
     color:        '#666',
     textAlign:    'center',
-    lineHeight:   22,
-    marginBottom: 28,
+    marginBottom: 20,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize:     13,
+    fontWeight:   '600',
+    color:        '#333',
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth:   1,
+    borderColor:   '#ddd',
+    borderRadius:  8,
+    paddingHorizontal: 14,
+    paddingVertical:   12,
+    fontSize:      15,
+    color:         '#222',
+    backgroundColor: '#fafafa',
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           8,
+  },
+  eyeBtn: {
+    padding: 10,
+  },
+  eyeText: {
+    fontSize: 18,
   },
   loginButton: {
     width:           '100%',
     backgroundColor: '#1565C0',
-    paddingVertical: 16,
+    paddingVertical: 15,
     borderRadius:    10,
     alignItems:      'center',
+    marginTop:       8,
   },
   loginButtonDisabled: {
     backgroundColor: '#90A4AE',
@@ -248,12 +302,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   securityNote: {
-    marginTop: 16,
-    fontSize:  12,
-    color:     '#90A4AE',
+    marginTop:  14,
+    fontSize:   11,
+    color:      '#90A4AE',
+    textAlign:  'center',
   },
   footer: {
-    marginTop: 32,
+    marginTop: 28,
     color:     'rgba(255,255,255,0.5)',
     fontSize:  12,
   },

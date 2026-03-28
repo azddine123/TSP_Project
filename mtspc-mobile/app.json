@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name":    "MTSPC26 Logistique",
-    "slug":    "mtspc26-logistique",
+    "name": "ReliefChain",
+    "slug": "reliefchain-logistique",
     "version": "1.0.0",
-    "scheme":  "logistique",
+    "scheme": "logistique",
     "orientation": "portrait",
-    "icon":         "./assets/icon.png",
+    "icon": "./assets/icon.png",
     "splash": {
-      "image":           "./assets/splash.png",
-      "resizeMode":      "contain",
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#1565C0"
     },
     "android": {
@@ -16,7 +16,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1565C0"
       },
-      "package": "ma.gov.logistique.mtspc26",
+      "package": "ma.gov.logistique.reliefchain",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -24,7 +24,7 @@
       ]
     },
     "ios": {
-      "bundleIdentifier": "ma.gov.logistique.mtspc26",
+      "bundleIdentifier": "ma.gov.logistique.reliefchain",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Nécessaire pour afficher votre position sur la carte de livraison."
       }
@@ -34,12 +34,17 @@
       "expo-secure-store",
       [
         "expo-location",
-        { "locationAlwaysAndWhenInUsePermission": "Accès à la localisation pour la navigation vers les zones sinistrées." }
-      ]
+        {
+          "locationAlwaysAndWhenInUsePermission": "Accès à la localisation pour la navigation vers les zones sinistrées."
+        }
+      ],
+      "expo-asset",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
     },
+    "newArchEnabled": true,
     "extra": {
       "apiHost": null
     }

@@ -1,22 +1,20 @@
 /**
- * Layout des onglets de l'app mobile.
- * Redirige vers le login si l'utilisateur n'est pas authentifié.
+ * Layout des onglets de l'app mobile — SDK 54 / expo-router v4
+ * =============================================================
+ * SDK 54 / expo-router v4 breaking change :
+ * Le pattern useEffect + router.replace() pour les redirections d'auth
+ * cause un flash de l'UI non authentifiée et des race conditions.
+ * → Utiliser le composant <Redirect> d'expo-router (rendu synchrone,
+ *   avant que les tabs ne soient montés).
  */
-import React, { useEffect } from 'react';
-import { Tabs, useRouter } from 'expo-router';
+import React from 'react';
+import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { ActivityIndicator, View } from 'react-native';
 
 export default function TabsLayout() {
   const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/(auth)/login');
-    }
-  }, [isLoading, isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -24,6 +22,11 @@ export default function TabsLayout() {
         <ActivityIndicator size="large" color="#1565C0" />
       </View>
     );
+  }
+
+  // Redirect est rendu avant le montage des tabs → pas de flash de contenu
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
   }
 
   return (
@@ -45,8 +48,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title:       'Mes Missions',
-          tabBarIcon:  ({ color, size }) => (
+          title:      'Mes Missions',
+          tabBarIcon: ({ color, size }) => (
             <Ionicons name="list" size={size} color={color} />
           ),
         }}

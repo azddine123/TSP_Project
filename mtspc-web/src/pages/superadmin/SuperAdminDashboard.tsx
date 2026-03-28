@@ -1,122 +1,106 @@
 /**
  * DASHBOARD SUPER-ADMIN
- * =====================
- * Deux panneaux côte à côte :
- *   GAUCHE  — Carte Leaflet interactive avec les 3 entrepôts de la région
- *             Béni Mellal-Khénifra (marqueurs colorés + popups)
- *   DROITE  — Tableau inaltérable des Audit Logs (lecture seule)
+ * Carte + Audit Logs — Design simple et lisible
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box, Typography, Grid, Paper, Chip, Alert,
-  CircularProgress, Tooltip,
+  CircularProgress, Tooltip, Button, TextField, MenuItem,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { auditApi, entrepotApi, AuditLog, Entrepot } from '../../services/api';
+import SyncIcon       from '@mui/icons-material/Sync';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import WarehouseIcon  from '@mui/icons-material/Warehouse';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { auditApi, entrepotApi } from '../../services/api';
+import type { AuditLog, Entrepot } from '../../types';
+import {
+  AUDIT_OPERATION_COLOR, ENTREPOT_STATUT_COLOR,
+  DATAGRID_LOCALE, formatDateTime,
+} from '../../constants';
+import './SuperAdminDashboard.css';
 
-// ── Fix Leaflet : icônes manquantes avec Vite ─────────────────────────────────
-// (Bug connu Leaflet + bundler : les images ne sont pas résolues automatiquement)
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+// Leaflet fix
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Icônes personnalisées par statut d'entrepôt
-const createColoredIcon = (color: string) =>
-  new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    iconSize:     [25, 41],
-    iconAnchor:   [12, 41],
-    popupAnchor:  [1, -34],
-    shadowSize:   [41, 41],
-  });
+const createColoredIcon = (color: string) => new L.Icon({
+  iconUrl:     `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+  shadowUrl:   'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize:    [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
+});
 
 const ICONS: Record<string, L.Icon> = {
-  actif:    createColoredIcon('green'),
-  surcharge: createColoredIcon('red'),
-  inactif:  createColoredIcon('grey'),
+  actif: createColoredIcon('green'), surcharge: createColoredIcon('red'), inactif: createColoredIcon('grey'),
 };
 
-// ── Colonnes du DataGrid Audit Logs ──────────────────────────────────────────
-
-const OPERATION_COLOR: Record<string, 'success' | 'warning' | 'error'> = {
-  INSERT: 'success',
-  UPDATE: 'warning',
-  DELETE: 'error',
-};
+const OPERATIONS = [
+  { value: '', label: 'Toutes les opérations' },
+  { value: 'INSERT', label: 'INSERT' },
+  { value: 'UPDATE', label: 'UPDATE' },
+  { value: 'DELETE', label: 'DELETE' },
+];
 
 const auditColumns: GridColDef[] = [
   {
-    field:      'createdAt',
-    headerName: 'Date & Heure',
-    width:      170,
-    valueFormatter: (v: string) =>
-      v ? new Date(v).toLocaleString('fr-MA') : '—',
-  },
-  {
-    field:      'operation',
-    headerName: 'Opération',
-    width:      110,
+    field: 'createdAt', headerName: 'Date & Heure', width: 160,
     renderCell: (p: GridRenderCellParams<AuditLog>) => (
-      <Chip
-        label={p.row.operation}
-        color={OPERATION_COLOR[p.row.operation]}
-        size="small"
-        sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}
-      />
+      <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', fontFamily: 'monospace' }}>
+        {formatDateTime(p.row.createdAt)}
+      </Typography>
     ),
   },
   {
-    field:      'tableCible',
-    headerName: 'Table',
-    width:      160,
+    field: 'operation', headerName: 'Opération', width: 115,
     renderCell: (p: GridRenderCellParams<AuditLog>) => (
-      <Typography variant="body2" fontFamily="monospace" fontSize="0.8rem">
+      <Chip label={p.row.operation} color={AUDIT_OPERATION_COLOR[p.row.operation]} size="small"
+        sx={{ fontFamily: 'monospace', fontWeight: 700 }} />
+    ),
+  },
+  {
+    field: 'tableCible', headerName: 'Table', width: 155,
+    renderCell: (p: GridRenderCellParams<AuditLog>) => (
+      <Typography sx={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'text.secondary' }}>
         {p.row.tableCible}
       </Typography>
     ),
   },
   {
-    field:      'acteurEmail',
-    headerName: 'Acteur',
-    flex:       1,
+    field: 'acteurEmail', headerName: 'Acteur', flex: 1,
     renderCell: (p: GridRenderCellParams<AuditLog>) => (
       <Box>
-        <Typography variant="body2" fontWeight="bold">
+        <Typography sx={{ fontSize: '0.82rem', fontWeight: 500 }}>
           {p.row.acteurEmail || p.row.acteurUserId.slice(0, 8) + '…'}
         </Typography>
-        <Chip label={p.row.acteurRole} size="small" variant="outlined" />
+        <Chip label={p.row.acteurRole} size="small" variant="outlined" sx={{ fontSize: '0.62rem', height: 18 }} />
       </Box>
     ),
   },
   {
-    field:      'ipAddress',
-    headerName: 'Adresse IP',
-    width:      130,
+    field: 'ipAddress', headerName: 'Adresse IP', width: 130,
     renderCell: (p: GridRenderCellParams<AuditLog>) => (
-      <Typography variant="body2" fontFamily="monospace" fontSize="0.8rem">
+      <Typography sx={{ fontSize: '0.78rem', fontFamily: 'monospace', color: 'text.secondary' }}>
         {p.row.ipAddress || '—'}
       </Typography>
     ),
   },
   {
-    field:      'valeursApres',
-    headerName: 'Données modifiées',
-    flex:       1.5,
+    field: 'valeursApres', headerName: 'Données modifiées', flex: 1.5,
     renderCell: (p: GridRenderCellParams<AuditLog>) => {
       const val = p.row.valeursApres;
-      if (!val) return <Typography variant="body2" color="text.secondary">—</Typography>;
+      if (!val) return <Typography sx={{ color: 'text.disabled', fontSize: '0.8rem' }}>—</Typography>;
       const str = JSON.stringify(val).slice(0, 80);
       return (
-        <Tooltip title={JSON.stringify(val, null, 2)}>
-          <Typography variant="body2" fontFamily="monospace" fontSize="0.75rem"
-            sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <Tooltip title={<pre className="audit-json-tooltip">{JSON.stringify(val, null, 2)}</pre>}>
+          <Typography sx={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {str}{str.length >= 80 ? '…' : ''}
           </Typography>
         </Tooltip>
@@ -125,124 +109,120 @@ const auditColumns: GridColDef[] = [
   },
 ];
 
-// ── Composant principal ───────────────────────────────────────────────────────
+// ── Stat Card simple ──────────────────────────────────────────────────────────
+function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
+  return (
+    <Paper elevation={2} sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{
+        width: 44, height: 44, borderRadius: '10px',
+        bgcolor: `${color}18`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        {icon}
+      </Box>
+      <Box>
+        <Typography variant="h5" fontWeight={700} color={color} lineHeight={1}>
+          {value}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mt={0.3}>
+          {label}
+        </Typography>
+      </Box>
+    </Paper>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+const CENTER: [number, number] = [32.2, -6.0];
 
 export default function SuperAdminDashboard() {
-  const [entrepots, setEntrepots] = useState<Entrepot[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [total,     setTotal]     = useState(0);
-  const [page,      setPage]      = useState(0);
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState<string | null>(null);
+  const [entrepots,       setEntrepots]       = useState<Entrepot[]>([]);
+  const [auditLogs,       setAuditLogs]       = useState<AuditLog[]>([]);
+  const [total,           setTotal]           = useState(0);
+  const [page,            setPage]            = useState(0);
+  const [operationFilter, setOperationFilter] = useState('');
+  const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const [e, logs] = await Promise.all([
         entrepotApi.getAll(),
-        auditApi.getLogs({ page: page + 1, limit: 50 }),
+        auditApi.getLogs({ page: page + 1, limit: 50, operation: operationFilter || undefined }),
       ]);
-      setEntrepots(e);
-      setAuditLogs(logs.data);
-      setTotal(logs.meta.total);
+      setEntrepots(e); setAuditLogs(logs.data); setTotal(logs.meta.total);
     } catch {
       setError('Impossible de charger les données. Vérifiez votre connexion.');
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, operationFilter]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Centre de la carte : région Béni Mellal-Khénifra
-  const CENTER: [number, number] = [32.2, -6.0];
+  const actifs    = entrepots.filter((e) => e.statut === 'actif').length;
+  const surcharge = entrepots.filter((e) => e.statut === 'surcharge').length;
 
   return (
     <Box>
-      {/* En-tête */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">
-          Tableau de bord — Super-Admin
-        </Typography>
-        <Typography color="text.secondary">
-          Vue régionale Béni Mellal-Khénifra · Audit inaltérable des actions
-        </Typography>
+      {/* Header */}
+      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h4">Tableau de bord — Super-Admin</Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>
+            Vue régionale Béni Mellal-Khénifra · Audit inaltérable des actions
+          </Typography>
+        </Box>
+        <Button variant="outlined" startIcon={<SyncIcon />} onClick={loadData} disabled={loading} size="small">
+          Actualiser
+        </Button>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2.5 }} onClose={() => setError(null)}>{error}</Alert>}
 
-      <Grid container spacing={3}>
+      {/* Stat cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={4}>
+          <StatCard label="Entrepôts dans la région" value={entrepots.length} icon={<WarehouseIcon />} color="#4A90D9" />
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <StatCard label="Entrepôts actifs" value={actifs} icon={<CheckCircleIcon />} color="#34C78A" />
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <StatCard label="En surcharge" value={surcharge} icon={<WarningAmberIcon />} color={surcharge > 0 ? '#E05C5C' : '#4B5563'} />
+        </Grid>
+      </Grid>
 
-        {/* ── PANNEAU GAUCHE : Carte Leaflet ─────────────────────── */}
+      {/* Main panels */}
+      <Grid container spacing={2.5}>
+
+        {/* Carte */}
         <Grid item xs={12} lg={5}>
-          <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-              <Typography variant="h6" fontWeight="bold">
-                Carte des Entrepôts Régionaux
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {entrepots.length} entrepôt(s) actif(s) dans la région
-              </Typography>
+          <Paper elevation={2} sx={{ overflow: 'hidden' }}>
+            <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="h6">Carte des Entrepôts Régionaux</Typography>
+              <Typography variant="body2" color="text.secondary">{entrepots.length} entrepôt(s) dans la région</Typography>
             </Box>
 
-            {/* La carte Leaflet — hauteur fixe */}
-            <MapContainer
-              center={CENTER}
-              zoom={8}
-              style={{ height: '420px', width: '100%' }}
-            >
-              {/* Fond de carte OpenStreetMap (gratuit, pas de clé API) */}
+            <MapContainer center={CENTER} zoom={8} className="leaflet-map-container">
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
-
-              {/* Marqueur pour chaque entrepôt */}
               {entrepots.map((e) => (
                 <React.Fragment key={e.id}>
-                  {/* Cercle de zone de couverture */}
-                  <Circle
-                    center={[e.latitude, e.longitude]}
-                    radius={15000}
-                    pathOptions={{
-                      color:       e.statut === 'surcharge' ? '#E53935' : '#1565C0',
-                      fillColor:   e.statut === 'surcharge' ? '#E53935' : '#1565C0',
-                      fillOpacity: 0.08,
-                    }}
-                  />
-
-                  {/* Marqueur avec popup d'info — HTML natif obligatoire (hors ThemeProvider) */}
-                  <Marker
-                    position={[e.latitude, e.longitude]}
-                    icon={ICONS[e.statut] || ICONS.actif}
-                  >
+                  <Circle center={[e.latitude, e.longitude]} radius={15000}
+                    pathOptions={{ color: e.statut === 'surcharge' ? '#E05C5C' : '#4A90D9', fillOpacity: 0.07, weight: 1 }} />
+                  <Marker position={[e.latitude, e.longitude]} icon={ICONS[e.statut] ?? ICONS.actif}>
                     <Popup>
-                      <div style={{ minWidth: 180 }}>
-                        <strong style={{ fontSize: '0.95rem' }}>{e.nom}</strong>
-                        <p style={{ margin: '4px 0', color: '#666', fontSize: '0.82rem' }}>
-                          {e.province} · {e.wilaya}
-                        </p>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          borderRadius: 12,
-                          fontSize: '0.75rem',
-                          fontWeight: 'bold',
-                          background: e.statut === 'actif' ? '#e8f5e9' : '#ffebee',
-                          color: e.statut === 'actif' ? '#2e7d32' : '#c62828',
-                          marginTop: 4,
-                        }}>
+                      <div className="popup-entrepot">
+                        <strong className="popup-entrepot-title">{e.nom}</strong>
+                        <p className="popup-entrepot-subtitle">{e.province} · {e.wilaya}</p>
+                        <span className={`popup-entrepot-statut popup-entrepot-statut--${e.statut}`}>
                           {e.statut.toUpperCase()}
                         </span>
-                        <p style={{ margin: '6px 0 2px', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                          GPS : {e.latitude.toFixed(4)}, {e.longitude.toFixed(4)}
-                        </p>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#888' }}>
-                          Code : {e.code}
-                        </p>
+                        <p className="popup-entrepot-gps">GPS : {e.latitude.toFixed(4)}, {e.longitude.toFixed(4)}</p>
+                        <p className="popup-entrepot-code">Code : {e.code}</p>
                       </div>
                     </Popup>
                   </Marker>
@@ -250,87 +230,66 @@ export default function SuperAdminDashboard() {
               ))}
             </MapContainer>
 
-            {/* Légende */}
-            <Box sx={{ p: 1.5, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#4CAF50' }} />
-                <Typography variant="caption">Actif</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#E53935' }} />
-                <Typography variant="caption">En surcharge</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#9E9E9E' }} />
-                <Typography variant="caption">Inactif</Typography>
-              </Box>
+            <Box sx={{ px: 2.5, py: 1.5, display: 'flex', gap: 2.5, borderTop: '1px solid', borderColor: 'divider' }}>
+              {[{ statut: 'actif', label: 'Actif' }, { statut: 'surcharge', label: 'En surcharge' }, { statut: 'inactif', label: 'Inactif' }].map(({ statut, label }) => (
+                <Box key={statut} sx={{ display: 'flex', alignItems: 'center', gap: 0.7 }}>
+                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: ENTREPOT_STATUT_COLOR[statut] }} />
+                  <Typography variant="caption" color="text.secondary">{label}</Typography>
+                </Box>
+              ))}
             </Box>
           </Paper>
         </Grid>
 
-        {/* ── PANNEAU DROIT : Audit Logs ──────────────────────────── */}
+        {/* Audit logs */}
         <Grid item xs={12} lg={7}>
-          <Paper elevation={2} sx={{ borderRadius: 2 }}>
-            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="h6" fontWeight="bold">
-                    Historique Inaltérable des Actions
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {total} entrée(s) · Lecture seule · Aucune modification possible
-                  </Typography>
+          <Paper elevation={2}>
+            <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="h6">Historique Inaltérable des Actions</Typography>
+                  <Chip label="LECTURE SEULE" color="error" size="small" />
                 </Box>
-                {/* Badge "IMMUABLE" pour le jury */}
-                <Chip
-                  label="🔒 TABLE IMMUABLE"
-                  color="error"
-                  size="small"
-                  sx={{ fontWeight: 'bold' }}
-                />
+                <Typography variant="body2" color="text.secondary">{total} entrée(s)</Typography>
               </Box>
+              <TextField
+                select size="small" value={operationFilter}
+                onChange={(e) => { setPage(0); setOperationFilter(e.target.value); }}
+                sx={{ minWidth: 200 }}
+                InputProps={{ startAdornment: <FilterListIcon fontSize="small" sx={{ mr: 0.5, color: 'text.disabled', fontSize: 17 }} /> }}
+              >
+                {OPERATIONS.map((op) => <MenuItem key={op.value} value={op.value}>{op.label}</MenuItem>)}
+              </TextField>
             </Box>
 
             <Box sx={{ p: 1 }}>
               {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                  <CircularProgress />
+                  <CircularProgress size={30} />
                 </Box>
               ) : (
                 <DataGrid
-                  rows={auditLogs}
-                  columns={auditColumns}
-                  rowHeight={60}
-                  autoHeight
+                  rows={auditLogs} columns={auditColumns}
+                  rowHeight={58}
                   pageSizeOptions={[25, 50]}
-                  rowCount={total}
-                  paginationMode="server"
+                  rowCount={total} paginationMode="server"
                   paginationModel={{ page, pageSize: 50 }}
                   onPaginationModelChange={(m) => setPage(m.page)}
-                  // LECTURE SEULE : désactiver toute interaction d'édition
                   disableRowSelectionOnClick
                   sx={{
                     border: 'none',
-                    '& .MuiDataGrid-columnHeaders': {
-                      backgroundColor: '#F4F6F9',
-                      fontWeight:      'bold',
-                    },
-                    // Mise en évidence des DELETE en rouge pâle
-                    '& .row-delete': { backgroundColor: 'rgba(229,57,53,0.05)' },
+                    '& .MuiDataGrid-columnHeaders': { backgroundColor: 'rgba(0,0,0,0.15)' },
+                    '& .MuiDataGrid-row:hover': { backgroundColor: 'rgba(255,255,255,0.03)' },
+                    '& .MuiDataGrid-cell': { borderBottom: '1px solid rgba(255,255,255,0.04)' },
+                    '& .row-delete': { backgroundColor: 'rgba(224,92,92,0.05)' },
                   }}
-                  getRowClassName={(p) =>
-                    (p.row as AuditLog).operation === 'DELETE' ? 'row-delete' : ''
-                  }
-                  localeText={{
-                    noRowsLabel: 'Aucune action enregistrée',
-                    MuiTablePagination: { labelRowsPerPage: 'Lignes par page :' },
-                  }}
+                  getRowClassName={(p) => (p.row as AuditLog).operation === 'DELETE' ? 'row-delete' : ''}
+                  localeText={{ ...DATAGRID_LOCALE, noRowsLabel: operationFilter ? `Aucune opération "${operationFilter}"` : 'Aucune action enregistrée' }}
                 />
               )}
             </Box>
           </Paper>
         </Grid>
-
       </Grid>
     </Box>
   );

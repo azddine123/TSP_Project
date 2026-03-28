@@ -1,4 +1,4 @@
-# Documentation de Lancement Officielle — MTSPC26
+# Documentation de Lancement Officielle — ReliefChain
 # Plateforme Logistique Humanitaire · Béni Mellal-Khénifra
 
 ---
@@ -39,7 +39,7 @@ docker-compose up -d
 
 # Vérifier que les deux conteneurs sont "Up" (healthy)
 docker-compose ps
-# Attendu : mtspc26-keycloak (Up) + mtspc26-keycloak-db (Up, healthy)
+# Attendu : reliefchain-keycloak (Up) + reliefchain-keycloak-db (Up, healthy)
 
 
 # ── Terminal B : PostgreSQL applicatif ──────────────────────────────────────
@@ -48,7 +48,7 @@ docker-compose up -d
 
 # Vérifier
 docker-compose ps
-# Attendu : mtspc26-app-db (Up, healthy)
+# Attendu : reliefchain-app-db (Up, healthy)
 ```
 
 **Test de vérification Keycloak (attendre ~30 s le temps du démarrage) :**
@@ -150,7 +150,7 @@ npm run start:dev
 
 **Sorties attendues dans le terminal :**
 ```
-🚀 API Logistique MTSPC26 démarrée
+🚀 API Logistique ReliefChain démarrée
    → Backend  : http://localhost:9090/api/v1
    → Swagger  : http://localhost:9090/api/docs
    → Keycloak : http://localhost:8080/realms/Logistique

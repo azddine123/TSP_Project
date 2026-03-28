@@ -1,7 +1,7 @@
 {
-  "name": "mtspc26-web",
+  "name": "reliefchain-web",
   "version": "1.0.0",
-  "description": "Centre de Contrôle Web — Plateforme Logistique MTSPC26",
+  "description": "Centre de Contrôle Web — Plateforme Logistique ReliefChain",
   "scripts": {
     "dev":     "vite",
     "build":   "tsc && vite build",

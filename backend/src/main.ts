@@ -1,5 +1,5 @@
 /**
- * MTSPC26 — Point d'entrée du Backend NestJS
+ * ReliefChain — Point d'entrée du Backend NestJS
  * Plateforme Logistique Humanitaire — Béni Mellal-Khénifra
  */
 import { NestFactory } from '@nestjs/core';
@@ -37,7 +37,7 @@ async function bootstrap() {
 
   // ── 4. Documentation Swagger (utile pour la démo jury) ────────────────────
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('MTSPC26 — API Logistique Humanitaire')
+    .setTitle('ReliefChain — API Logistique Humanitaire')
     .setDescription(
       'API sécurisée de gestion des ressources humanitaires — Région Béni Mellal-Khénifra\n\n' +
       '**Authentification :** Bearer Token JWT fourni par Keycloak\n\n' +
@@ -56,7 +56,7 @@ async function bootstrap() {
   const port = process.env.PORT || 9090;
   await app.listen(port);
 
-  console.log(`\n🚀 API Logistique MTSPC26 démarrée`);
+  console.log(`\n🚀 API Logistique ReliefChain démarrée`);
   console.log(`   → Backend  : http://localhost:${port}/api/v1`);
   console.log(`   → Swagger  : http://localhost:${port}/api/docs`);
   console.log(`   → Keycloak : ${process.env.KEYCLOAK_SERVER}/realms/${process.env.KEYCLOAK_REALM}\n`);

@@ -21,7 +21,7 @@ import { PendingSubmission } from '../types/app';
 import { API_BASE_URL }      from '../config/keycloakConfig';
 
 const PENDING_KEY = 'pending_submissions';
-const TOKEN_KEY   = 'mtspc26_access_token';
+const TOKEN_KEY   = 'reliefchain_access_token';
 
 export const syncService = {
 

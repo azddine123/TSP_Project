@@ -6,7 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Mission } from '../types/app';
 import { API_BASE_URL } from '../config/keycloakConfig';
 
-const TOKEN_KEY = 'mtspc26_access_token';
+const TOKEN_KEY = 'reliefchain_access_token';
 
 async function authFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = await SecureStore.getItemAsync(TOKEN_KEY);

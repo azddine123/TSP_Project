@@ -1,20 +1,20 @@
 /**
- * AUTH CONTEXT — État d'authentification global
- * ==============================================
- *
- * Initialise Keycloak au démarrage, expose dans toute l'app :
- * - isAuthenticated : l'utilisateur est-il connecté ?
- * - user            : profil (username, email, roles)
- * - token           : JWT brut à envoyer dans les headers API
- * - logout()        : déconnecter l'utilisateur
- * - hasRole()       : vérifier un rôle RBAC
+ * AUTH CONTEXT — Authentification directe Keycloak (sans redirection)
+ * ====================================================================
+ * Appel direct à l'endpoint token Keycloak (grant_type=password).
+ * Le JWT est stocké dans localStorage pour persister la session.
  */
 import React, {
   createContext, useContext, useEffect, useState, ReactNode,
 } from 'react';
-import keycloak from '../keycloak';
 
-// ── Types ────────────────────────────────────────────────────────────────────
+const KEYCLOAK_URL    = import.meta.env.VITE_KEYCLOAK_URL   || 'http://localhost:8180';
+const KEYCLOAK_REALM  = import.meta.env.VITE_KEYCLOAK_REALM || 'Logistique';
+const CLIENT_ID       = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'logistique-web';
+const TOKEN_KEY       = 'reliefchain_token';
+const USER_KEY        = 'reliefchain_user';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AuthUser {
   userId:   string;
@@ -27,87 +27,127 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading:       boolean;
   user:            AuthUser | null;
-  token:           string | undefined;
-  hasRole:         (role: string) => boolean;
+  token:           string | null;
+  login:           (username: string, password: string) => Promise<string | null>;
   logout:          () => void;
+  hasRole:         (role: string) => boolean;
 }
 
-// ── Contexte ─────────────────────────────────────────────────────────────────
+// ── Utilitaire JWT ─────────────────────────────────────────────────────────────
+
+function parseJWT(token: string): Record<string, any> {
+  const base64Url = token.split('.')[1];
+  const base64    = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded    = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+  return JSON.parse(atob(padded));
+}
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const { exp } = parseJWT(token);
+    return exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
+// ── Contexte ──────────────────────────────────────────────────────────────────
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ── Provider ─────────────────────────────────────────────────────────────────
+// ── Provider ──────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading,       setIsLoading]       = useState(true);
   const [user,            setUser]            = useState<AuthUser | null>(null);
+  const [token,           setToken]           = useState<string | null>(null);
 
+  // Restaurer la session depuis localStorage au démarrage
   useEffect(() => {
-    /**
-     * keycloak.init() avec onLoad: 'login-required' :
-     * Si l'utilisateur n'est PAS connecté → redirige automatiquement
-     * vers la page de login Keycloak. L'application React ne s'affiche
-     * jamais sans authentification valide.
-     */
-    keycloak
-      .init({ onLoad: 'login-required', checkLoginIframe: false })
-      .then((authenticated) => {
-        if (authenticated && keycloak.tokenParsed) {
-          const parsed = keycloak.tokenParsed as any;
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+    const storedUser  = localStorage.getItem(USER_KEY);
 
-          // Normaliser les rôles : claim plat "roles" ou realm_access.roles
-          const roles: string[] = [
-            ...(parsed.roles || []),
-            ...(parsed.realm_access?.roles || []),
-          ].filter((r: string) =>
-            ['SUPER_ADMIN', 'ADMIN_ENTREPOT', 'DISTRIBUTEUR'].includes(r),
-          );
-
-          setUser({
-            userId:   parsed.sub,
-            username: parsed.preferred_username,
-            email:    parsed.email || '',
-            roles,
-          });
-          setIsAuthenticated(true);
-        }
-      })
-      .catch((err) => {
-        console.error('[Keycloak] Erreur d\'initialisation :', err);
-      })
-      .finally(() => setIsLoading(false));
-
-    // Renouveler le token automatiquement 60 s avant expiration
-    keycloak.onTokenExpired = () => {
-      keycloak
-        .updateToken(60)
-        .catch(() => keycloak.logout());
-    };
+    if (storedToken && storedUser && !isTokenExpired(storedToken)) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+      setIsAuthenticated(true);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    }
+    setIsLoading(false);
   }, []);
+
+  // Fonction de login — appelle directement l'endpoint token Keycloak
+  const login = async (username: string, password: string): Promise<string | null> => {
+    const tokenUrl = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
+
+    const body = new URLSearchParams({
+      grant_type: 'password',
+      client_id:  CLIENT_ID,
+      username,
+      password,
+      scope:      'openid profile email',
+    });
+
+    const response = await fetch(tokenUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    body.toString(),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return data.error_description || data.error || 'Identifiants incorrects.';
+    }
+
+    const payload = parseJWT(data.access_token);
+    const roles: string[] = [
+      ...(payload.roles               || []),
+      ...(payload.realm_access?.roles || []),
+    ].filter((r: string) =>
+      ['SUPER_ADMIN', 'ADMIN_ENTREPOT', 'DISTRIBUTEUR'].includes(r),
+    );
+
+    const authUser: AuthUser = {
+      userId:   payload.sub,
+      username: payload.preferred_username,
+      email:    payload.email || '',
+      roles,
+    };
+
+    localStorage.setItem(TOKEN_KEY, data.access_token);
+    localStorage.setItem(USER_KEY,  JSON.stringify(authUser));
+
+    setToken(data.access_token);
+    setUser(authUser);
+    setIsAuthenticated(true);
+    return null; // null = succès
+  };
+
+  const logout = () => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+  };
 
   const hasRole = (role: string) => user?.roles.includes(role) ?? false;
 
-  const logout = () =>
-    keycloak.logout({ redirectUri: window.location.origin });
-
   return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        isLoading,
-        user,
-        token: keycloak.token,
-        hasRole,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{
+      isAuthenticated, isLoading, user, token,
+      login, logout, hasRole,
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// ── Hook ─────────────────────────────────────────────────────────────────────
+// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);

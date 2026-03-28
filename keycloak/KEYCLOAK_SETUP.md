@@ -1,4 +1,4 @@
-# Guide de Configuration Keycloak — MTSPC26
+# Guide de Configuration Keycloak — ReliefChain
 # Plateforme Logistique Humanitaire — Béni Mellal-Khénifra
 
 ---
@@ -55,7 +55,7 @@ Menu : **Realm roles** → **"Create role"**
 |------------------------|----------------------|
 | Client type            | OpenID Connect       |
 | Client ID              | `logistique-api`     |
-| Name                   | API Logistique MTSPC |
+| Name                   | API Logistique ReliefChain |
 
 Onglet **"Capability config"** :
 - **Client authentication** : `ON` ← rend le client "confidentiel" (possède un secret)

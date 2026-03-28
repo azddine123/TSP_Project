@@ -8,10 +8,12 @@ import React from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function DistributeurPage() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Box
@@ -100,7 +102,7 @@ export default function DistributeurPage() {
           >
             <PhoneAndroidIcon color="primary" />
             <Typography variant="body2" color="primary.dark" fontWeight="bold">
-              Ouvrez l'app Logistique MTSPC26 sur votre téléphone
+              Ouvrez l'app Logistique ReliefChain sur votre téléphone
             </Typography>
           </Box>
 
@@ -108,7 +110,7 @@ export default function DistributeurPage() {
             variant="outlined"
             color="error"
             startIcon={<LogoutIcon />}
-            onClick={logout}
+            onClick={() => { logout(); navigate('/login'); }}
             fullWidth
             size="large"
           >

@@ -2,7 +2,7 @@
  * AUDIT LOG INTERCEPTOR — Traçabilité Silencieuse des Écritures
  * =============================================================
  *
- * C'EST LE CŒUR TECHNIQUE DU SUJET MTSPC26.
+ * C'EST LE CŒUR TECHNIQUE DU SUJET ReliefChain.
  * ══════════════════════════════════════════
  *
  * PRINCIPE (à présenter au jury) :

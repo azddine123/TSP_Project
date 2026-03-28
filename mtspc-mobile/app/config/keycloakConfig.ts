@@ -1,40 +1,36 @@
 /**
- * CONFIGURATION KEYCLOAK MOBILE
- * ===============================
- * Adapté de labcollect-mobile/app/config/keycloakConfig.ts
+ * CONFIGURATION KEYCLOAK MOBILE — SDK 54 compatible
+ * ===================================================
+ * SDK 54 breaking change : Constants.manifest supprimé (expo-constants ~17).
+ * Utiliser Constants.expoConfig à la place.
  *
- * Point clé pour la démo jury : getHostUri() détecte automatiquement
- * l'adresse IP locale selon la plateforme (émulateur Android = 10.0.2.2,
- * appareil réel Expo Go = IP extraite du debuggerHost).
- * Cela évite de coder l'IP en dur et de se retrouver bloqué en présentation.
+ * Détection automatique de l'IP :
+ *   - Variable d'env EXPO_PUBLIC_API_HOST prioritaire (prod / CI / jury)
+ *   - Émulateur Android → 10.0.2.2 (passerelle vers l'hôte)
+ *   - Simulateur iOS    → localhost
+ *   - Appareil réel     → IP fallback manuelle (ou via .env)
  */
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 const getHostUri = (): string => {
-  // 1. Variable d'environnement prioritaire (prod / CI)
-  const envHost = process.env.EXPO_PUBLIC_API_HOST || Constants.expoConfig?.extra?.apiHost;
+  // 1. Variable d'environnement prioritaire (prod / CI / jury avec .env)
+  const envHost = process.env.EXPO_PUBLIC_API_HOST ||
+    (Constants.expoConfig?.extra?.apiHost as string | undefined);
   if (envHost) return envHost;
 
   if (__DEV__) {
-    const isExpoGo     = Constants.appOwnership === 'expo';
-    const debuggerHost = (Constants.manifest as any)?.debuggerHost;
-
-    // Expo Go sur appareil réel → extraire l'IP du debuggerHost (ex: "192.168.1.5:8081")
-    if (isExpoGo && debuggerHost) {
-      return debuggerHost.split(':')[0];
-    }
-
     if (Platform.OS === 'android') {
       // Émulateur Android → passerelle vers la machine hôte
       if (!Constants.isDevice) return '10.0.2.2';
-      // Appareil réel Android → fallback IP manuelle
+      // Appareil réel Android → IP manuelle (configurer dans .env)
       return '192.168.1.1';
     }
 
     if (Platform.OS === 'ios') {
       // Simulateur iOS → localhost
       if (!Constants.isDevice) return 'localhost';
+      // Appareil réel iOS → IP manuelle (configurer dans .env)
       return '192.168.1.1';
     }
   }

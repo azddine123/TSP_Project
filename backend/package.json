@@ -1,7 +1,7 @@
 {
-  "name": "mtspc26-logistique-backend",
+  "name": "reliefchain-logistique-backend",
   "version": "1.0.0",
-  "description": "API Backend — Plateforme Logistique Humanitaire MTSPC26",
+  "description": "API Backend — Plateforme Logistique Humanitaire ReliefChain",
   "author": "Azddine EL Hamdaoui & Youssef Ait Karroum",
   "scripts": {
     "build": "nest build",
