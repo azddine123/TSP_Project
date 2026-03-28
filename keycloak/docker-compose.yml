@@ -1,0 +1,84 @@
+version: '3.8'
+
+# ============================================================
+# MTSPC26 — Infrastructure Keycloak (IAM / SSO)
+# Lance Keycloak 24 + sa propre base PostgreSQL dédiée.
+#
+# DÉMARRAGE :
+#   cd keycloak/ && docker-compose up -d
+#   → Interface Admin : http://localhost:8180
+#   → Identifiants   : admin / admin
+# ============================================================
+
+services:
+
+  # ── Base de données dédiée à Keycloak ────────────────────────────────────
+  # Port 5433 pour ne PAS entrer en conflit avec la BDD applicative (5432)
+  keycloak-db:
+    image: postgres:15-alpine
+    container_name: mtspc26-keycloak-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       keycloak_db
+      POSTGRES_USER:     keycloak_user
+      POSTGRES_PASSWORD: keycloak_pass_2024
+    ports:
+      - "5433:5432"
+    volumes:
+      - keycloak_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak_user -d keycloak_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mtspc26-net
+
+  # ── Serveur Keycloak 24 ───────────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.4
+    container_name: mtspc26-keycloak
+    restart: unless-stopped
+    command: start-dev   # Mode développement : HTTP, logs détaillés
+    environment:
+      # Compte administrateur de la console Keycloak
+      KEYCLOAK_ADMIN:          admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+      # Connexion à sa BDD PostgreSQL dédiée
+      KC_DB:          postgres
+      KC_DB_URL:      jdbc:postgresql://keycloak-db:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: keycloak_pass_2024
+
+      # Désactiver les contraintes hostname en dev local
+      KC_HOSTNAME_STRICT:          "false"
+      KC_HOSTNAME_STRICT_HTTPS:    "false"
+      KC_HTTP_ENABLED:             "true"
+
+      # Log niveau INFO pour la démo (DEBUG disponible si besoin)
+      KC_LOG_LEVEL: INFO
+
+    ports:
+      - "8180:8080"   # Interface Web Admin + endpoints OpenID Connect
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    volumes:
+      # Monter le dossier d'export pour import/export du Realm
+      - ./realm-export:/opt/keycloak/data/import
+    networks:
+      - mtspc26-net
+
+# ── Volumes persistants ──────────────────────────────────────────────────
+volumes:
+  keycloak_pg_data:
+    driver: local
+
+# ── Réseau interne partagé ───────────────────────────────────────────────
+# Le backend NestJS peut rejoindre ce réseau pour communiquer
+# avec Keycloak via le nom de service "keycloak" (sans passer par localhost)
+networks:
+  mtspc26-net:
+    name: mtspc26-network
+    driver: bridge

@@ -1,0 +1,43 @@
+version: '3.8'
+
+# ============================================================
+# MTSPC26 — Base de données principale de l'application
+# PostgreSQL 15 — Port 5432
+#
+# DÉMARRER  : docker-compose up -d
+# ARRÊTER   : docker-compose down
+# ============================================================
+
+services:
+
+  postgres-app:
+    image: postgres:15-alpine
+    container_name: mtspc26-app-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       mtspc_logistique
+      POSTGRES_USER:     admin
+      POSTGRES_PASSWORD: admin_password
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistance des données : le contenu de la BDD survit aux redémarrages
+      - mtspc26_pg_data:/var/lib/postgresql/data
+
+      # ── Initialisation automatique au premier démarrage ──────────────────
+      # Décommenter la ligne ci-dessous pour que PostgreSQL exécute
+      # automatiquement le fichier schema.sql lors de la création du conteneur.
+      # ATTENTION : ce montage ne s'exécute QU'UNE SEULE FOIS (si le volume
+      # est vide). Pour relancer, faire : docker-compose down -v && docker-compose up -d
+      #
+      - ../database/migrations/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d mtspc_logistique"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mtspc26_pg_data:
+    driver: local

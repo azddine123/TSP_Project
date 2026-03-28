@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name":    "MTSPC26 Logistique",
+    "slug":    "mtspc26-logistique",
+    "version": "1.0.0",
+    "scheme":  "logistique",
+    "orientation": "portrait",
+    "icon":         "./assets/icon.png",
+    "splash": {
+      "image":           "./assets/splash.png",
+      "resizeMode":      "contain",
+      "backgroundColor": "#1565C0"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1565C0"
+      },
+      "package": "ma.gov.logistique.mtspc26",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "ma.gov.logistique.mtspc26",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Nécessaire pour afficher votre position sur la carte de livraison."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        { "locationAlwaysAndWhenInUsePermission": "Accès à la localisation pour la navigation vers les zones sinistrées." }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiHost": null
+    }
+  }
+}
