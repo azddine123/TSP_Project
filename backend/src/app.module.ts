@@ -14,7 +14,12 @@ import { MaterielsModule }     from './materiels/materiels.module';
 import { StocksModule }        from './stocks/stocks.module';
 import { DistributeursModule } from './distributeurs/distributeurs.module';
 import { MissionsModule }      from './missions/missions.module';
-import { HealthModule }       from './health/health.module';
+import { HealthModule }        from './health/health.module';
+import { DouarsModule }        from './douars/douars.module';
+import { CrisesModule }        from './crises/crises.module';
+import { AlgorithmesModule }   from './algorithmes/algorithmes.module';
+import { TourneesModule }      from './tournees/tournees.module';
+import { EvenementsModule }    from './evenements/evenements.module';
 
 @Module({
   imports: [
@@ -40,6 +45,11 @@ import { HealthModule }       from './health/health.module';
     DistributeursModule, // GET /distributeurs
     MissionsModule,      // GET|POST /missions, PATCH /missions/:id/statut, POST /sync
     HealthModule,        // GET /health (public)
+    DouarsModule,        // GET /douars
+    CrisesModule,        // GET|POST /crises, PATCH /crises/:id/statut
+    AlgorithmesModule,   // POST /algorithmes/pipeline, GET /algorithmes/pipeline/:id
+    TourneesModule,      // GET|PATCH /tournees
+    EvenementsModule,    // GET|POST /evenements
   ],
   providers: [
     /**

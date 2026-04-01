@@ -1,28 +1,8 @@
 /**
- * CLIENT AXIOS — Injecte automatiquement le JWT dans chaque requête API
- * =====================================================================
- * Toutes les requêtes vers le backend NestJS passent par ce client.
- * Les types sont définis dans src/types/index.ts (source unique de vérité).
+ * CLIENT AXIOS — Injecte automatiquement le JWT dans chaque requête API.
+ * Couvre l'ensemble des modules : existants + nouveaux (Crises, Algo, Supervision…)
  */
 import axios, { AxiosError } from 'axios';
-import keycloak from '../keycloak';
-
-// ── Ré-export des types pour la rétrocompatibilité des imports existants ───────
-export type {
-  StockRow,
-  Mission,
-  CreateMissionDto,
-  AuditLog,
-  AuditLogsResponse,
-  Entrepot,
-  Distributeur,
-  Materiel,
-  MissionStatut,
-  MissionPriorite,
-  AuditOperation,
-  EntrepotStatut,
-  UserRole,
-} from '../types';
 
 // ── Instance Axios ─────────────────────────────────────────────────────────────
 
@@ -30,55 +10,72 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:9090/api/v1',
 });
 
-// ── Intercepteur : inject JWT Bearer, refresh automatique ─────────────────────
+// ── Intercepteur : inject JWT depuis localStorage ──────────────────────────────
+// (AuthContext stocke le token dans localStorage['reliefchain_token'])
 
-api.interceptors.request.use(async (config) => {
-  try {
-    await keycloak.updateToken(30);
-  } catch {
-    keycloak.logout();
-    return Promise.reject(new Error('Session expirée — veuillez vous reconnecter.'));
-  }
-
-  if (keycloak.token) {
-    config.headers.Authorization = `Bearer ${keycloak.token}`;
-  }
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('reliefchain_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
+// ── Intercepteur réponse : déconnexion sur 401 ────────────────────────────────
+
+api.interceptors.response.use(
+  (res) => res,
+  (err: AxiosError) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('reliefchain_token');
+      localStorage.removeItem('reliefchain_user');
+      window.location.href = '/';
+    }
+    return Promise.reject(err);
+  },
+);
+
 // ── Gestion d'erreurs normalisée ───────────────────────────────────────────────
 
-/**
- * Extrait un message lisible depuis une AxiosError ou une Error générique.
- * À utiliser dans les blocs catch des composants.
- */
 export function getApiErrorMessage(err: unknown): string {
   if (err instanceof AxiosError) {
     const msg = err.response?.data?.message;
-    if (Array.isArray(msg)) return msg.join(', ');
-    if (typeof msg === 'string') return msg;
+    if (Array.isArray(msg))         return msg.join(', ');
+    if (typeof msg === 'string')    return msg;
     if (err.response?.status === 401) return 'Session expirée — veuillez vous reconnecter.';
-    if (err.response?.status === 403) return 'Vous n\'avez pas les droits pour cette action.';
+    if (err.response?.status === 403) return "Vous n'avez pas les droits pour cette action.";
     if (err.response?.status === 404) return 'Ressource introuvable.';
     if (err.response?.status && err.response.status >= 500)
-      return 'Erreur serveur — contactez l\'administrateur.';
+      return "Erreur serveur — contactez l'administrateur.";
   }
   return 'Une erreur inattendue est survenue.';
 }
 
-// ── Appels API métier ──────────────────────────────────────────────────────────
+// ── Import des types ───────────────────────────────────────────────────────────
 
 import type {
+  // Existants
   StockRow, Mission, CreateMissionDto,
-  AuditLogsResponse, Entrepot, Distributeur, Materiel,
+  AuditLog, AuditLogsResponse,
+  Entrepot, Distributeur, Materiel,
+  // Nouveaux
+  Douar,
+  Crise, CreateCriseDto,
+  PipelineResult, RunPipelineDto,
+  Tournee, AssignerTourneeDto,
+  SupervisionSnapshot,
+  Evenement, EvenementsResponse, CreateEvenementDto, SendAlertDto,
+  AdminEntrepot, CreateAdminEntrepotDto, UpdateAdminStatutDto,
 } from '../types';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APIS EXISTANTES
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export const stockApi = {
   getAll: () => api.get<StockRow[]>('/stocks').then((r) => r.data),
 };
 
 export const missionApi = {
-  getAll:  ()                     => api.get<Mission[]>('/missions').then((r) => r.data),
+  getAll:  ()                      => api.get<Mission[]>('/missions').then((r) => r.data),
   create:  (dto: CreateMissionDto) => api.post<Mission>('/missions', dto).then((r) => r.data),
 };
 
@@ -103,4 +100,187 @@ export const materielApi = {
   getAll: () => api.get<Materiel[]>('/materiels').then((r) => r.data),
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOUARS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const douarApi = {
+  /** Tous les douars de la région (filtrable par province) */
+  getAll: (params?: { province?: string; wilaya?: string }) =>
+    api.get<Douar[]>('/douars', { params }).then((r) => r.data),
+
+  search: (q: string) =>
+    api.get<Douar[]>('/douars/search', { params: { q } }).then((r) => r.data),
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CRISES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const criseApi = {
+  /** Retourne toutes les crises (historique) */
+  getAll: () =>
+    api.get<Crise[]>('/crises').then((r) => r.data),
+
+  /** Crise actuellement active (null si aucune) */
+  getActive: () =>
+    api.get<Crise | null>('/crises/active').then((r) => r.data),
+
+  getById: (id: string) =>
+    api.get<Crise>(`/crises/${id}`).then((r) => r.data),
+
+  /** Déclenche une nouvelle crise avec sévérités initiales par douar */
+  create: (dto: CreateCriseDto) =>
+    api.post<Crise>('/crises', dto).then((r) => r.data),
+
+  /** Suspend ou clôture une crise */
+  updateStatut: (id: string, statut: 'suspendue' | 'cloturee') =>
+    api.patch<Crise>(`/crises/${id}/statut`, { statut }).then((r) => r.data),
+
+  /** Mise à jour des sévérités (recalcul partiel) */
+  updateSeverites: (id: string, severites: CreateCriseDto['severitesParDouar']) =>
+    api.patch<Crise>(`/crises/${id}/severites`, { severites }).then((r) => r.data),
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ALGORITHMES (AHP → TOPSIS → VRP)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const algoApi = {
+  /**
+   * Lance la chaîne complète AHP → TOPSIS → VRP.
+   * Retourne immédiatement un PipelineResult avec statut 'pending'.
+   * Le frontend poll getStatus() ou écoute le SSE de supervision.
+   */
+  runPipeline: (dto: RunPipelineDto) =>
+    api.post<PipelineResult>('/algorithmes/run', dto).then((r) => r.data),
+
+  /** Polling du statut d'exécution du pipeline */
+  getStatus: (pipelineId: string) =>
+    api.get<PipelineResult>(`/algorithmes/${pipelineId}`).then((r) => r.data),
+
+  /** Historique des exécutions pour une crise donnée */
+  getHistory: (criseId: string) =>
+    api.get<PipelineResult[]>(`/algorithmes/crise/${criseId}`).then((r) => r.data),
+
+  /**
+   * Recalcul dynamique après un incident.
+   * Même interface que runPipeline, avec routesBloquees ou douarsExclus.
+   */
+  recalcul: (dto: RunPipelineDto) =>
+    api.post<PipelineResult>('/algorithmes/recalcul', dto).then((r) => r.data),
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TOURNÉES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const tourneeApi = {
+  /** Toutes les tournées d'une crise */
+  getByCrise: (criseId: string) =>
+    api.get<Tournee[]>('/tournees', { params: { criseId } }).then((r) => r.data),
+
+  getById: (id: string) =>
+    api.get<Tournee>(`/tournees/${id}`).then((r) => r.data),
+
+  /** Affecter un distributeur à une tournée */
+  assigner: (id: string, dto: AssignerTourneeDto) =>
+    api.patch<Tournee>(`/tournees/${id}/assigner`, dto).then((r) => r.data),
+
+  /** Réassignation manuelle (ex: panne véhicule) */
+  reassigner: (id: string, dto: AssignerTourneeDto) =>
+    api.patch<Tournee>(`/tournees/${id}/reassigner`, dto).then((r) => r.data),
+
+  /** Annuler une tournée planifiée */
+  annuler: (id: string) =>
+    api.patch<Tournee>(`/tournees/${id}/annuler`).then((r) => r.data),
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUPERVISION (SSE — lecture seule, temps réel)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const supervisionApi = {
+  /** Snapshot instantané (pour le chargement initial de la page) */
+  getSnapshot: () =>
+    api.get<SupervisionSnapshot>('/supervision/snapshot').then((r) => r.data),
+
+  /**
+   * Crée un EventSource SSE vers /supervision/stream.
+   * Le serveur push un SupervisionSnapshot toutes les 5 secondes.
+   * À utiliser dans le hook useSSE (voir hooks/useSSE.ts).
+   */
+  getStreamUrl: (): string => {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:9090/api/v1';
+    const token = localStorage.getItem('reliefchain_token') ?? '';
+    return `${base}/supervision/stream?token=${encodeURIComponent(token)}`;
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ÉVÉNEMENTS / INCIDENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const evenementApi = {
+  getAll: (params?: {
+    criseId?:  string;
+    type?:     string;
+    statut?:   string;
+    page?:     number;
+    limit?:    number;
+  }) => api.get<EvenementsResponse>('/evenements', { params }).then((r) => r.data),
+
+  getById: (id: string) =>
+    api.get<Evenement>(`/evenements/${id}`).then((r) => r.data),
+
+  /** Signaler un incident terrain */
+  create: (dto: CreateEvenementDto) =>
+    api.post<Evenement>('/evenements', dto).then((r) => r.data),
+
+  /** Envoyer une alerte push aux distributeurs sélectionnés */
+  sendAlert: (dto: SendAlertDto) =>
+    api.post<Evenement>('/evenements/alert', dto).then((r) => r.data),
+
+  /** Marquer un incident comme résolu */
+  resoudre: (id: string) =>
+    api.patch<Evenement>(`/evenements/${id}/resoudre`).then((r) => r.data),
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UTILISATEURS — Admin Entrepôt (via Keycloak Admin API)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const usersApi = {
+  /** Liste tous les comptes Admin Entrepôt */
+  getAdmins: () =>
+    api.get<AdminEntrepot[]>('/users/admins').then((r) => r.data),
+
+  getById: (id: string) =>
+    api.get<AdminEntrepot>(`/users/${id}`).then((r) => r.data),
+
+  /** Crée un compte Keycloak avec le rôle ADMIN_ENTREPOT */
+  create: (dto: CreateAdminEntrepotDto) =>
+    api.post<AdminEntrepot>('/users', dto).then((r) => r.data),
+
+  /** Active ou suspend le compte (enabled: true/false) */
+  updateStatut: (id: string, dto: UpdateAdminStatutDto) =>
+    api.patch<AdminEntrepot>(`/users/${id}/statut`, dto).then((r) => r.data),
+
+  /** Suppression définitive du compte Keycloak */
+  delete: (id: string) =>
+    api.delete(`/users/${id}`).then((r) => r.data),
+
+  /** Réinitialiser le mot de passe (envoie un email Keycloak) */
+  resetPassword: (id: string) =>
+    api.post(`/users/${id}/reset-password`).then((r) => r.data),
+};
+
 export default api;
+
+// ── Ré-export des types pour la rétrocompatibilité ────────────────────────────
+export type {
+  StockRow, Mission, CreateMissionDto,
+  AuditLog, AuditLogsResponse,
+  Entrepot, Distributeur, Materiel,
+  MissionStatut, MissionPriorite, AuditOperation, EntrepotStatut, UserRole,
+} from '../types';

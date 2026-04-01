@@ -12,6 +12,13 @@ import { Stock }        from '../stocks/entities/stock.entity';
 import { Distributeur } from '../distributeurs/entities/distributeur.entity';
 import { Mission }      from '../missions/entities/mission.entity';
 import { MissionItem }  from '../missions/entities/mission-item.entity';
+import { Douar }               from '../douars/entities/douar.entity';
+import { Crise }               from '../crises/entities/crise.entity';
+import { DouarSeverite }       from '../crises/entities/douar-severite.entity';
+import { PipelineResultEntity } from '../algorithmes/entities/pipeline-result.entity';
+import { Tournee }             from '../tournees/entities/tournee.entity';
+import { TourneeEtape }        from '../tournees/entities/tournee-etape.entity';
+import { Evenement }           from '../evenements/entities/evenement.entity';
 
 @Module({
   imports: [
@@ -35,6 +42,13 @@ import { MissionItem }  from '../missions/entities/mission-item.entity';
           Distributeur,
           Mission,
           MissionItem,
+          Douar,
+          Crise,
+          DouarSeverite,
+          PipelineResultEntity,
+          Tournee,
+          TourneeEtape,
+          Evenement,
         ],
 
         /**
