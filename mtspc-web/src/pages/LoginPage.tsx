@@ -1,29 +1,18 @@
 /**
- * PAGE DE LOGIN PERSONNALISÉE — Formulaire username / password
- * Appel direct à Keycloak sans redirection vers la page Keycloak.
+ * PAGE DE LOGIN — Formulaire username / password (Tailwind)
  */
 import React, { useState } from 'react';
-import {
-  Box, Card, CardContent, TextField, Button,
-  Typography, Alert, InputAdornment, IconButton,
-  CircularProgress,
-} from '@mui/material';
-import WarehouseIcon      from '@mui/icons-material/Warehouse';
-import Visibility         from '@mui/icons-material/Visibility';
-import VisibilityOff      from '@mui/icons-material/VisibilityOff';
-import LockOutlinedIcon   from '@mui/icons-material/LockOutlined';
-import PersonOutlineIcon  from '@mui/icons-material/PersonOutline';
-import { useAuth }        from '../contexts/AuthContext';
-import { useNavigate }    from 'react-router-dom';
+import { useAuth }     from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
-  const { login }                   = useAuth();
-  const navigate                    = useNavigate();
-  const [username,   setUsername]   = useState('');
-  const [password,   setPassword]   = useState('');
-  const [showPass,   setShowPass]   = useState(false);
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState<string | null>(null);
+  const { login }                = useAuth();
+  const navigate                 = useNavigate();
+  const [username, setUsername]  = useState('');
+  const [password, setPassword]  = useState('');
+  const [showPass, setShowPass]  = useState(false);
+  const [loading,  setLoading]   = useState(false);
+  const [error,    setError]     = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,158 +23,138 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     const err = await login(username.trim(), password);
-    if (err) {
-      setError(err);
-      setLoading(false);
-    } else {
-      navigate('/');
-    }
+    if (err) { setError(err); setLoading(false); }
+    else navigate('/');
   };
 
   return (
-    <Box
-      sx={{
-        minHeight:       '100vh',
-        display:         'flex',
-        alignItems:      'center',
-        justifyContent:  'center',
-        background:      'linear-gradient(135deg, #0D1B2A 0%, #0A3D62 50%, #0D1B2A 100%)',
-        p: 2,
-      }}
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ background: 'linear-gradient(135deg, #0D1B2A 0%, #0A3D62 50%, #0D1B2A 100%)' }}
     >
-      <Box sx={{ width: '100%', maxWidth: 420 }}>
+      <div className="w-full max-w-[420px]">
 
         {/* En-tête */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Box
-            sx={{
-              width: 64, height: 64, borderRadius: '16px',
-              background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              mx: 'auto', mb: 2,
-              boxShadow: '0 8px 32px rgba(21,101,192,0.4)',
-            }}
+        <div className="text-center mb-8">
+          <div
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+            style={{ background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)', boxShadow: '0 8px 32px rgba(21,101,192,0.4)' }}
           >
-            <WarehouseIcon sx={{ fontSize: 32, color: '#fff' }} />
-          </Box>
-          <Typography variant="h5" fontWeight={800} sx={{ color: '#fff', letterSpacing: 1 }}>
-            ReliefChain
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.55)', mt: 0.5 }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <line x1="3" y1="9" x2="21" y2="9" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-extrabold text-white tracking-wide">ReliefChain</h1>
+          <p className="text-sm text-white/55 mt-1">
             Plateforme Logistique Humanitaire · Béni Mellal-Khénifra
-          </Typography>
-        </Box>
+          </p>
+        </div>
 
         {/* Carte formulaire */}
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            border: '1px solid rgba(255,255,255,0.08)',
+        <div
+          className="rounded-2xl p-8"
+          style={{
             background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.08)',
             backdropFilter: 'blur(20px)',
           }}
         >
-          <CardContent sx={{ p: 4 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ color: '#fff', mb: 0.5 }}>
-              Connexion
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.45)', mb: 3 }}>
-              Accès réservé au personnel autorisé
-            </Typography>
+          <h2 className="text-lg font-bold text-white mb-1">Connexion</h2>
+          <p className="text-sm text-white/45 mb-6">Accès réservé au personnel autorisé</p>
 
-            {error && (
-              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-                {error}
-              </Alert>
-            )}
+          {error && (
+            <div className="flex items-start gap-2 bg-red-900/40 border border-red-500/40 text-red-300 rounded-lg px-4 py-3 mb-4 text-sm">
+              <svg className="w-4 h-4 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" clipRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+              </svg>
+              {error}
+            </div>
+          )}
 
-            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-              {/* Identifiant */}
-              <TextField
-                label="Identifiant"
+            {/* Identifiant */}
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                placeholder="Identifiant"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
                 autoFocus
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PersonOutlineIcon sx={{ color: 'rgba(255,255,255,0.4)', fontSize: 20 }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={inputSx}
+                className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-white/35 bg-white/[0.07] border border-white/15 outline-none focus:border-blue-500 transition-colors"
               />
+            </div>
 
-              {/* Mot de passe */}
-              <TextField
-                label="Mot de passe"
+            {/* Mot de passe */}
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+              </span>
+              <input
                 type={showPass ? 'text' : 'password'}
+                placeholder="Mot de passe"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockOutlinedIcon sx={{ color: 'rgba(255,255,255,0.4)', fontSize: 20 }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPass(v => !v)} edge="end" size="small">
-                        {showPass
-                          ? <VisibilityOff sx={{ color: 'rgba(255,255,255,0.4)', fontSize: 18 }} />
-                          : <Visibility   sx={{ color: 'rgba(255,255,255,0.4)', fontSize: 18 }} />
-                        }
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={inputSx}
+                className="w-full pl-10 pr-10 py-3 rounded-xl text-sm text-white placeholder-white/35 bg-white/[0.07] border border-white/15 outline-none focus:border-blue-500 transition-colors"
               />
-
-              {/* Bouton */}
-              <Button
-                type="submit"
-                variant="contained"
-                fullWidth
-                disabled={loading}
-                sx={{
-                  mt: 1, py: 1.5, borderRadius: 2,
-                  background: 'linear-gradient(90deg, #1565C0 0%, #0D47A1 100%)',
-                  fontWeight: 700, fontSize: '0.95rem', letterSpacing: 0.5,
-                  boxShadow: '0 4px 20px rgba(21,101,192,0.4)',
-                  '&:hover': { background: 'linear-gradient(90deg, #1976D2 0%, #1565C0 100%)' },
-                  '&:disabled': { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)' },
-                }}
+              <button
+                type="button"
+                onClick={() => setShowPass((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+                tabIndex={-1}
+                aria-label={showPass ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               >
-                {loading ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'Se connecter'}
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
+                {showPass ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            {/* Bouton connexion */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-1 py-3 rounded-xl text-sm font-bold text-white tracking-wide transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: 'linear-gradient(90deg, #1565C0 0%, #0D47A1 100%)',
+                boxShadow: '0 4px 20px rgba(21,101,192,0.4)',
+              }}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Connexion en cours…
+                </span>
+              ) : (
+                'Se connecter'
+              )}
+            </button>
+          </form>
+        </div>
 
         {/* Footer */}
-        <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mt: 3, color: 'rgba(255,255,255,0.25)' }}>
+        <p className="text-center text-xs text-white/25 mt-6">
           🔒 Authentification sécurisée · Keycloak SSO
-        </Typography>
-      </Box>
-    </Box>
+        </p>
+      </div>
+    </div>
   );
 }
-
-// ── Styles MUI pour les inputs dark ───────────────────────────────────────────
-const inputSx = {
-  '& .MuiOutlinedInput-root': {
-    color: '#fff',
-    '& fieldset':          { borderColor: 'rgba(255,255,255,0.15)' },
-    '&:hover fieldset':    { borderColor: 'rgba(255,255,255,0.3)' },
-    '&.Mui-focused fieldset': { borderColor: '#1976D2' },
-  },
-  '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.45)' },
-  '& .MuiInputLabel-root.Mui-focused': { color: '#42A5F5' },
-};

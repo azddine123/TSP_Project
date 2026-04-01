@@ -104,10 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const payload = parseJWT(data.access_token);
-    const roles: string[] = [
+    const roles: string[] = [...new Set([
       ...(payload.roles               || []),
       ...(payload.realm_access?.roles || []),
-    ].filter((r: string) =>
+    ])].filter((r: string) =>
       ['SUPER_ADMIN', 'ADMIN_ENTREPOT', 'DISTRIBUTEUR'].includes(r),
     );
 

@@ -2,8 +2,7 @@
  * APP — Routage principal par rôle Keycloak
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Box, CircularProgress } from '@mui/material';
-import Navbar              from './components/Navbar';
+import AppLayout           from './layout/AppLayout';
 import ProtectedRoute      from './components/ProtectedRoute';
 import AdminDashboard      from './pages/admin/AdminDashboard';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
@@ -23,13 +22,13 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress size={40} />
-      </Box>
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-950">
+        <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+      </div>
     );
   }
 
-  // Non connecté → page de login personnalisée
+  // Non connecté → page de login standalone (sans layout)
   if (!isAuthenticated) {
     return (
       <Routes>
@@ -44,30 +43,27 @@ export default function App() {
       <Route
         path="/*"
         element={
-          <>
-            <Navbar />
-            <Box sx={{ mt: '56px', p: 3, minHeight: 'calc(100vh - 56px)', bgcolor: 'background.default' }}>
-              <Routes>
-                <Route path="/" element={<HomeRedirect />} />
-                <Route
-                  path="/admin/*"
-                  element={
-                    <ProtectedRoute allowedRoles={['ADMIN_ENTREPOT']}>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/superadmin/*"
-                  element={
-                    <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                      <SuperAdminDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-              </Routes>
-            </Box>
-          </>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<HomeRedirect />} />
+              <Route
+                path="/admin/*"
+                element={
+                  <ProtectedRoute allowedRoles={['ADMIN_ENTREPOT']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/*"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                    <SuperAdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </AppLayout>
         }
       />
     </Routes>
