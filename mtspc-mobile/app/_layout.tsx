@@ -45,6 +45,10 @@ function RootNavigator() {
         name="mission-detail"
         options={{ headerShown: false, presentation: 'card' }}
       />
+      <Stack.Screen
+        name="delivery-confirm"
+        options={{ headerShown: false, presentation: 'card' }}
+      />
     </Stack>
   );
 }

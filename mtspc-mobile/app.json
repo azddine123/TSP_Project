@@ -20,13 +20,24 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "INTERNET"
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ]
     },
     "ios": {
       "bundleIdentifier": "ma.gov.logistique.reliefchain",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Nécessaire pour afficher votre position sur la carte de livraison."
+        "NSLocationWhenInUseUsageDescription": "Nécessaire pour afficher votre position sur la carte de livraison.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Suivi GPS en arrière-plan pour remonter la position du camion au Super Admin pendant la tournée.",
+        "NSLocationAlwaysUsageDescription": "Suivi GPS continu requis pendant la tournée de distribution.",
+        "NSCameraUsageDescription": "Prise de photo de preuve lors de chaque livraison de matériel humanitaire.",
+        "NSPhotoLibraryUsageDescription": "Accès à la galerie pour joindre des photos de livraison.",
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
       }
     },
     "plugins": [
@@ -35,9 +46,29 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Accès à la localisation pour la navigation vers les zones sinistrées."
+          "locationAlwaysAndWhenInUsePermission": "Suivi GPS en arrière-plan pour la tournée de distribution humanitaire.",
+          "locationAlwaysPermission": "Suivi GPS continu requis pendant la tournée.",
+          "locationWhenInUsePermission": "Localisation requise pour la navigation et la confirmation de livraison.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Autorisation requise pour photographier les preuves de livraison."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1565C0",
+          "defaultChannel": "mtspc-alerts",
+          "sounds": []
+        }
+      ],
+      "expo-task-manager",
       "expo-asset",
       "expo-web-browser"
     ],

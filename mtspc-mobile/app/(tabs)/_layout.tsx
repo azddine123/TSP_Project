@@ -48,10 +48,23 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title:      'Mes Missions',
+          title:      'Missions',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="tour"
+        options={{
+          title:      'Tournée',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="navigate" size={size} color={color} />
+          ),
+          headerStyle:      { backgroundColor: '#1565C0' },
+          headerTintColor:  '#fff',
+          headerTitleStyle: { fontWeight: '700' },
+          headerTitle:      'Tournée VRP',
         }}
       />
       <Tabs.Screen
