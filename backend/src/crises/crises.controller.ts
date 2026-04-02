@@ -17,6 +17,13 @@ export class CrisesController {
     return this.service.findAll();
   }
 
+  /** GET /crises/active — crise actuellement active (null si aucune) */
+  @Get('active')
+  @Roles('SUPER_ADMIN')
+  findActive() {
+    return this.service.findActive();
+  }
+
   /** GET /crises/:id */
   @Get(':id')
   @Roles('SUPER_ADMIN')
@@ -42,5 +49,21 @@ export class CrisesController {
     @Body() dto: UpdateCriseStatutDto,
   ) {
     return this.service.updateStatut(id, dto);
+  }
+
+  /** PATCH /crises/:id/severites — remplacer les sévérités par douar */
+  @Patch(':id/severites')
+  @Roles('SUPER_ADMIN')
+  updateSeverites(
+    @Param('id') id: string,
+    @Body('severites') severites: Array<{
+      douarId: string;
+      severite: number;
+      vulnerabilite: number;
+      accessibilite: number;
+      accesSoins: number;
+    }>,
+  ) {
+    return this.service.updateSeverites(id, severites);
   }
 }

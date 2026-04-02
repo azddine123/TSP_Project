@@ -1,6 +1,5 @@
 /**
- * DASHBOARD SUPER-ADMIN — Tailwind CSS
- * Carte Leaflet intacte + Audit Logs
+ * VUE GLOBALE SUPER-ADMIN — Carte Leaflet + Audit Logs
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
@@ -89,7 +88,7 @@ const OPERATIONS = [
   { value: 'DELETE', label: 'DELETE' },
 ];
 
-export default function SuperAdminDashboard() {
+export default function SuperAdminOverview() {
   const [entrepots,       setEntrepots]       = useState<Entrepot[]>([]);
   const [auditLogs,       setAuditLogs]       = useState<AuditLog[]>([]);
   const [total,           setTotal]           = useState(0);

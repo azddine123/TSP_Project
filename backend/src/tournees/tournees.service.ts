@@ -73,6 +73,16 @@ export class TourneesService {
     });
   }
 
+  // ── Lister les tournées de l'entrepôt (Admin Entrepôt) ───────────────────
+
+  findByEntrepot(entrepotId: string): Promise<Tournee[]> {
+    return this.tourneeRepo.find({
+      where:     { entrepotId },
+      relations: { etapes: { douar: true }, entrepot: true, distributeur: true },
+      order:     { createdAt: 'DESC' },
+    });
+  }
+
   // ── Récupérer une tournée ─────────────────────────────────────────────────
 
   async findOne(id: string): Promise<Tournee> {
@@ -92,6 +102,30 @@ export class TourneesService {
       throw new BadRequestException('Seules les tournées planifiées peuvent être assignées');
     }
     tournee.distributeurId = dto.distributeurId;
+    await this.tourneeRepo.save(tournee);
+    return this.findOne(id);
+  }
+
+  // ── Réassigner un distributeur (tournée en cours) ────────────────────────
+
+  async reassigner(id: string, dto: AssignerTourneeDto): Promise<Tournee> {
+    const tournee = await this.findOne(id);
+    if (tournee.statut === 'terminee' || tournee.statut === 'annulee') {
+      throw new BadRequestException('Impossible de réassigner une tournée terminée ou annulée');
+    }
+    tournee.distributeurId = dto.distributeurId;
+    await this.tourneeRepo.save(tournee);
+    return this.findOne(id);
+  }
+
+  // ── Annuler une tournée ───────────────────────────────────────────────────
+
+  async annuler(id: string): Promise<Tournee> {
+    const tournee = await this.findOne(id);
+    if (tournee.statut === 'terminee') {
+      throw new BadRequestException('Impossible d\'annuler une tournée déjà terminée');
+    }
+    tournee.statut = 'annulee';
     await this.tourneeRepo.save(tournee);
     return this.findOne(id);
   }

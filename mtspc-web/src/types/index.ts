@@ -431,3 +431,66 @@ export type EvenementType    =
 
 export type EvenementSeverite = 'info' | 'warning' | 'critical';
 export type EvenementStatut   = 'ouvert' | 'en_traitement' | 'resolu';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODULE ADMIN ENTREPÔT — Stocks (mouvements), Véhicules
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type MouvementType  = 'ENTREE' | 'SORTIE';
+export type VehiculeType   = 'CAMION' | 'PICKUP' | '4X4' | 'MOTO';
+export type VehiculeStatut = 'disponible' | 'en_mission' | 'maintenance';
+
+export interface StockMouvement {
+  id:           string;
+  entrepotId:   string;
+  materiel:     { id: string; nom: string; categorie: string; unite: string };
+  type:         MouvementType;
+  quantite:     number;
+  motif:        string | null;
+  referenceDoc: string | null;
+  stockApres:   number;
+  acteurId:     string;
+  acteurNom:    string;
+  createdAt:    string;
+}
+
+export interface CreateMouvementDto {
+  materielId:   string;
+  type:         MouvementType;
+  quantite:     number;
+  motif?:       string;
+  referenceDoc?: string;
+}
+
+export interface MouvementsResponse {
+  data: StockMouvement[];
+  meta: { total: number; page: number };
+}
+
+export interface Vehicule {
+  id:             string;
+  entrepotId:     string;
+  immatriculation: string;
+  type:           VehiculeType;
+  marque:         string | null;
+  capacite:       number | null;
+  statut:         VehiculeStatut;
+  distributeurId: string | null;
+  distributeur:   { id: string; nom: string; prenom: string } | null;
+  notes:          string | null;
+  createdAt:      string;
+  updatedAt:      string;
+}
+
+export interface CreateVehiculeDto {
+  immatriculation: string;
+  type:            VehiculeType;
+  marque?:         string;
+  capacite?:       number;
+  notes?:          string;
+}
+
+export interface UpdateVehiculeStatutDto {
+  statut:          VehiculeStatut;
+  distributeurId?: string;
+}

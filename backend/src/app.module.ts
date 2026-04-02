@@ -20,6 +20,9 @@ import { CrisesModule }        from './crises/crises.module';
 import { AlgorithmesModule }   from './algorithmes/algorithmes.module';
 import { TourneesModule }      from './tournees/tournees.module';
 import { EvenementsModule }    from './evenements/evenements.module';
+import { SupervisionModule }   from './supervision/supervision.module';
+import { UsersModule }         from './users/users.module';
+import { VehiculesModule }     from './vehicules/vehicules.module';
 
 @Module({
   imports: [
@@ -50,6 +53,9 @@ import { EvenementsModule }    from './evenements/evenements.module';
     AlgorithmesModule,   // POST /algorithmes/pipeline, GET /algorithmes/pipeline/:id
     TourneesModule,      // GET|PATCH /tournees
     EvenementsModule,    // GET|POST /evenements
+    SupervisionModule,   // GET /supervision/stream (SSE), WS /gps (GPS)
+    UsersModule,         // GET|POST|PATCH|DELETE /users (Keycloak Admin API)
+    VehiculesModule,     // GET|POST|PATCH|DELETE /vehicules (Admin Entrepôt)
   ],
   providers: [
     /**

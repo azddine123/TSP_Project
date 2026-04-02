@@ -19,6 +19,8 @@ import { PipelineResultEntity } from '../algorithmes/entities/pipeline-result.en
 import { Tournee }             from '../tournees/entities/tournee.entity';
 import { TourneeEtape }        from '../tournees/entities/tournee-etape.entity';
 import { Evenement }           from '../evenements/entities/evenement.entity';
+import { StockMouvement }      from '../stocks/entities/stock-mouvement.entity';
+import { Vehicule }            from '../vehicules/entities/vehicule.entity';
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { Evenement }           from '../evenements/entities/evenement.entity';
           Tournee,
           TourneeEtape,
           Evenement,
+          StockMouvement,
+          Vehicule,
         ],
 
         /**

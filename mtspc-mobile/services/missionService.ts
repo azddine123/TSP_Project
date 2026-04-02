@@ -13,7 +13,7 @@ async function authFetch(path: string, options: RequestInit = {}): Promise<Respo
   return fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type':  'application/json',
+      'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
       ...(options.headers || {}),
     },
@@ -39,8 +39,18 @@ export const missionService = {
   async updateStatut(id: string, statut: string): Promise<void> {
     const res = await authFetch(`/missions/${id}/statut`, {
       method: 'PATCH',
-      body:   JSON.stringify({ statut }),
+      body: JSON.stringify({ statut }),
     });
     if (!res.ok) throw new Error(`Erreur mise à jour statut : ${res.status}`);
+  },
+
+  /** Récupère la tournée VRP calculée pour cette mission */
+  async getTourneeByMissionId(missionId: string): Promise<any> {
+    const res = await authFetch(`/tournees/mission/${missionId}`);
+    if (!res.ok) {
+      if (res.status === 404) return null; // Pas de tournée (ex: mission classique hors crise)
+      throw new Error(`Erreur lors de la récupération de la tournée : ${res.status}`);
+    }
+    return res.json();
   },
 };

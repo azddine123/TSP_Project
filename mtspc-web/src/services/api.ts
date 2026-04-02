@@ -64,6 +64,9 @@ import type {
   SupervisionSnapshot,
   Evenement, EvenementsResponse, CreateEvenementDto, SendAlertDto,
   AdminEntrepot, CreateAdminEntrepotDto, UpdateAdminStatutDto,
+  // Admin Entrepôt
+  StockMouvement, CreateMouvementDto, MouvementsResponse,
+  Vehicule, CreateVehiculeDto, UpdateVehiculeStatutDto,
 } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -71,7 +74,20 @@ import type {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const stockApi = {
+  /** Super Admin — tous les entrepôts */
   getAll: () => api.get<StockRow[]>('/stocks').then((r) => r.data),
+
+  /** Admin Entrepôt — stocks de son entrepôt uniquement */
+  getMine: () =>
+    api.get<StockRow[]>('/stocks/entrepot/mine').then((r) => r.data),
+
+  /** Enregistre une entrée ou sortie de stock */
+  createMouvement: (dto: CreateMouvementDto) =>
+    api.post<StockMouvement>('/stocks/entrepot/mine/mouvement', dto).then((r) => r.data),
+
+  /** Historique paginé des mouvements */
+  getMouvements: (params?: { page?: number; limit?: number; type?: 'ENTREE' | 'SORTIE'; materielId?: string }) =>
+    api.get<MouvementsResponse>('/stocks/entrepot/mine/mouvements', { params }).then((r) => r.data),
 };
 
 export const missionApi = {
@@ -89,7 +105,9 @@ export const auditApi = {
 };
 
 export const entrepotApi = {
-  getAll: () => api.get<Entrepot[]>('/entrepots').then((r) => r.data),
+  getAll:  () => api.get<Entrepot[]>('/entrepots').then((r) => r.data),
+  /** Entrepôt de l'Admin Entrepôt connecté */
+  getMine: () => api.get<Entrepot>('/entrepots/mine').then((r) => r.data),
 };
 
 export const distributeurApi = {
@@ -153,32 +171,45 @@ export const algoApi = {
    * Le frontend poll getStatus() ou écoute le SSE de supervision.
    */
   runPipeline: (dto: RunPipelineDto) =>
-    api.post<PipelineResult>('/algorithmes/run', dto).then((r) => r.data),
+    api.post<PipelineResult>('/algorithmes/pipeline', dto).then((r) => r.data),
 
-  /** Polling du statut d'exécution du pipeline */
   getStatus: (pipelineId: string) =>
-    api.get<PipelineResult>(`/algorithmes/${pipelineId}`).then((r) => r.data),
+    api.get<PipelineResult>(`/algorithmes/pipeline/${pipelineId}`).then((r) => r.data),
 
-  /** Historique des exécutions pour une crise donnée */
   getHistory: (criseId: string) =>
-    api.get<PipelineResult[]>(`/algorithmes/crise/${criseId}`).then((r) => r.data),
+    api.get<PipelineResult[]>(`/algorithmes/pipeline/crise/${criseId}`).then((r) => r.data),
 
-  /**
-   * Recalcul dynamique après un incident.
-   * Même interface que runPipeline, avec routesBloquees ou douarsExclus.
-   */
   recalcul: (dto: RunPipelineDto) =>
-    api.post<PipelineResult>('/algorithmes/recalcul', dto).then((r) => r.data),
+    api.post<PipelineResult>('/algorithmes/pipeline', dto).then((r) => r.data),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TOURNÉES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+export const vehiculeApi = {
+  /** Véhicules de l'entrepôt de l'admin connecté */
+  getMine: () =>
+    api.get<Vehicule[]>('/vehicules/entrepot/mine').then((r) => r.data),
+
+  create: (dto: CreateVehiculeDto) =>
+    api.post<Vehicule>('/vehicules', dto).then((r) => r.data),
+
+  updateStatut: (id: string, dto: UpdateVehiculeStatutDto) =>
+    api.patch<Vehicule>(`/vehicules/${id}/statut`, dto).then((r) => r.data),
+
+  remove: (id: string) =>
+    api.delete(`/vehicules/${id}`).then((r) => r.data),
+};
+
 export const tourneeApi = {
-  /** Toutes les tournées d'une crise */
+  /** Toutes les tournées d'une crise (Super Admin) */
   getByCrise: (criseId: string) =>
-    api.get<Tournee[]>('/tournees', { params: { criseId } }).then((r) => r.data),
+    api.get<Tournee[]>(`/tournees/crise/${criseId}`).then((r) => r.data),
+
+  /** Tournées de l'entrepôt de l'Admin Entrepôt connecté */
+  getMine: () =>
+    api.get<Tournee[]>('/tournees/entrepot/mine').then((r) => r.data),
 
   getById: (id: string) =>
     api.get<Tournee>(`/tournees/${id}`).then((r) => r.data),
@@ -222,13 +253,8 @@ export const supervisionApi = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const evenementApi = {
-  getAll: (params?: {
-    criseId?:  string;
-    type?:     string;
-    statut?:   string;
-    page?:     number;
-    limit?:    number;
-  }) => api.get<EvenementsResponse>('/evenements', { params }).then((r) => r.data),
+  getByCrise: (criseId: string, page = 1, limit = 20) =>
+    api.get<EvenementsResponse>(`/evenements/crise/${criseId}`, { params: { page, limit } }).then((r) => r.data),
 
   getById: (id: string) =>
     api.get<Evenement>(`/evenements/${id}`).then((r) => r.data),
@@ -241,9 +267,8 @@ export const evenementApi = {
   sendAlert: (dto: SendAlertDto) =>
     api.post<Evenement>('/evenements/alert', dto).then((r) => r.data),
 
-  /** Marquer un incident comme résolu */
-  resoudre: (id: string) =>
-    api.patch<Evenement>(`/evenements/${id}/resoudre`).then((r) => r.data),
+  updateStatut: (id: string, statut: 'ouvert' | 'en_traitement' | 'resolu') =>
+    api.patch<Evenement>(`/evenements/${id}/statut`, { statut }).then((r) => r.data),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

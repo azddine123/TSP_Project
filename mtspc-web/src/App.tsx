@@ -4,8 +4,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout           from './layout/AppLayout';
 import ProtectedRoute      from './components/ProtectedRoute';
-import AdminDashboard      from './pages/admin/AdminDashboard';
-import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
+import AdminDashboard      from './pages/admin/index';
+import SuperAdminDashboard from './pages/superadmin/index';
 import DistributeurPage    from './pages/DistributeurPage';
 import LoginPage           from './pages/LoginPage';
 import { useAuth }         from './contexts/AuthContext';

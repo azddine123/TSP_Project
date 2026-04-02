@@ -62,6 +62,41 @@ const StatsIcon = () => (
     <line x1="6" y1="20" x2="6" y2="14" />
   </svg>
 );
+const CriseIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+);
+const AlgoIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  </svg>
+);
+const SupervisionIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+  </svg>
+);
+const DispatchIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="1" y="3" width="15" height="13" rx="1"/>
+    <path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+  </svg>
+);
+const IncidentIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
+const TruckIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="1" y="3" width="15" height="13" rx="2"/>
+    <path d="M16 8l5 2v7h-5V8z"/>
+    <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+  </svg>
+);
 const DotsIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <circle cx="5" cy="12" r="2" />
@@ -75,19 +110,22 @@ const DotsIcon = () => (
 type NavItem = { name: string; icon: React.ReactNode; path: string };
 
 const adminNavItems: NavItem[] = [
-  { name: 'Dashboard',  icon: <DashboardIcon />, path: '/admin' },
-  { name: 'Missions',   icon: <MissionIcon />,   path: '/admin/missions' },
-  { name: 'Stock',      icon: <StockIcon />,      path: '/admin/stock' },
-  { name: 'Carte',      icon: <MapIcon />,        path: '/admin/map' },
-  { name: 'Audit',      icon: <AuditIcon />,      path: '/admin/audit' },
+  { name: 'Vue d\'ensemble',  icon: <DashboardIcon />,    path: '/admin' },
+  { name: 'Stock & Appro',    icon: <StockIcon />,        path: '/admin/stock' },
+  { name: 'Flotte Véhicules', icon: <TruckIcon />,        path: '/admin/vehicules' },
+  { name: 'Missions',         icon: <MissionIcon />,      path: '/admin/tournees' },
+  { name: 'Suivi Terrain',    icon: <MapIcon />,          path: '/admin/suivi' },
 ];
 
 const superAdminNavItems: NavItem[] = [
-  { name: 'Dashboard',    icon: <DashboardIcon />,  path: '/superadmin' },
-  { name: 'Utilisateurs', icon: <UsersIcon />,      path: '/superadmin/users' },
-  { name: 'Entrepôts',    icon: <WarehouseIcon />,  path: '/superadmin/warehouses' },
-  { name: 'Statistiques', icon: <StatsIcon />,      path: '/superadmin/stats' },
-  { name: 'Audit Global', icon: <AuditIcon />,      path: '/superadmin/audit' },
+  { name: 'Vue globale',   icon: <DashboardIcon />,    path: '/superadmin' },
+  { name: 'Crises',        icon: <CriseIcon />,        path: '/superadmin/crises' },
+  { name: 'Pipeline Algo', icon: <AlgoIcon />,         path: '/superadmin/pipeline' },
+  { name: 'Supervision',   icon: <SupervisionIcon />,  path: '/superadmin/supervision' },
+  { name: 'Dispatch',      icon: <DispatchIcon />,     path: '/superadmin/dispatch' },
+  { name: 'Incidents',     icon: <IncidentIcon />,     path: '/superadmin/incidents' },
+  { name: 'Utilisateurs',  icon: <UsersIcon />,        path: '/superadmin/users' },
+  { name: 'Audit Global',  icon: <AuditIcon />,        path: '/superadmin/audit' },
 ];
 
 // ── Composant ────────────────────────────────────────────────────────────────
@@ -100,7 +138,11 @@ const AppSidebar: React.FC = () => {
   const navItems = hasRole('SUPER_ADMIN') ? superAdminNavItems : adminNavItems;
 
   const isActive = useCallback(
-    (path: string) => location.pathname === path || location.pathname.startsWith(path + '/'),
+    (path: string) => {
+      // Les routes racines (/superadmin, /admin) : correspondance exacte uniquement
+      if (path === '/superadmin' || path === '/admin') return location.pathname === path;
+      return location.pathname === path || location.pathname.startsWith(path + '/');
+    },
     [location.pathname],
   );
 

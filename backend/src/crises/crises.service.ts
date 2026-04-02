@@ -27,6 +27,51 @@ export class CrisesService {
     });
   }
 
+  // ── Crise active (la plus récente non clôturée) ───────────────────────────
+
+  async findActive(): Promise<Crise | null> {
+    return this.criseRepo.findOne({
+      where: { statut: 'active' },
+      relations: { severitesParDouar: { douar: true } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  // ── Mettre à jour les sévérités d'une crise ───────────────────────────────
+
+  async updateSeverites(
+    id: string,
+    severites: Array<{
+      douarId: string;
+      severite: number;
+      vulnerabilite: number;
+      accessibilite: number;
+      accesSoins: number;
+    }>,
+  ): Promise<Crise> {
+    const crise = await this.findOne(id);
+    if (crise.statut === 'cloturee') {
+      throw new BadRequestException('Une crise clôturée ne peut plus être modifiée');
+    }
+
+    await this.dataSource.transaction(async (em) => {
+      await em.delete(DouarSeverite, { criseId: id });
+      const rows = severites.map((s) =>
+        em.create(DouarSeverite, {
+          criseId:       id,
+          douarId:       s.douarId,
+          severite:      s.severite,
+          vulnerabilite: s.vulnerabilite,
+          accessibilite: s.accessibilite,
+          accesSoins:    s.accesSoins,
+        }),
+      );
+      await em.save(rows);
+    });
+
+    return this.findOne(id);
+  }
+
   // ── Récupérer une crise avec ses sévérités ────────────────────────────────
 
   async findOne(id: string): Promise<Crise> {

@@ -18,4 +18,16 @@ export class EntrepotsService {
   findById(id: string): Promise<Entrepot | null> {
     return this.repo.findOne({ where: { id } });
   }
+
+  /**
+   * Résout l'entrepôt géré par un Admin Entrepôt à partir de son UUID Keycloak.
+   * Utilisé par TOUS les endpoints ADMIN_ENTREPOT pour appliquer le filtrage RBAC.
+   *
+   * Schéma : entrepots.keycloak_admin_id = user.userId (UUID Keycloak)
+   */
+  findByAdmin(keycloakUserId: string): Promise<Entrepot | null> {
+    return this.repo.findOne({
+      where: { keycloakAdminId: keycloakUserId },
+    });
+  }
 }

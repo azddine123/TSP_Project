@@ -8,11 +8,11 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { PaperProvider } from 'react-native-paper';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
 function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
-  const router   = useRouter();
+  const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
@@ -39,10 +39,14 @@ function RootNavigator() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)"        options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)"        options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="mission-detail"
+        options={{ headerShown: false, presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="livraison-confirmation"
         options={{ headerShown: false, presentation: 'card' }}
       />
     </Stack>

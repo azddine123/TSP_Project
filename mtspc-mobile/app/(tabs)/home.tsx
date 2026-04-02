@@ -21,10 +21,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo      from '@react-native-community/netinfo';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { missionService } from '../services/missionService';
-import { syncService }    from '../services/syncService';
-import { Mission }        from '../types/app';
-import MissionCard        from '../components/MissionCard';
+import { missionService } from '../../services/missionService';
+import { syncService }    from '../../services/syncService';
+import { Mission }        from '../../types/app';
+import MissionCard        from '../../components/MissionCard';
 
 const MISSIONS_CACHE_KEY = 'missions_cache';
 

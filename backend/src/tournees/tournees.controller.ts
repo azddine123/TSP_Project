@@ -1,20 +1,37 @@
 import {
-  Controller, Get, Post, Patch, Param, Body,
+  Controller, Get, Post, Patch, Param, Body, NotFoundException,
 } from '@nestjs/common';
-import { TourneesService }       from './tournees.service';
-import { AssignerTourneeDto }    from './dto/assigner-tournee.dto';
-import { UpdateEtapeStatutDto }  from './dto/update-etape-statut.dto';
-import { Roles }                 from '../auth/decorators/roles.decorator';
+import { TourneesService }          from './tournees.service';
+import { AssignerTourneeDto }       from './dto/assigner-tournee.dto';
+import { UpdateEtapeStatutDto }     from './dto/update-etape-statut.dto';
+import { Roles, CurrentUser, AuthUser } from '../auth/decorators/roles.decorator';
+import { EntrepotsService }         from '../entrepots/entrepots.service';
 
 @Controller('tournees')
 export class TourneesController {
-  constructor(private readonly service: TourneesService) {}
+  constructor(
+    private readonly service: TourneesService,
+    private readonly entrepotsService: EntrepotsService,
+  ) {}
 
-  /** GET /tournees/crise/:criseId */
+  /** GET /tournees/crise/:criseId — Super Admin */
   @Get('crise/:criseId')
   @Roles('SUPER_ADMIN', 'ADMIN_ENTREPOT')
   findByCrise(@Param('criseId') criseId: string) {
     return this.service.findByCrise(criseId);
+  }
+
+  /**
+   * GET /tournees/entrepot/mine — Admin Entrepôt
+   * Retourne toutes les tournées affectées à l'entrepôt de l'admin connecté.
+   * Déclaré avant :id pour éviter le conflit de route.
+   */
+  @Get('entrepot/mine')
+  @Roles('ADMIN_ENTREPOT')
+  async findMine(@CurrentUser() user: AuthUser) {
+    const entrepot = await this.entrepotsService.findByAdmin(user.userId);
+    if (!entrepot) throw new NotFoundException('Aucun entrepôt associé à votre compte.');
+    return this.service.findByEntrepot(entrepot.id);
   }
 
   /** GET /tournees/:id */
@@ -32,6 +49,23 @@ export class TourneesController {
     @Body() dto: AssignerTourneeDto,
   ) {
     return this.service.assigner(id, dto);
+  }
+
+  /** PATCH /tournees/:id/reassigner */
+  @Patch(':id/reassigner')
+  @Roles('SUPER_ADMIN', 'ADMIN_ENTREPOT')
+  reassigner(
+    @Param('id') id: string,
+    @Body() dto: AssignerTourneeDto,
+  ) {
+    return this.service.reassigner(id, dto);
+  }
+
+  /** PATCH /tournees/:id/annuler */
+  @Patch(':id/annuler')
+  @Roles('SUPER_ADMIN', 'ADMIN_ENTREPOT')
+  annuler(@Param('id') id: string) {
+    return this.service.annuler(id);
   }
 
   /** PATCH /tournees/:id/demarrer */

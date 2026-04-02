@@ -10,12 +10,12 @@ import {
   StyleSheet, ActivityIndicator, Alert,
   StatusBar, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { useAuth }    from '../contexts/AuthContext';
+import { useAuth }    from '../../contexts/AuthContext';
 import { useRouter }  from 'expo-router';
-import { AuthUser }   from '../types/app';
+import { AuthUser }   from '../../types/app';
 import {
   KEYCLOAK_SERVER, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID,
-} from '../config/keycloakConfig';
+} from '../../config/keycloakConfig';
 
 export default function LoginScreen() {
   const { saveSession }         = useAuth();
