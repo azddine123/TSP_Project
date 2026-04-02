@@ -2,10 +2,12 @@
  * AUTH CONTEXT MOBILE — SDK 54
  * ==============================
  * Gère le cycle de vie complet du JWT Keycloak sur mobile :
- * 1. Login via expo-auth-session (flux Authorization Code + PKCE)
+ * 1. Login via formulaire username/password → endpoint token Keycloak
  * 2. Stockage CHIFFRÉ du JWT via expo-secure-store
  * 3. Vérification d'expiration avant chaque appel API
- * 4. Logout : supprime tous les tokens du stockage sécurisé
+ * 4. Authentification biométrique : la biométrie déverrouille l'accès
+ *    aux tokens déjà stockés (aucun appel réseau requis — offline-first)
+ * 5. Logout : supprime tous les tokens du stockage sécurisé
  *
  * SDK 54 fix : parseJWTPayload() corrige le décodage base64url (RFC 4648 §5).
  * Le JWT utilise base64url (- et _ à la place de + et /) sans padding =.
@@ -17,18 +19,43 @@ import React, {
 import * as SecureStore from 'expo-secure-store';
 import { AuthUser } from '../types/app';
 
-const TOKEN_KEY         = 'reliefchain_access_token';
-const REFRESH_TOKEN_KEY = 'reliefchain_refresh_token';
-const USER_KEY          = 'reliefchain_user';
+// ── Clés SecureStore ──────────────────────────────────────────────────────────
+
+const TOKEN_KEY          = 'reliefchain_access_token';
+const REFRESH_TOKEN_KEY  = 'reliefchain_refresh_token';
+const USER_KEY           = 'reliefchain_user';
+/**
+ * Préférence biométrie stockée dans SecureStore (pas AsyncStorage)
+ * pour éviter toute lecture non chiffrée sur Android sans PIN.
+ */
+const BIOMETRIC_PREF_KEY = 'reliefchain_biometric_enabled';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AuthContextValue {
-  isAuthenticated: boolean;
-  isLoading:       boolean;
-  user:            AuthUser | null;
-  accessToken:     string | null;
-  saveSession:     (accessToken: string, refreshToken: string, user: AuthUser) => Promise<void>;
-  logout:          () => Promise<void>;
-  getValidToken:   () => Promise<string | null>;
+  isAuthenticated:      boolean;
+  isLoading:            boolean;
+  user:                 AuthUser | null;
+  accessToken:          string | null;
+  /** true si l'utilisateur a activé la biométrie dans ses préférences */
+  isBiometricEnabled:   boolean;
+  /**
+   * true si une session valide existe dans SecureStore mais est en attente
+   * de déverrouillage biométrique (l'app est en état "verrouillé").
+   */
+  isBiometricPending:   boolean;
+  saveSession:          (accessToken: string, refreshToken: string, user: AuthUser) => Promise<void>;
+  logout:               () => Promise<void>;
+  getValidToken:        () => Promise<string | null>;
+  /** Active ou désactive la biométrie — appeler après un login réussi */
+  setBiometricEnabled:  (enabled: boolean) => Promise<void>;
+  /**
+   * Déverrouille la session avec la biométrie.
+   * À appeler depuis l'écran de login APRÈS que LocalAuthentication.authenticateAsync()
+   * a retourné success=true. Relit les tokens depuis SecureStore pour être sûr.
+   * Retourne false si la session est expirée ou absente.
+   */
+  unlockWithBiometrics: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -58,42 +85,68 @@ function parseJWTPayload(token: string): Record<string, any> {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading,       setIsLoading]       = useState(true);
-  const [user,            setUser]            = useState<AuthUser | null>(null);
-  const [accessToken,     setAccessToken]     = useState<string | null>(null);
+  const [isAuthenticated,    setIsAuthenticated]    = useState(false);
+  const [isLoading,          setIsLoading]          = useState(true);
+  const [user,               setUser]               = useState<AuthUser | null>(null);
+  const [accessToken,        setAccessToken]        = useState<string | null>(null);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  /**
+   * isBiometricPending = une session valide existe dans SecureStore,
+   * mais l'utilisateur doit confirmer sa biométrie pour y accéder.
+   */
+  const [isBiometricPending, setIsBiometricPending] = useState(false);
+
+  // ── Logout ────────────────────────────────────────────────────────────────
 
   const logout = useCallback(async () => {
     await Promise.all([
       SecureStore.deleteItemAsync(TOKEN_KEY),
       SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
       SecureStore.deleteItemAsync(USER_KEY),
+      // On NE supprime PAS BIOMETRIC_PREF_KEY : l'utilisateur garde sa préférence
+      // après un simple logout pour que la biométrie reste disponible à la
+      // prochaine reconnexion manuelle.
     ]);
     setAccessToken(null);
     setUser(null);
     setIsAuthenticated(false);
+    setIsBiometricPending(false);
   }, []);
 
-  // Restaurer la session depuis le stockage sécurisé au démarrage de l'app
+  // ── Restauration de session au démarrage ──────────────────────────────────
+
   useEffect(() => {
     (async () => {
       try {
-        const [token, storedUser] = await Promise.all([
+        const [token, storedUser, biometricPref] = await Promise.all([
           SecureStore.getItemAsync(TOKEN_KEY),
           SecureStore.getItemAsync(USER_KEY),
+          SecureStore.getItemAsync(BIOMETRIC_PREF_KEY),
         ]);
+
+        const biometricEnabled = biometricPref === 'true';
+        setIsBiometricEnabled(biometricEnabled);
 
         if (token && storedUser) {
           const payload   = parseJWTPayload(token);
           const isExpired = payload.exp * 1000 < Date.now();
 
-          if (!isExpired) {
+          if (isExpired) {
+            // Token expiré → nettoyer et forcer la reconnexion complète
+            await logout();
+            return;
+          }
+
+          if (biometricEnabled) {
+            // Session valide + biométrie activée → état "verrouillé"
+            // L'écran de login affichera le bouton biométrique.
+            // On ne restaure PAS encore l'état auth — l'utilisateur doit scanner.
+            setIsBiometricPending(true);
+          } else {
+            // Biométrie désactivée → restauration automatique (comportement précédent)
             setAccessToken(token);
             setUser(JSON.parse(storedUser));
             setIsAuthenticated(true);
-          } else {
-            // Token expiré → forcer la reconnexion
-            await logout();
           }
         }
       } catch (err) {
@@ -103,6 +156,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })();
   }, [logout]);
+
+  // ── Actions ───────────────────────────────────────────────────────────────
 
   /**
    * saveSession() — Appelée après un login Keycloak réussi.
@@ -120,9 +175,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(token);
       setUser(authUser);
       setIsAuthenticated(true);
+      setIsBiometricPending(false);
     },
     [],
   );
+
+  /**
+   * setBiometricEnabled() — Active/désactive la préférence biométrique.
+   * À appeler depuis l'écran profil ou après un premier login réussi.
+   */
+  const setBiometricEnabled = useCallback(async (enabled: boolean) => {
+    await SecureStore.setItemAsync(BIOMETRIC_PREF_KEY, enabled ? 'true' : 'false');
+    setIsBiometricEnabled(enabled);
+  }, []);
+
+  /**
+   * unlockWithBiometrics() — Restaure la session après succès biométrique.
+   *
+   * Flux attendu :
+   * 1. L'écran login appelle useBiometrics().authenticate() → true
+   * 2. L'écran login appelle unlockWithBiometrics() ici
+   * 3. On relit les tokens depuis SecureStore et on restaure l'état auth
+   *
+   * Sécurité : on ne fait jamais confiance à l'état mémoire.
+   * On relit toujours depuis SecureStore pour garantir l'intégrité.
+   */
+  const unlockWithBiometrics = useCallback(async (): Promise<boolean> => {
+    try {
+      const [token, storedUser] = await Promise.all([
+        SecureStore.getItemAsync(TOKEN_KEY),
+        SecureStore.getItemAsync(USER_KEY),
+      ]);
+
+      if (!token || !storedUser) return false;
+
+      const payload   = parseJWTPayload(token);
+      const isExpired = payload.exp * 1000 < Date.now();
+
+      if (isExpired) {
+        // Token expiré entre l'ouverture de l'app et le scan → reconnexion requise
+        await logout();
+        return false;
+      }
+
+      setAccessToken(token);
+      setUser(JSON.parse(storedUser));
+      setIsAuthenticated(true);
+      setIsBiometricPending(false);
+      return true;
+    } catch (err) {
+      console.warn('[Auth] Erreur déverrouillage biométrique :', err);
+      return false;
+    }
+  }, [logout]);
 
   /**
    * getValidToken() — Retourne le token courant (ou null si expiré).
@@ -145,8 +250,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      isAuthenticated, isLoading, user, accessToken,
-      saveSession, logout, getValidToken,
+      isAuthenticated,
+      isLoading,
+      user,
+      accessToken,
+      isBiometricEnabled,
+      isBiometricPending,
+      saveSession,
+      logout,
+      getValidToken,
+      setBiometricEnabled,
+      unlockWithBiometrics,
     }}>
       {children}
     </AuthContext.Provider>

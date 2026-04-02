@@ -1,29 +1,95 @@
 /**
- * ÉCRAN DE LOGIN PERSONNALISÉ — Formulaire username / password
- * =============================================================
+ * ÉCRAN DE LOGIN PERSONNALISÉ — Formulaire username / password + Biométrie
+ * =========================================================================
  * Appel direct à l'endpoint token Keycloak (grant_type=password).
- * Pas de redirection navigateur — tout se passe dans l'app.
+ * La biométrie déverrouille les tokens déjà stockés — aucun appel réseau.
+ *
+ * Flux biométrique :
+ *   Au montage → si isBiometricPending (session valide + biométrie activée)
+ *     → prompt automatique au démarrage
+ *     → succès : unlockWithBiometrics() → navigation vers home
+ *     → annulation : affiche le formulaire + bouton biométrique manuel
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert,
   StatusBar, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { useAuth }    from '../../contexts/AuthContext';
-import { useRouter }  from 'expo-router';
-import { AuthUser }   from '../../types/app';
+import { useAuth }         from '../../contexts/AuthContext';
+import { useRouter }       from 'expo-router';
+import { useBiometrics }   from '../../hooks/useBiometrics';
+import { AuthUser }        from '../../types/app';
 import {
   KEYCLOAK_SERVER, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID,
 } from '../../config/keycloakConfig';
 
+// ── Icônes biométrie (sans dépendance externe) ─────────────────────────────
+
+const BIOMETRIC_ICONS: Record<string, string> = {
+  fingerprint: '🫆',
+  faceid:      '👤',
+  iris:        '👁️',
+  none:        '🔐',
+};
+
+// ── Composant ─────────────────────────────────────────────────────────────────
+
 export default function LoginScreen() {
-  const { saveSession }         = useAuth();
+  const { saveSession, isBiometricPending, isBiometricEnabled, unlockWithBiometrics } = useAuth();
   const router                  = useRouter();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [showPass, setShowPass] = useState(false);
+  const biometrics              = useBiometrics();
+
+  const [username,      setUsername]      = useState('');
+  const [password,      setPassword]      = useState('');
+  const [loading,       setLoading]       = useState(false);
+  const [biometricLoad, setBiometricLoad] = useState(false);
+  const [showPass,      setShowPass]      = useState(false);
+
+  // ── Déverrouillage biométrique ─────────────────────────────────────────────
+
+  const handleBiometricUnlock = useCallback(async () => {
+    if (!biometrics.isAvailable) return;
+    setBiometricLoad(true);
+    try {
+      const icon  = BIOMETRIC_ICONS[biometrics.biometricType] ?? '🔐';
+      const label = biometrics.biometricType === 'faceid'
+        ? 'Scannez votre visage pour accéder à ReliefChain'
+        : 'Posez le doigt pour accéder à ReliefChain';
+
+      const biometricSuccess = await biometrics.authenticate(label);
+
+      if (!biometricSuccess) {
+        // L'utilisateur a annulé ou a échoué — on ne montre rien,
+        // le formulaire est déjà visible en fallback.
+        return;
+      }
+
+      const sessionRestored = await unlockWithBiometrics();
+      if (sessionRestored) {
+        router.replace('/(tabs)/home');
+      } else {
+        // Session expirée entre-temps → forcer reconnexion complète
+        Alert.alert(
+          'Session expirée',
+          'Votre session a expiré. Veuillez vous reconnecter avec vos identifiants.',
+        );
+      }
+    } finally {
+      setBiometricLoad(false);
+    }
+  }, [biometrics, unlockWithBiometrics, router]);
+
+  // Prompt biométrique automatique au montage si une session est en attente
+  useEffect(() => {
+    if (isBiometricPending && biometrics.isAvailable && !biometrics.isChecking) {
+      handleBiometricUnlock();
+    }
+  // Intentionnellement déclenché une seule fois après la vérification initiale
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [biometrics.isChecking]);
+
+  // ── Login Keycloak ─────────────────────────────────────────────────────────
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -98,6 +164,19 @@ export default function LoginScreen() {
     }
   };
 
+  // ── Rendu ──────────────────────────────────────────────────────────────────
+
+  // Afficher le bouton biométrique si :
+  // - la biométrie est disponible sur l'appareil
+  // - ET la préférence est activée OU une session est en attente de déverrouillage
+  const showBiometricButton =
+    biometrics.isAvailable && (isBiometricEnabled || isBiometricPending);
+
+  const biometricIcon  = BIOMETRIC_ICONS[biometrics.biometricType] ?? '🔐';
+  const biometricLabel = biometrics.biometricType === 'faceid'
+    ? 'Déverrouiller avec Face ID'
+    : 'Déverrouiller avec empreinte';
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -120,8 +199,38 @@ export default function LoginScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Espace Distributeur</Text>
           <Text style={styles.cardDesc}>
-            Connectez-vous avec votre compte institutionnel.
+            {isBiometricPending
+              ? 'Utilisez votre biométrie ou connectez-vous manuellement.'
+              : 'Connectez-vous avec votre compte institutionnel.'}
           </Text>
+
+          {/* ── Bouton biométrique (affiché si dispo + activé) ── */}
+          {showBiometricButton && (
+            <TouchableOpacity
+              style={[styles.biometricButton, biometricLoad && styles.biometricButtonDisabled]}
+              onPress={handleBiometricUnlock}
+              disabled={biometricLoad}
+              activeOpacity={0.8}
+            >
+              {biometricLoad ? (
+                <ActivityIndicator color="#1565C0" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.biometricIcon}>{biometricIcon}</Text>
+                  <Text style={styles.biometricLabel}>{biometricLabel}</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* Séparateur "ou" si biométrie disponible */}
+          {showBiometricButton && (
+            <View style={styles.separator}>
+              <View style={styles.separatorLine} />
+              <Text style={styles.separatorText}>ou</Text>
+              <View style={styles.separatorLine} />
+            </View>
+          )}
 
           {/* Champ identifiant */}
           <View style={styles.inputGroup}>
@@ -255,6 +364,47 @@ const styles = StyleSheet.create({
     textAlign:    'center',
     marginBottom: 20,
   },
+  // ── Biométrie ──
+  biometricButton: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             10,
+    borderWidth:     2,
+    borderColor:     '#1565C0',
+    borderRadius:    10,
+    paddingVertical: 13,
+    marginBottom:    4,
+    backgroundColor: '#EEF4FF',
+  },
+  biometricButtonDisabled: {
+    borderColor:     '#90A4AE',
+    backgroundColor: '#F5F5F5',
+  },
+  biometricIcon: {
+    fontSize: 22,
+  },
+  biometricLabel: {
+    fontSize:   15,
+    fontWeight: '600',
+    color:      '#1565C0',
+  },
+  separator: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    marginVertical: 16,
+    gap:            8,
+  },
+  separatorLine: {
+    flex:            1,
+    height:          1,
+    backgroundColor: '#E0E0E0',
+  },
+  separatorText: {
+    fontSize: 12,
+    color:    '#999',
+  },
+  // ── Formulaire ──
   inputGroup: {
     marginBottom: 16,
   },
@@ -265,14 +415,14 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    borderWidth:   1,
-    borderColor:   '#ddd',
-    borderRadius:  8,
+    borderWidth:       1,
+    borderColor:       '#ddd',
+    borderRadius:      8,
     paddingHorizontal: 14,
     paddingVertical:   12,
-    fontSize:      15,
-    color:         '#222',
-    backgroundColor: '#fafafa',
+    fontSize:          15,
+    color:             '#222',
+    backgroundColor:   '#fafafa',
   },
   passwordRow: {
     flexDirection: 'row',
