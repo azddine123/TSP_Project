@@ -16,9 +16,9 @@ export type MissionPriorite = 'low' | 'medium' | 'high' | 'critique';
 export interface MissionItem {
   id: string;
   materielNom: string;
-  categorie: 'TENTE' | 'EAU' | 'MEDICAMENT' | 'NOURRITURE' | 'EQUIPEMENT' | 'AUTRE';
+  categorie?: 'TENTE' | 'EAU' | 'MEDICAMENT' | 'NOURRITURE' | 'EQUIPEMENT' | 'AUTRE';
   quantitePrevue: number;
-  quantiteLivree: number | null;
+  quantiteLivree?: number | null;
   unite: string;
 }
 
@@ -29,7 +29,7 @@ export interface Mission {
 
   // Remplace "clientName" de labcollect-mobile
   entrepotNom: string;
-  entrepotId: string;
+  entrepotId?: string;
 
   // Destination (zone sinistrée)
   destinationNom: string;
@@ -39,15 +39,17 @@ export interface Mission {
 
   // Remplace "sampleCount" de labcollect-mobile : inventaire logistique
   items: MissionItem[];
-  tentes: number;   // Raccourci calculé : somme des items catégorie TENTE
-  medicaments: number;   // Raccourci calculé : somme des items catégorie MEDICAMENT
-  eau: number;   // Raccourci calculé : somme des items catégorie EAU
+  tentes?: number;   // Raccourci calculé : somme des items catégorie TENTE
+  medicaments?: number;   // Raccourci calculé : somme des items catégorie MEDICAMENT
+  eau?: number;   // Raccourci calculé : somme des items catégorie EAU
 
   statut: MissionStatut;
   priorite: MissionPriorite;
   dateEcheance: string;
+  dateCreation?: string;  // Date de création de la mission
+  description?: string;   // Description détaillée
   notes?: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 /** Payload envoyé au backend lors d'une synchronisation hors-ligne */

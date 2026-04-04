@@ -145,7 +145,7 @@ cd /home/azas/TSP_Project/backend
 npm install
 
 # Lancer en mode développement (hot-reload)
-npm run start:dev
+
 ```
 
 **Sorties attendues dans le terminal :**

@@ -15,13 +15,13 @@
  *   → clearSynced() → supprime les entrées envoyées de AsyncStorage
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo      from '@react-native-community/netinfo';
+import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
 import { PendingSubmission } from '../types/app';
-import { API_BASE_URL }      from '../config/keycloakConfig';
+import { API_BASE_URL } from '../config/keycloakConfig';
 
 const PENDING_KEY = 'pending_submissions';
-const TOKEN_KEY   = 'reliefchain_access_token';
+const TOKEN_KEY = 'reliefchain_access_token';
 
 export const syncService = {
 
@@ -36,7 +36,7 @@ export const syncService = {
    * Appelée depuis MissionDetailScreen quand NetInfo.isConnected = false.
    */
   async savePendingSubmission(submission: PendingSubmission): Promise<void> {
-    const raw     = await AsyncStorage.getItem(PENDING_KEY);
+    const raw = await AsyncStorage.getItem(PENDING_KEY);
     const pending: PendingSubmission[] = raw ? JSON.parse(raw) : [];
 
     // Éviter les doublons si l'utilisateur valide plusieurs fois
@@ -83,9 +83,9 @@ export const syncService = {
     for (const submission of pending) {
       try {
         const res = await fetch(`${API_BASE_URL}/sync`, {
-          method:  'POST',
+          method: 'POST',
           headers: {
-            'Content-Type':  'application/json',
+            'Content-Type': 'application/json',
             'Authorization': token ? `Bearer ${token}` : '',
           },
           body: JSON.stringify(submission),

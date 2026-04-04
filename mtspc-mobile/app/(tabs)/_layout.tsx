@@ -1,11 +1,7 @@
 /**
- * Layout des onglets de l'app mobile — SDK 54 / expo-router v4
- * =============================================================
- * SDK 54 / expo-router v4 breaking change :
- * Le pattern useEffect + router.replace() pour les redirections d'auth
- * cause un flash de l'UI non authentifiée et des race conditions.
- * → Utiliser le composant <Redirect> d'expo-router (rendu synchrone,
- *   avant que les tabs ne soient montés).
+ * Layout des onglets — Style NAJDA
+ * =================================
+ * Header vert style LabCollect avec navigation par onglets.
  */
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
@@ -24,7 +20,6 @@ export default function TabsLayout() {
     );
   }
 
-  // Redirect est rendu avant le montage des tabs → pas de flash de contenu
   if (!isAuthenticated) {
     return <Redirect href="/(auth)/login" />;
   }
@@ -32,23 +27,34 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor:   '#1565C0',
+        tabBarActiveTintColor: '#1565C0',
         tabBarInactiveTintColor: '#9E9E9E',
         tabBarStyle: {
-          borderTopWidth:  1,
+          borderTopWidth: 1,
           borderTopColor: '#E0E0E0',
-          paddingBottom:   4,
-          height:          58,
+          paddingBottom: 4,
+          height: 58,
         },
-        headerStyle:      { backgroundColor: '#1565C0' },
-        headerTintColor:  '#fff',
-        headerTitleStyle: { fontWeight: '700' },
+        // Header style LabCollect (vert)
+        headerStyle: { 
+          backgroundColor: '#1565C0',
+          elevation: 4,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: { 
+          fontWeight: '700',
+          fontSize: 18,
+        },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title:      'Mes Missions',
+          title: 'Missions',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list" size={size} color={color} />
           ),
@@ -57,7 +63,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="map"
         options={{
-          title:      'Carte',
+          title: 'Carte',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="map" size={size} color={color} />
           ),
@@ -66,7 +72,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title:      'Profil',
+          title: 'Profil',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
