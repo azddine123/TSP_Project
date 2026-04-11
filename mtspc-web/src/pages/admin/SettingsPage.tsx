@@ -278,13 +278,6 @@ export default function SettingsPage() {
             </div>
             <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">Session active</span>
           </div>
-          <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-800">
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Token JWT</p>
-              <p className="text-xs text-gray-400">Authentification via Keycloak — Realm Logistique</p>
-            </div>
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">Valide</span>
-          </div>
           <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
             <button
               onClick={logout}
