@@ -39,6 +39,161 @@ function KpiCard({ label, value, sub, color, bg, icon, to }: {
   );
 }
 
+// ── Priorité couleurs ────────────────────────────────────────────────────────
+const PRIORITE_STYLE: Record<string, string> = {
+  CRITIQUE: 'bg-red-100 text-red-700 border-red-200',
+  HAUTE:    'bg-orange-100 text-orange-700 border-orange-200',
+  MOYENNE:  'bg-yellow-100 text-yellow-700 border-yellow-200',
+  BASSE:    'bg-green-100 text-green-700 border-green-200',
+};
+
+const STATUT_STYLE: Record<string, string> = {
+  planifiee: 'bg-yellow-100 text-yellow-700',
+  en_cours:  'bg-blue-100 text-blue-700',
+  terminee:  'bg-green-100 text-green-700',
+  annulee:   'bg-gray-100 text-gray-600',
+};
+
+// ── Carte mission assignée ─────────────────────────────────────────────────────
+interface EtapeRessources {
+  tentes?: number; couvertures?: number; vivres?: number;
+  kits_med?: number; eau_litres?: number;
+}
+interface EtapeExtended {
+  id: string; ordre: number; douarNom?: string;
+  douar?: { nom: string; commune: string; province: string };
+  priorite?: string; scoreTopsis?: number; population?: number; menages?: number;
+  ressources?: EtapeRessources; statut: string;
+}
+
+function MissionAssigneeCard({ tournee }: { tournee: Tournee & { missionNumero?: string; criseId?: string; etapes: EtapeExtended[] } }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const etapes: EtapeExtended[] = (tournee.etapes ?? []) as EtapeExtended[];
+  const livrees   = etapes.filter(e => e.statut === 'livree').length;
+  const total     = etapes.length;
+  const pct       = total > 0 ? Math.round((livrees / total) * 100) : 0;
+  const topDouars = etapes.filter(e => e.priorite && e.scoreTopsis !== undefined)
+    .sort((a, b) => (b.scoreTopsis ?? 0) - (a.scoreTopsis ?? 0))
+    .slice(0, 3);
+
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
+      {/* Header de la mission */}
+      <div
+        className="flex items-start justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${
+            tournee.statut === 'en_cours' ? 'bg-blue-500 animate-pulse' :
+            tournee.statut === 'planifiee' ? 'bg-yellow-400' :
+            tournee.statut === 'terminee' ? 'bg-green-500' : 'bg-gray-300'
+          }`} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-gray-900 dark:text-white font-mono">
+                {tournee.missionNumero ?? tournee.id}
+              </span>
+              {tournee.criseId && (
+                <span className="text-xs text-gray-400">· {tournee.criseId}</span>
+              )}
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUT_STYLE[tournee.statut] ?? 'bg-gray-100 text-gray-600'}`}>
+                {tournee.statut}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+              <span>{total} douar{total > 1 ? 's' : ''}</span>
+              <span>·</span>
+              <span>{tournee.distanceTotale > 0 ? `${tournee.distanceTotale} km` : '— km'}</span>
+              {tournee.distributeur && (
+                <><span>·</span><span>{tournee.distributeur.prenom} {tournee.distributeur.nom}</span></>
+              )}
+            </div>
+            {/* Barre de progression */}
+            {total > 0 && (
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-xs text-gray-400 shrink-0">{livrees}/{total}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 ml-2 shrink-0">
+          <Link
+            to="/admin/tournees"
+            onClick={e => e.stopPropagation()}
+            className="text-xs font-medium text-brand-600 hover:text-brand-700 px-2.5 py-1 rounded-lg border border-brand-200 hover:bg-brand-50 transition-colors"
+          >
+            Détail
+          </Link>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </div>
+
+      {/* Détail expandable */}
+      {expanded && etapes.length > 0 && (
+        <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-3 bg-gray-50/50 dark:bg-gray-800/20">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Douars prioritaires · Score TOPSIS</p>
+          {topDouars.length > 0 && (
+            <div className="space-y-2">
+              {topDouars.map((etape) => (
+                <div key={etape.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {etape.douar?.nom ?? etape.douarNom ?? `Étape ${etape.ordre}`}
+                      </p>
+                      {etape.douar?.commune && (
+                        <p className="text-xs text-gray-400">{etape.douar.commune} · {etape.population?.toLocaleString('fr-FR') ?? '—'} hab.</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {etape.priorite && (
+                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded border ${PRIORITE_STYLE[etape.priorite] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                          {etape.priorite}
+                        </span>
+                      )}
+                      {etape.scoreTopsis !== undefined && (
+                        <span className="text-xs font-bold text-brand-600 tabular-nums">
+                          {(etape.scoreTopsis * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {etape.ressources && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {etape.ressources.tentes != null && etape.ressources.tentes > 0 && (
+                        <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded">⛺ {etape.ressources.tentes} tentes</span>
+                      )}
+                      {etape.ressources.vivres != null && etape.ressources.vivres > 0 && (
+                        <span className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-600 rounded">🛒 {etape.ressources.vivres} kits vivres</span>
+                      )}
+                      {etape.ressources.eau_litres != null && etape.ressources.eau_litres > 0 && (
+                        <span className="text-xs px-2 py-0.5 bg-cyan-50 text-cyan-600 rounded">💧 {etape.ressources.eau_litres.toLocaleString('fr-FR')} L</span>
+                      )}
+                      {etape.ressources.kits_med != null && etape.ressources.kits_med > 0 && (
+                        <span className="text-xs px-2 py-0.5 bg-red-50 text-red-600 rounded">🏥 {etape.ressources.kits_med} kits méd.</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {etapes.length > 3 && (
+            <p className="text-xs text-gray-400 text-center">+ {etapes.length - 3} douar(s) supplémentaire(s)</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AlertBanner({ count, entrepot }: { count: number; entrepot: Entrepot | null }) {
   if (count === 0) return null;
   return (
@@ -159,6 +314,34 @@ export default function AdminOverview() {
               icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>}
             />
           </div>
+
+          {/* ── Missions assignées par le Super Admin ── */}
+          {tournees.filter(t => t.statut !== 'annulee').length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
+                    Missions assignées
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Tournées assignées par le Super Admin · Douars prioritaires et besoins</p>
+                </div>
+                <Link to="/admin/tournees" className="text-xs text-brand-500 hover:underline">
+                  Voir tout →
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {tournees
+                  .filter(t => t.statut !== 'annulee')
+                  .map(t => (
+                    <MissionAssigneeCard
+                      key={t.id}
+                      tournee={t as Tournee & { missionNumero?: string; criseId?: string; etapes: EtapeExtended[] }}
+                    />
+                  ))
+                }
+              </div>
+            </div>
+          )}
 
           {/* Dernières tournées */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

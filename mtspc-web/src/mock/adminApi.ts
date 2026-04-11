@@ -6,13 +6,17 @@
 
 import type { StockMouvement, VehiculePosition } from '../types';
 import { MOCK_ADMIN_MISSIONS } from './admin';
-import { 
+import { MOCK_DOUBLES } from './douars';
+import {
   ENTREPOT_A,
   STOCK_ENTREPOT_A,
   VEHICULES_ENTREPOT_A,
   TOURNEES_ENTREPOT_A,
   DISTRIBUTEURS_ENTREPOT_A,
 } from './entrepotA';
+
+// Tournées mutables pour permettre la création
+let _tournees = [...TOURNEES_ENTREPOT_A];
 
 // Simuler un délai réseau
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -145,7 +149,7 @@ export const mockVehiculeApi = {
 export const mockTourneeApi = {
   getMine: async () => {
     await delay(500);
-    return [...TOURNEES_ENTREPOT_A];
+    return [..._tournees];
   },
   
   getByCrise: async () => {
