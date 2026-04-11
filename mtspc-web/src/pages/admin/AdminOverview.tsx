@@ -21,21 +21,73 @@ const entrepotApi = { getMine: () => Promise.resolve({...ENTREPOT_A}) };
 import type { StockRow, Vehicule, Tournee, Entrepot } from '../../types';
 import { formatDateTime } from '../../constants';
 
-function KpiCard({ label, value, sub, color, bg, icon, to }: {
-  label: string; value: number | string; sub?: string;
-  color: string; bg: string; icon: React.ReactNode; to: string;
+// ── Slide-over générique ──────────────────────────────────────────────────────
+function SlideOver({ title, subtitle, onClose, children }: {
+  title: string; subtitle?: string; onClose: () => void; children: React.ReactNode;
 }) {
   return (
-    <Link to={to} className={`${bg} rounded-2xl p-5 flex items-start gap-4 hover:opacity-90 transition-opacity`}>
+    <>
+      {/* Overlay */}
+      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      {/* Panneau */}
+      <div className="fixed right-0 top-0 h-full z-50 w-full max-w-sm bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {children}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function KpiCard({ label, value, sub, color, bg, icon, to, onClick }: {
+  label: string; value: number | string; sub?: string;
+  color: string; bg: string; icon: React.ReactNode; to: string;
+  onClick?: () => void;
+}) {
+  return (
+    <div className={`${bg} rounded-2xl p-5 flex items-start gap-4 group relative`}>
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-white/60 ${color}`}>
         {icon}
       </div>
-      <div>
+      <div className="flex-1 min-w-0">
         <p className={`text-3xl font-bold leading-none ${color}`}>{value}</p>
         <p className="text-sm font-medium text-gray-700 mt-1">{label}</p>
         {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
       </div>
-    </Link>
+      <div className="absolute top-3 right-3 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onClick && (
+          <button
+            onClick={onClick}
+            title="Voir le détail"
+            className="p-1 rounded-lg bg-white/80 hover:bg-white shadow-sm text-gray-600"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        )}
+        <Link
+          to={to}
+          title="Ouvrir la page"
+          className="p-1 rounded-lg bg-white/80 hover:bg-white shadow-sm text-gray-600"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -213,6 +265,8 @@ function AlertBanner({ count, entrepot }: { count: number; entrepot: Entrepot | 
   );
 }
 
+type SlideOverType = 'stock' | 'vehicules' | 'missions' | 'terrain' | null;
+
 export default function AdminOverview() {
   const [entrepot,  setEntrepot]  = useState<Entrepot | null>(null);
   const [stocks,    setStocks]    = useState<StockRow[]>([]);
@@ -220,6 +274,7 @@ export default function AdminOverview() {
   const [tournees,  setTournees]  = useState<Tournee[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
+  const [slideOver, setSlideOver] = useState<SlideOverType>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -249,8 +304,145 @@ export default function AdminOverview() {
   const enCours        = tournees.filter((t) => t.statut === 'en_cours').length;
   const recentMouvs    = stocks.slice(0, 5);
 
+  // ── Contenu des slide-overs ─────────────────────────────────────────────────
+  const CATEGORIE_COLOR: Record<string, string> = {
+    TENTE: 'bg-blue-50 text-blue-700', EAU: 'bg-cyan-50 text-cyan-700',
+    MEDICAMENT: 'bg-red-50 text-red-700', NOURRITURE: 'bg-yellow-50 text-yellow-700',
+    EQUIPEMENT: 'bg-purple-50 text-purple-700', AUTRE: 'bg-gray-50 text-gray-600',
+  };
+
+  const slideOverContent: Record<NonNullable<SlideOverType>, React.ReactNode> = {
+    stock: (
+      <>
+        {stocks.map(s => {
+          const pct = Math.min((s.quantite / Math.max(s.seuilAlerte * 2, 1)) * 100, 100);
+          const warn = s.quantite <= s.seuilAlerte;
+          return (
+            <div key={s.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 space-y-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{s.materiel.nom}</p>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${CATEGORIE_COLOR[s.materiel.categorie] ?? 'bg-gray-50 text-gray-600'}`}>
+                    {s.materiel.categorie}
+                  </span>
+                </div>
+                <span className={`text-sm font-bold ${warn ? 'text-red-600' : 'text-gray-700 dark:text-white'}`}>
+                  {s.quantite} <span className="text-xs font-normal text-gray-400">{s.materiel.unite}</span>
+                </span>
+              </div>
+              <div>
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                  <span>Seuil : {s.seuilAlerte}</span>
+                  <span>{pct.toFixed(0)}%</span>
+                </div>
+                <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${warn ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </>
+    ),
+    vehicules: (
+      <>
+        {vehicules.map((v: Vehicule) => (
+          <div key={v.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-bold font-mono text-gray-900 dark:text-white">{v.immatriculation}</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                v.statut === 'en_mission' ? 'bg-blue-100 text-blue-700' :
+                v.statut === 'disponible' ? 'bg-green-100 text-green-700' :
+                'bg-yellow-100 text-yellow-700'
+              }`}>{v.statut}</span>
+            </div>
+            <p className="text-xs text-gray-400">{v.type}{(v as unknown as { marque?: string }).marque ? ` · ${(v as unknown as { marque: string }).marque}` : ''}</p>
+            {v.distributeur && (
+              <p className="text-xs text-gray-500 mt-1">👤 {v.distributeur.prenom} {v.distributeur.nom}</p>
+            )}
+          </div>
+        ))}
+      </>
+    ),
+    missions: (
+      <>
+        {tournees.filter(t => ['planifiee', 'en_cours'].includes(t.statut)).map(t => {
+          const etapesExt = (t.etapes ?? []) as EtapeExtended[];
+          const livrees = etapesExt.filter(e => e.statut === 'livree').length;
+          return (
+            <div key={t.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold font-mono text-gray-900 dark:text-white">
+                  {(t as unknown as { missionNumero?: string }).missionNumero ?? t.id}
+                </span>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUT_STYLE[t.statut]}`}>{t.statut}</span>
+              </div>
+              <p className="text-xs text-gray-500">
+                {t.etapes.length} douar{t.etapes.length > 1 ? 's' : ''} · {t.distanceTotale > 0 ? `${t.distanceTotale} km` : '— km'}
+                {t.distributeur && <> · {t.distributeur.prenom} {t.distributeur.nom}</>}
+              </p>
+              {t.statut === 'en_cours' && etapesExt.length > 0 && (
+                <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.round((livrees / etapesExt.length) * 100)}%` }} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {tournees.filter(t => ['planifiee', 'en_cours'].includes(t.statut)).length === 0 && (
+          <p className="text-center text-sm text-gray-400 py-8">Aucune mission active</p>
+        )}
+      </>
+    ),
+    terrain: (
+      <>
+        {vehicules.filter(v => v.statut === 'en_mission').map(v => (
+          <div key={v.id} className="bg-blue-50 dark:bg-blue-950/20 rounded-xl p-3">
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+              <div>
+                <p className="text-sm font-bold font-mono text-gray-900 dark:text-white">{v.immatriculation}</p>
+                {v.distributeur && (
+                  <p className="text-xs text-gray-500">{v.distributeur.prenom} {v.distributeur.nom}</p>
+                )}
+                <p className="text-xs text-gray-400 mt-0.5">GPS actif · En mission</p>
+              </div>
+            </div>
+          </div>
+        ))}
+        {vehicules.filter(v => v.statut === 'en_mission').length === 0 && (
+          <p className="text-center text-sm text-gray-400 py-8">Aucun distributeur en terrain</p>
+        )}
+        <Link to="/admin/suivi" className="block w-full text-center text-xs font-medium text-brand-600 hover:underline py-2">
+          Voir la carte en temps réel →
+        </Link>
+      </>
+    ),
+  };
+
   return (
     <div className="space-y-6">
+      {/* Slide-overs */}
+      {slideOver && (
+        <SlideOver
+          title={{
+            stock: 'Articles en stock',
+            vehicules: 'Flotte véhicules',
+            missions: 'Missions actives',
+            terrain: 'Distributeurs en terrain',
+          }[slideOver]}
+          subtitle={{
+            stock: `${stocks.length} article(s) · ${alertes} en alerte`,
+            vehicules: `${vehicules.length} véhicule(s) au total`,
+            missions: `${enAttente} en attente · ${enCours} en cours`,
+            terrain: `${enMission} en mission actuellement`,
+          }[slideOver]}
+          onClose={() => setSlideOver(null)}
+        >
+          {slideOverContent[slideOver]}
+        </SlideOver>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
@@ -293,24 +485,28 @@ export default function AdminOverview() {
               to="/admin/stock" label="Articles en stock" value={stocks.length}
               sub={`${alertes > 0 ? alertes + ' alerte(s)' : 'Aucune alerte'}`}
               color="text-blue-600" bg="bg-blue-50"
+              onClick={() => setSlideOver('stock')}
               icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>}
             />
             <KpiCard
               to="/admin/vehicules" label="Véhicules actifs" value={enMission}
               sub={`${vehicules.length} au total`}
               color="text-orange-600" bg="bg-orange-50"
+              onClick={() => setSlideOver('vehicules')}
               icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8l5 2v7h-5V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>}
             />
             <KpiCard
               to="/admin/tournees" label="Missions en attente" value={enAttente}
               sub={`${enCours} en cours`}
               color="text-purple-600" bg="bg-purple-50"
+              onClick={() => setSlideOver('missions')}
               icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>}
             />
             <KpiCard
               to="/admin/suivi" label="Dist. en terrain" value={enMission}
               sub="GPS temps réel"
               color="text-green-600" bg="bg-green-50"
+              onClick={() => setSlideOver('terrain')}
               icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>}
             />
           </div>

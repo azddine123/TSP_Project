@@ -176,7 +176,75 @@ export const mockTourneeApi = {
   
   annuler: async (id: string) => {
     await delay(400);
+    _tournees = _tournees.map(t => t.id === id ? { ...t, statut: 'annulee' } : t);
     return { id, statut: 'annulee' };
+  },
+
+  create: async (dto: {
+    distributeurId: string;
+    vehiculeId: string;
+    dateDepart: string;
+    douarIds: string[];
+    description?: string;
+  }) => {
+    await delay(700);
+    const dist = DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId);
+    const newId = `tournee-${Date.now()}`;
+    const missionNum = `MS-A-2026-${String(_tournees.length + 1).padStart(3, '0')}`;
+    const etapes = dto.douarIds.map((douarId, i) => {
+      const douar = MOCK_DOUBLES.find(d => d.id === douarId);
+      return {
+        id: `etape-${newId}-${i + 1}`,
+        ordre: i + 1,
+        douarId,
+        douar: douar ? { nom: douar.nom, commune: douar.commune, province: douar.province } : { nom: douarId, commune: '', province: '' },
+        douarNom: douar?.nom ?? douarId,
+        lat: douar?.coordonnees.lat ?? 31.96,
+        lng: douar?.coordonnees.lng ?? -6.57,
+        distanceKm: parseFloat((10 + Math.random() * 15).toFixed(1)),
+        tempsEstimeMin: Math.floor(20 + Math.random() * 25),
+        priorite: i === 0 ? 'CRITIQUE' : i < 2 ? 'HAUTE' : 'MOYENNE',
+        scoreTopsis: parseFloat((0.9 - i * 0.1).toFixed(3)),
+        population: douar?.population ?? 200,
+        menages: douar?.nbMenages ?? 40,
+        statut: 'en_attente',
+        ressources: {
+          tentes: Math.floor((douar?.nbMenages ?? 40) * 0.6),
+          vivres: (douar?.nbMenages ?? 40) * 2,
+          kits_med: Math.floor((douar?.nbMenages ?? 40) * 0.3),
+          eau_litres: (douar?.population ?? 200) * 5,
+        },
+      };
+    });
+    const newTournee = {
+      id: newId,
+      missionId: `mission-${newId}`,
+      missionNumero: missionNum,
+      entrepotId: ENTREPOT_A.id,
+      entrepot: { id: ENTREPOT_A.id, nom: ENTREPOT_A.nom, province: ENTREPOT_A.province },
+      vehiculeId: dto.vehiculeId,
+      distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : null,
+      distanceTotale: etapes.reduce((sum, e) => sum + e.distanceKm, 0),
+      tempsEstime: etapes.reduce((sum, e) => sum + e.tempsEstimeMin, 0),
+      tempsEstimeTotalMin: etapes.reduce((sum, e) => sum + e.tempsEstimeMin, 0),
+      statut: 'planifiee' as const,
+      criseId: 'crise-2026-001',
+      description: dto.description ?? null,
+      datePlanification: dto.dateDepart,
+      etapes,
+    };
+    _tournees = [..._tournees, newTournee];
+    return newTournee;
+  },
+};
+
+// ============================================================================
+// DOUAR API
+// ============================================================================
+export const mockDouarApi = {
+  getAll: async () => {
+    await delay(400);
+    return [...MOCK_DOUBLES];
   },
 };
 

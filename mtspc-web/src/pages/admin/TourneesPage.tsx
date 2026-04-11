@@ -4,6 +4,7 @@
  * Validation "Chargement Terminé — Prêt au départ"
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Import FORCÉ des mocks
 import { mockTourneeApi as tourneeApi } from '../../mock/adminApi';
 import { getApiErrorMessage } from '../../services/api';
@@ -136,6 +137,7 @@ function TourneeCard({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function TourneesPage() {
+  const navigate = useNavigate();
   const [tournees,  setTournees]  = useState<Tournee[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
@@ -184,6 +186,12 @@ export default function TourneesPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Missions & Tournées</h1>
           <p className="text-sm text-gray-500 mt-0.5">Tournées calculées par le pipeline VRP — Validez le chargement avant le départ</p>
         </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/admin/tournees/create')}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Créer une mission
+          </button>
         <button onClick={load} disabled={loading}
           className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
           <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -191,6 +199,7 @@ export default function TourneesPage() {
           </svg>
           Actualiser
         </button>
+        </div>
       </div>
 
       {counts.planifiee > 0 && (
