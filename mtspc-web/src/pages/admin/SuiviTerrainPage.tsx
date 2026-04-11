@@ -31,7 +31,7 @@ const PRIORITE_STYLE: Record<string, { color: string; ring: string; label: strin
 // ── Icône entrepôt ────────────────────────────────────────────────────────────
 const ENTREPOT_ICON = L.divIcon({
   className: '',
-  html: `<div style="width:34px;height:34px;border-radius:8px;background:#1E40AF;border:3px solid white;box-shadow:0 3px 12px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1;">🏭</div>`,
+  html: `<div style="width:34px;height:34px;border-radius:8px;background:#1E40AF;border:3px solid white;box-shadow:0 3px 12px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;letter-spacing:0.5px;">ENT</div>`,
   iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -20],
 });
 
@@ -89,12 +89,12 @@ interface TerrainAction {
 }
 
 const ACTION_CONFIG: Record<TerrainActionType, { label: string; color: string; bg: string; icon: string }> = {
-  DEPART_MISSION:     { label: 'Départ mission',     color: 'text-blue-700',   bg: 'bg-blue-100',   icon: '🚀' },
-  ARRIVEE_DOUAR:      { label: 'Arrivée douar',      color: 'text-green-700',  bg: 'bg-green-100',  icon: '📍' },
-  LIVRAISON_EFFECTUEE:{ label: 'Livraison effectuée',color: 'text-teal-700',   bg: 'bg-teal-100',   icon: '✅' },
-  INCIDENT_SIGNALE:   { label: 'Incident signalé',   color: 'text-orange-700', bg: 'bg-orange-100', icon: '⚠️' },
-  VEHICULE_PANNE:     { label: 'Véhicule en panne',  color: 'text-red-700',    bg: 'bg-red-100',    icon: '🔧' },
-  ROUTE_BLOQUEE:      { label: 'Route bloquée',      color: 'text-purple-700', bg: 'bg-purple-100', icon: '🚧' },
+  DEPART_MISSION:     { label: 'Départ mission',     color: 'text-blue-700',   bg: 'bg-blue-100',   icon: 'D' },
+  ARRIVEE_DOUAR:      { label: 'Arrivée douar',      color: 'text-green-700',  bg: 'bg-green-100',  icon: 'A' },
+  LIVRAISON_EFFECTUEE:{ label: 'Livraison effectuée',color: 'text-teal-700',   bg: 'bg-teal-100',   icon: 'L' },
+  INCIDENT_SIGNALE:   { label: 'Incident signalé',   color: 'text-orange-700', bg: 'bg-orange-100', icon: '!' },
+  VEHICULE_PANNE:     { label: 'Véhicule en panne',  color: 'text-red-700',    bg: 'bg-red-100',    icon: 'P' },
+  ROUTE_BLOQUEE:      { label: 'Route bloquée',      color: 'text-purple-700', bg: 'bg-purple-100', icon: 'B' },
 };
 
 function buildInitialAuditLog(tournees: Tournee[]): TerrainAction[] {
@@ -153,10 +153,9 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
   );
 }
 
-function StatChip({ icon, label, value, sub }: { icon: string; label: string; value: string | number; sub?: string }) {
+function StatChip({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div className="flex items-center gap-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3 flex-1 min-w-[140px]">
-      <span className="text-2xl">{icon}</span>
       <div>
         <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
         <p className="text-lg font-bold text-gray-900 dark:text-white leading-none">{value}</p>
@@ -200,7 +199,7 @@ function MapLegend() {
             <div className="flex items-center gap-2 mt-1"><div className="w-3 h-3 rounded-full bg-gray-400 border-2 border-white shrink-0" /><span className="text-gray-600 dark:text-gray-400">En attente</span></div>
           </div>
           <div className="border-t border-gray-100 dark:border-gray-800 mt-2 pt-2">
-            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-md bg-blue-800 shrink-0 flex items-center justify-center text-[9px]">🏭</div><span className="text-gray-600 dark:text-gray-400">Entrepôt</span></div>
+            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-md bg-blue-800 shrink-0 flex items-center justify-center text-[8px] font-bold text-white">E</div><span className="text-gray-600 dark:text-gray-400">Entrepôt</span></div>
             <div className="flex items-center gap-2 mt-1"><div className="w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white shrink-0" /><span className="text-gray-600 dark:text-gray-400">Véhicule GPS</span></div>
           </div>
         </div>
@@ -391,11 +390,11 @@ export default function SuiviTerrainPage() {
         <>
           {/* ── Stats bar ──────────────────────────────────────────────────── */}
           <div className="flex flex-wrap gap-3">
-            <StatChip icon="🚚" label="Missions actives"   value={activeTournees.length}      sub={`${tournees.filter(t=>t.statut==='planifiee').length} planifiées`} />
-            <StatChip icon="📍" label="Douars couverts"    value={`${stats.livres}/${stats.totalDouars}`} sub="livraisons" />
-            <StatChip icon="👥" label="Population ciblée"  value={stats.population.toLocaleString('fr-FR')} sub="habitants" />
-            <StatChip icon="🛣️" label="Distance totale"    value={`${stats.distanceCoverd} km`} sub="itinéraires planifiés" />
-            <StatChip icon="📡" label="Véhicules en live"  value={vehicules.length}            sub="positions GPS actives" />
+            <StatChip label="Missions actives"   value={activeTournees.length}      sub={`${tournees.filter(t=>t.statut==='planifiee').length} planifiées`} />
+            <StatChip label="Douars couverts"    value={`${stats.livres}/${stats.totalDouars}`} sub="livraisons" />
+            <StatChip label="Population ciblée"  value={stats.population.toLocaleString('fr-FR')} sub="habitants" />
+            <StatChip label="Distance totale"    value={`${stats.distanceCoverd} km`} sub="itinéraires planifiés" />
+            <StatChip label="Véhicules en live"  value={vehicules.length}            sub="positions GPS actives" />
           </div>
 
           {/* ── Contenu principal ──────────────────────────────────────────── */}
@@ -457,7 +456,7 @@ export default function SuiviTerrainPage() {
                   <Marker position={[entrepot.latitude, entrepot.longitude]} icon={ENTREPOT_ICON}>
                     <Popup>
                       <div style={{ minWidth: 160 }}>
-                        <p style={{ fontWeight: 700, marginBottom: 4 }}>🏭 {entrepot.nom}</p>
+                        <p style={{ fontWeight: 700, marginBottom: 4 }}>{entrepot.nom}</p>
                         <p style={{ color: '#6B7280', fontSize: 12 }}>{entrepot.province} — {entrepot.wilaya}</p>
                         <p style={{ marginTop: 6, fontSize: 12 }}>
                           <span style={{ background: '#DBEAFE', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
@@ -516,7 +515,7 @@ export default function SuiviTerrainPage() {
                                 <p style={{ fontSize: 11, color: '#6B7280', marginBottom: 6 }}>{e.douar?.commune ?? ''}</p>
                                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
                                   <span style={{ background: e.statut === 'livree' ? '#D1FAE5' : e.statut === 'en_route' ? '#DBEAFE' : '#F3F4F6', color: e.statut === 'livree' ? '#065F46' : e.statut === 'en_route' ? '#1D4ED8' : '#6B7280', padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
-                                    {e.statut === 'livree' ? '✓ Livré' : e.statut === 'en_route' ? '⟳ En route' : e.statut === 'en_attente' ? 'En attente' : e.statut}
+                                    {e.statut === 'livree' ? 'Livré' : e.statut === 'en_route' ? 'En route' : e.statut === 'en_attente' ? 'En attente' : e.statut}
                                   </span>
                                   <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 7px', borderRadius: 4, fontSize: 11 }}>
                                     TOPSIS {(e.scoreTopsis ?? 0).toFixed(2)}
@@ -561,7 +560,7 @@ export default function SuiviTerrainPage() {
                       >
                         <Popup>
                           <div style={{ minWidth: 160 }}>
-                            <p style={{ fontWeight: 700, marginBottom: 2 }}>🚚 {v.distributeurNom}</p>
+                            <p style={{ fontWeight: 700, marginBottom: 2 }}>{v.distributeurNom}</p>
                             <p style={{ fontSize: 11, color: '#6B7280', marginBottom: 6 }}>
                               {activeTournees.find(t => t.id === v.tourneeId)
                                 ? `Mission ${(activeTournees.find(t => t.id === v.tourneeId) as unknown as { missionNumero?: string }).missionNumero ?? ''}`
@@ -644,7 +643,7 @@ export default function SuiviTerrainPage() {
                               </div>
                               {next && (
                                 <p className="text-xs text-gray-400 truncate">
-                                  {enRoute ? '⟳ En route →' : '⏳ Prochain :'}{' '}
+                                  {enRoute ? 'En route :' : 'Prochain :'}{' '}
                                   <span className="text-gray-600 dark:text-gray-300 font-medium">{next.douar?.nom ?? next.douarNom}</span>
                                 </p>
                               )}
@@ -785,7 +784,7 @@ export default function SuiviTerrainPage() {
                             <div className="flex-1 min-w-0">
                               <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
                               <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{action.acteur}</p>
-                              <p className="text-xs text-gray-400 truncate">📍 {action.localisation}</p>
+                              <p className="text-xs text-gray-400 truncate">{action.localisation}</p>
                               {action.details && <p className="text-xs text-gray-400 italic truncate">{action.details}</p>}
                             </div>
                             <p className="text-xs text-gray-400 shrink-0 text-right">
