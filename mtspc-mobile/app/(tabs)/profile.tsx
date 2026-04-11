@@ -4,7 +4,6 @@
  * Page profil simplifiée.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -12,7 +11,6 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -23,11 +21,9 @@ import { syncService, getDisplayStatus } from '../../services/syncService';
 import type { PendingSubmission } from '../../types/app';
 
 export default function ProfileScreen() {
-  const { logout, user, isBiometricEnabled, setBiometricEnabled } = useAuth();
+  const { logout, user } = useAuth();
   const router = useRouter();
 
-  const [biometricSupported, setBiometricSupported] = useState(true);
-  const [biometricLoading, setBiometricLoading] = useState(false);
   const [syncStats, setSyncStats] = useState({ pending: 0, synced: 0, failed: 0 });
   const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,27 +47,6 @@ export default function ProfileScreen() {
       console.error('Failed to load profile data:', err);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleBiometricToggle = async (enabled: boolean) => {
-    if (!biometricSupported) {
-      Alert.alert('Non supporté', 'L\'authentification biométrique n\'est pas disponible.');
-      return;
-    }
-
-    setBiometricLoading(true);
-    try {
-      if (enabled) {
-        const result = await SecureStore.getItemAsync('refreshToken');
-        if (!result) {
-          Alert.alert('Erreur', 'Connectez-vous d\'abord.');
-          return;
-        }
-      }
-      await setBiometricEnabled(enabled);
-    } finally {
-      setBiometricLoading(false);
     }
   };
 
@@ -180,22 +155,11 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Paramètres</Text>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingLeft}>
-            <Ionicons name="finger-print" size={22} color="#1565C0" />
-            <Text style={styles.settingLabel}>Authentification biométrique</Text>
-          </View>
-          {biometricLoading ? (
-            <ActivityIndicator size="small" color="#1565C0" />
-          ) : (
-            <Switch
-              value={isBiometricEnabled}
-              onValueChange={handleBiometricToggle}
-              trackColor={{ false: '#E0E0E0', true: '#90CAF9' }}
-              thumbColor={isBiometricEnabled ? '#1565C0' : '#757575'}
-            />
-          )}
-        </View>
+        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/settings')}>
+          <Ionicons name="settings-outline" size={20} color="#1565C0" />
+          <Text style={styles.actionButtonText}>Paramètres de l'application</Text>
+          <Ionicons name="chevron-forward" size={20} color="#757575" />
+        </TouchableOpacity>
       </View>
 
       {/* Actions */}

@@ -127,12 +127,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const biometricEnabled = biometricPref === 'true';
         setIsBiometricEnabled(biometricEnabled);
 
-        if (token && storedUser) {
-          const payload   = parseJWTPayload(token);
-          const isExpired = payload.exp * 1000 < Date.now();
+        if (storedUser) {
+          // Vérifier la validité de l'access token
+          let activeToken  = token;
+          let tokenIsValid = false;
 
-          if (isExpired) {
-            // Token expiré → nettoyer et forcer la reconnexion complète
+          if (activeToken) {
+            const payload = parseJWTPayload(activeToken);
+            tokenIsValid  = payload.exp * 1000 > Date.now();
+          }
+
+          // Si l'access token est expiré, tenter le rafraîchissement silencieux
+          if (!tokenIsValid) {
+            const storedRefresh = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+            if (storedRefresh) {
+              try {
+                const { KEYCLOAK_SERVER, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID } = await import('../config/keycloakConfig');
+                const tokenUrl = `${KEYCLOAK_SERVER}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
+                const body = new URLSearchParams({
+                  grant_type: 'refresh_token', client_id: KEYCLOAK_CLIENT_ID, refresh_token: storedRefresh,
+                });
+                const res = await fetch(tokenUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: body.toString(),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  activeToken = data.access_token as string;
+                  await Promise.all([
+                    SecureStore.setItemAsync(TOKEN_KEY,         activeToken),
+                    SecureStore.setItemAsync(REFRESH_TOKEN_KEY, data.refresh_token ?? storedRefresh),
+                  ]);
+                  tokenIsValid = true;
+                }
+              } catch {
+                // Silencieux — on laisse continuer vers logout
+              }
+            }
+          }
+
+          if (!tokenIsValid || !activeToken) {
+            // Refresh aussi échoué → déconnexion complète
             await logout();
             return;
           }
@@ -140,11 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (biometricEnabled) {
             // Session valide + biométrie activée → état "verrouillé"
             // L'écran de login affichera le bouton biométrique.
-            // On ne restaure PAS encore l'état auth — l'utilisateur doit scanner.
             setIsBiometricPending(true);
           } else {
-            // Biométrie désactivée → restauration automatique (comportement précédent)
-            setAccessToken(token);
+            // Biométrie désactivée → restauration automatique
+            setAccessToken(activeToken);
             setUser(JSON.parse(storedUser));
             setIsAuthenticated(true);
           }
@@ -202,27 +237,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const unlockWithBiometrics = useCallback(async (): Promise<boolean> => {
     try {
-      const [token, storedUser] = await Promise.all([
+      const [token, refreshToken, storedUser] = await Promise.all([
         SecureStore.getItemAsync(TOKEN_KEY),
+        SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
         SecureStore.getItemAsync(USER_KEY),
       ]);
 
-      if (!token || !storedUser) return false;
+      if (!storedUser) return false;
 
-      const payload   = parseJWTPayload(token);
-      const isExpired = payload.exp * 1000 < Date.now();
+      // ── Cas 1 : access token encore valide ───────────────────────────────────
+      if (token) {
+        const payload   = parseJWTPayload(token);
+        const isExpired = payload.exp * 1000 < Date.now();
 
-      if (isExpired) {
-        // Token expiré entre l'ouverture de l'app et le scan → reconnexion requise
-        await logout();
-        return false;
+        if (!isExpired) {
+          setAccessToken(token);
+          setUser(JSON.parse(storedUser));
+          setIsAuthenticated(true);
+          setIsBiometricPending(false);
+          return true;
+        }
       }
 
-      setAccessToken(token);
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-      setIsBiometricPending(false);
-      return true;
+      // ── Cas 2 : access token expiré → tenter un rafraîchissement ─────────────
+      if (refreshToken) {
+        try {
+          const { KEYCLOAK_SERVER, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID } = await import('../config/keycloakConfig');
+          const tokenUrl = `${KEYCLOAK_SERVER}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
+
+          const body = new URLSearchParams({
+            grant_type:    'refresh_token',
+            client_id:     KEYCLOAK_CLIENT_ID,
+            refresh_token: refreshToken,
+          });
+
+          const response = await fetch(tokenUrl, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body:    body.toString(),
+          });
+
+          if (response.ok) {
+            const data       = await response.json();
+            const newToken   = data.access_token as string;
+            const newRefresh = (data.refresh_token as string) ?? refreshToken;
+
+            // Persister les nouveaux tokens
+            await Promise.all([
+              SecureStore.setItemAsync(TOKEN_KEY,         newToken),
+              SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefresh),
+            ]);
+
+            setAccessToken(newToken);
+            setUser(JSON.parse(storedUser));
+            setIsAuthenticated(true);
+            setIsBiometricPending(false);
+            return true;
+          }
+        } catch (refreshErr) {
+          console.warn('[Auth] Rafraîchissement du token échoué :', refreshErr);
+        }
+      }
+
+      // ── Cas 3 : impossible de renouveler → déconnexion ───────────────────────
+      await logout();
+      return false;
     } catch (err) {
       console.warn('[Auth] Erreur déverrouillage biométrique :', err);
       return false;
