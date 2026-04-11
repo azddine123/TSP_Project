@@ -1,7 +1,7 @@
 {
-  "name": "reliefchain-web",
+  "name": "najda-web",
   "version": "1.0.0",
-  "description": "Centre de Contrôle Web — Plateforme Logistique ReliefChain",
+  "description": "Centre de Contrôle Web — Plateforme NAJDA",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

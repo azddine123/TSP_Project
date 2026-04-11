@@ -3,7 +3,9 @@
  * Gestion des statuts : disponible | en_mission | maintenance
  */
 import { useState, useEffect, useCallback } from 'react';
-import { vehiculeApi, distributeurApi, getApiErrorMessage } from '../../services/api';
+// Import FORCÉ des mocks
+import { mockVehiculeApi as vehiculeApi, mockDistributeurApi as distributeurApi } from '../../mock/adminApi';
+import { getApiErrorMessage } from '../../services/api';
 import type { Vehicule, Distributeur, VehiculeStatut, VehiculeType, CreateVehiculeDto } from '../../types';
 
 const STATUT_CONFIG: Record<VehiculeStatut, { label: string; color: string; dot: string }> = {
@@ -30,8 +32,8 @@ function CreateVehiculeModal({ onClose, onCreated }: { onClose: () => void; onCr
     if (!form.immatriculation.trim()) { setError('Immatriculation obligatoire.'); return; }
     setSaving(true); setError(null);
     try {
-      const v = await vehiculeApi.create(form);
-      onCreated(v);
+      const v = await vehiculeApi.create(form as unknown as CreateVehiculeDto);
+      onCreated(v as Vehicule);
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setSaving(false); }
   }
@@ -177,7 +179,7 @@ export default function VehiculesPage() {
     setLoading(true); setError(null);
     try {
       const [v, d] = await Promise.all([vehiculeApi.getMine(), distributeurApi.getAll()]);
-      setVehicules(v); setDistributeurs(d);
+      setVehicules(v as unknown as Vehicule[]); setDistributeurs(d as Distributeur[]);
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setLoading(false); }
   }, []);
@@ -187,8 +189,8 @@ export default function VehiculesPage() {
   async function handleStatut(id: string, statut: VehiculeStatut, distributeurId?: string) {
     setUpdating(id);
     try {
-      const updated = await vehiculeApi.updateStatut(id, { statut, distributeurId });
-      setVehicules((prev) => prev.map((v) => v.id === id ? updated : v));
+      const updated = await vehiculeApi.updateStatut(id, { statut, distributeurId } as unknown as { statut: string });
+      setVehicules((prev) => prev.map((v) => v.id === id ? updated as Vehicule : v));
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setUpdating(null); }
   }

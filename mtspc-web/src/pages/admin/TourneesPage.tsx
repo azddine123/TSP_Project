@@ -4,7 +4,9 @@
  * Validation "Chargement Terminé — Prêt au départ"
  */
 import { useState, useEffect, useCallback } from 'react';
-import { tourneeApi, getApiErrorMessage } from '../../services/api';
+// Import FORCÉ des mocks
+import { mockTourneeApi as tourneeApi } from '../../mock/adminApi';
+import { getApiErrorMessage } from '../../services/api';
 import type { Tournee, TourneeStatut } from '../../types';
 
 const STATUT_CONFIG: Record<TourneeStatut, { label: string; color: string }> = {
@@ -144,7 +146,7 @@ export default function TourneesPage() {
     setLoading(true); setError(null);
     try {
       const t = await tourneeApi.getMine();
-      setTournees(t);
+      setTournees(t as unknown as Tournee[]);
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setLoading(false); }
   }, []);

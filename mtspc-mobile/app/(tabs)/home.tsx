@@ -1,8 +1,7 @@
 /**
- * HOME SCREEN — Dashboard Opérationnel Style LabCollect
- * ======================================================
- * Inspiré de labcollect-mobile/app/(tabs)/home.tsx
- * Liste des missions avec recherche, filtres et actions rapides.
+ * HOME SCREEN - Dashboard des missions
+ * ====================================
+ * Liste simple des missions avec filtres basiques.
  */
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,20 +20,17 @@ import {
   View,
 } from 'react-native';
 import MissionCard from '../../components/MissionCard';
-import { missionService, USE_MOCK_DATA } from '../../services/missionService';
+import { useAuth } from '../../contexts/AuthContext';
+import { missionService } from '../../services/missionService';
 import { syncService } from '../../services/syncService';
 import { Mission } from '../../types/app';
-import { useAuth } from '../../contexts/AuthContext';
-
-type SortOption = 'dueDate' | 'priority' | 'missionNumber';
-type FilterOption = 'all' | 'pending' | 'in_progress' | 'completed';
 
 const MISSIONS_CACHE_KEY = 'missions_cache';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { logout } = useAuth();
-  
+
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,57 +39,34 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
-  
-  // Filtres et tri
-  const [sortBy, setSortBy] = useState<SortOption>('dueDate');
-  const [sortAsc, setSortAsc] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<FilterOption>('all');
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
 
   // Charger les missions
   const loadMissions = useCallback(async () => {
     try {
       setError(null);
-      
-      // Vérifier la connexion réseau
       const netInfo = await NetInfo.fetch();
       const online = !!(netInfo.isConnected && netInfo.isInternetReachable);
       setIsOnline(online);
-      
+
       if (online) {
-        // En ligne → charger depuis l'API
         const data = await missionService.getAllMissions();
         setMissions(data);
         await AsyncStorage.setItem(MISSIONS_CACHE_KEY, JSON.stringify(data));
       } else {
-        // Hors ligne → charger depuis le cache
         const cached = await AsyncStorage.getItem(MISSIONS_CACHE_KEY);
-        if (cached) {
-          setMissions(JSON.parse(cached));
-        }
+        if (cached) setMissions(JSON.parse(cached));
       }
-      
-      // Compter les soumissions en attente
+
       const count = await syncService.getPendingCount();
       setPendingCount(count);
     } catch (err: any) {
       console.error('Failed to load missions:', err);
-      
-      // Gérer l'erreur d'authentification
       if (err.message === 'AUTH_REQUIRED' || err.message?.includes('401')) {
-        if (USE_MOCK_DATA) {
-          // En mode mock, ne pas rediriger vers login
-          setError('Mode démo: Les données sont chargées localement.');
-        } else {
-          setError('Session expirée. Déconnexion...');
-          // Déconnexion - le RootLayout redirigera automatiquement vers login
-          logout();
-        }
+        setError('Session expirée. Déconnexion...');
+        logout();
       } else {
-        setError('Impossible de charger les missions. Veuillez réessayer.');
+        setError('Impossible de charger les missions');
       }
-      
-      // En cas d'erreur → charger le cache
       const cached = await AsyncStorage.getItem(MISSIONS_CACHE_KEY);
       if (cached) setMissions(JSON.parse(cached));
     } finally {
@@ -102,14 +75,12 @@ export default function HomeScreen() {
     }
   }, [logout]);
 
-  // Charger à l'ouverture
   useFocusEffect(
     useCallback(() => {
       loadMissions();
     }, [loadMissions])
   );
 
-  // Écouter les changements de connectivité
   useEffect(() => {
     const unsub = NetInfo.addEventListener((state) => {
       const online = !!(state.isConnected && state.isInternetReachable);
@@ -122,28 +93,18 @@ export default function HomeScreen() {
   // Synchroniser
   const handleSync = async () => {
     if (!isOnline) {
-      Alert.alert(
-        'Pas de connexion',
-        'Impossible de synchroniser : aucun réseau détecté.',
-      );
+      Alert.alert('Pas de connexion', 'Impossible de synchroniser sans réseau.');
       return;
     }
 
     setSyncing(true);
     try {
       const { synced, failed } = await syncService.forceSync();
-
-      if (synced > 0) {
-        Alert.alert(
-          'Synchronisation réussie',
-          `${synced} mission(s) synchronisée(s).${failed > 0 ? `\\n⚠️ ${failed} échec(s)` : ''}`,
-        );
-        await loadMissions();
-      } else if (failed > 0) {
-        Alert.alert('Synchronisation échouée', 'Impossible d\'envoyer les données.');
-      } else {
-        Alert.alert('Info', 'Rien à synchroniser.');
-      }
+      Alert.alert(
+        'Synchronisation',
+        `${synced} mission(s) synchronisée(s).${failed > 0 ? `\n⚠️ ${failed} échec(s)` : ''}`,
+      );
+      await loadMissions();
     } catch (err: any) {
       Alert.alert('Erreur', err.message);
     } finally {
@@ -151,101 +112,41 @@ export default function HomeScreen() {
     }
   };
 
-  // Trier les missions
-  const sortMissions = (missionsToSort: Mission[]) => {
-    return [...missionsToSort].sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortBy) {
-        case 'dueDate':
-          comparison = new Date(a.dateEcheance).getTime() - new Date(b.dateEcheance).getTime();
-          break;
-        case 'priority':
-          const priorityValues: Record<string, number> = { 
-            critique: 4, high: 3, medium: 2, low: 1 
-          };
-          comparison = (priorityValues[a.priorite] || 0) - (priorityValues[b.priorite] || 0);
-          break;
-        case 'missionNumber':
-          comparison = a.numeroMission.localeCompare(b.numeroMission);
-          break;
-      }
-      
-      return sortAsc ? comparison : -comparison;
-    });
-  };
-
   // Filtrer les missions
-  const filterMissions = (missionsToFilter: Mission[]) => {
-    return missionsToFilter.filter(mission => {
-      if (statusFilter !== 'all' && mission.statut !== statusFilter) {
-        return false;
-      }
-      
-      const searchLower = searchQuery.toLowerCase();
-      return (
-        mission.numeroMission.toLowerCase().includes(searchLower) ||
-        mission.destinationNom.toLowerCase().includes(searchLower) ||
-        mission.entrepotNom.toLowerCase().includes(searchLower)
-      );
-    });
-  };
-
-  const filteredAndSortedMissions = sortMissions(filterMissions(missions));
-
-  const toggleSortOrder = () => {
-    setSortAsc(!sortAsc);
-  };
-
-  const changeSortOption = (option: SortOption) => {
-    if (sortBy === option) {
-      toggleSortOrder();
-    } else {
-      setSortBy(option);
-      setSortAsc(true);
-    }
-  };
-
-  const handleOpenMission = (mission: Mission) => {
-    router.push({ pathname: '/mission-detail', params: { id: mission.id } });
-  };
+  const filteredMissions = missions.filter((mission) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      mission.numeroMission.toLowerCase().includes(searchLower) ||
+      mission.destinationNom.toLowerCase().includes(searchLower) ||
+      mission.entrepotNom.toLowerCase().includes(searchLower)
+    );
+  });
 
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#1565C0" />
-        <Text style={styles.loadingText}>Chargement des missions...</Text>
+        <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* En-tête */}
+      {/* Header simple */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Missions assignées</Text>
-          {USE_MOCK_DATA && (
-            <View style={styles.demoBadge}>
-              <Ionicons name="flask" size={12} color="#fff" />
-              <Text style={styles.demoText}>MODE DÉMO</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={styles.newMissionButton}
-            onPress={() => router.push('/new-mission' as any)}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.newMissionButtonText}>Nouvelle</Text>
-          </TouchableOpacity>
+        <Text style={styles.headerTitle}>Mes Missions</Text>
+        <View style={[styles.statusBadge, { backgroundColor: isOnline ? '#E8F5E9' : '#FFEBEE' }]}>
+          <View style={[styles.statusDot, { backgroundColor: isOnline ? '#4CAF50' : '#F44336' }]} />
+          <Text style={[styles.statusText, { color: isOnline ? '#2E7D32' : '#D32F2F' }]}>
+            {isOnline ? 'En ligne' : 'Hors-ligne'}
+          </Text>
         </View>
       </View>
 
-      {/* Barre de recherche */}
+      {/* Recherche simple */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+        <Ionicons name="search" size={20} color="#757575" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Rechercher une mission..."
@@ -255,122 +156,76 @@ export default function HomeScreen() {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color="#666" />
+            <Ionicons name="close-circle" size={20} color="#757575" />
           </TouchableOpacity>
         )}
-        <TouchableOpacity 
-          style={styles.filterButton} 
-          onPress={() => setShowFilterMenu(!showFilterMenu)}
-        >
-          <Ionicons name="options" size={20} color="#1565C0" />
-        </TouchableOpacity>
       </View>
 
-      {/* Menu de filtrage */}
-      {showFilterMenu && (
-        <View style={styles.filterMenu}>
-          <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Filtrer par statut:</Text>
-            <View style={styles.filterOptions}>
-              {[
-                { key: 'all', label: 'Tous' },
-                { key: 'pending', label: 'En attente' },
-                { key: 'in_progress', label: 'En cours' },
-                { key: 'completed', label: 'Terminé' },
-              ].map((item) => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[
-                    styles.filterOption,
-                    statusFilter === item.key && styles.filterOptionActive
-                  ]}
-                  onPress={() => setStatusFilter(item.key as FilterOption)}
-                >
-                  <Text style={statusFilter === item.key ? styles.filterTextActive : styles.filterText}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          
-          <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Trier par:</Text>
-            <View style={styles.filterOptions}>
-              {[
-                { key: 'dueDate', label: 'Date d\'échéance' },
-                { key: 'priority', label: 'Priorité' },
-                { key: 'missionNumber', label: 'N° de mission' },
-              ].map((item) => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[
-                    styles.filterOption,
-                    sortBy === item.key && styles.filterOptionActive
-                  ]}
-                  onPress={() => changeSortOption(item.key as SortOption)}
-                >
-                  <Text style={sortBy === item.key ? styles.filterTextActive : styles.filterText}>
-                    {item.label} {sortBy === item.key && (sortAsc ? '↑' : '↓')}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+      {/* Stats simples */}
+      <View style={styles.statsRow}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{missions.filter(m => m.statut === 'pending').length}</Text>
+          <Text style={styles.statLabel}>En attente</Text>
         </View>
-      )}
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{missions.filter(m => m.statut === 'in_progress').length}</Text>
+          <Text style={styles.statLabel}>En cours</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{missions.filter(m => m.statut === 'completed').length}</Text>
+          <Text style={styles.statLabel}>Terminées</Text>
+        </View>
+      </View>
 
-      {/* Bouton de synchronisation */}
+      {/* Bouton sync si données en attente */}
       {pendingCount > 0 && (
-        <TouchableOpacity 
-          style={[styles.syncButton, syncing && styles.syncButtonDisabled]} 
-          onPress={handleSync}
-          disabled={syncing || !isOnline}
-        >
+        <TouchableOpacity style={styles.syncButton} onPress={handleSync} disabled={syncing || !isOnline}>
           {syncing ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Ionicons name="sync" size={20} color="#fff" />
+            <>
+              <Ionicons name="sync" size={18} color="#fff" />
+              <Text style={styles.syncButtonText}>
+                Synchroniser ({pendingCount})
+              </Text>
+            </>
           )}
-          <Text style={styles.syncButtonText}>
-            {syncing ? 'Synchronisation...' : `Synchroniser (${pendingCount})`}
-          </Text>
         </TouchableOpacity>
       )}
 
-      {/* Message d'erreur */}
+      {/* Erreur */}
       {error && (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={20} color="#F44336" />
+          <Ionicons name="alert-circle" size={20} color="#D32F2F" />
           <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {/* Indicateur hors-ligne */}
-      {!isOnline && (
-        <View style={styles.offlineBanner}>
-          <Ionicons name="cloud-offline" size={16} color="#fff" />
-          <Text style={styles.offlineBannerText}>Mode hors-ligne</Text>
         </View>
       )}
 
       {/* Liste des missions */}
       <FlatList
-        data={filteredAndSortedMissions}
+        data={filteredMissions}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <MissionCard mission={item} onPress={() => handleOpenMission(item)} />
+          <MissionCard
+            mission={item}
+            onPress={() => router.push({ pathname: '/mission-detail', params: { id: item.id } })}
+          />
         )}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadMissions(); }} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); loadMissions(); }}
+            colors={['#1565C0']}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>
-              {searchQuery || statusFilter !== 'all'
-                ? 'Aucune mission ne correspond à vos critères.'
-                : 'Aucune mission assignée.'}
+            <Ionicons name="clipboard-outline" size={48} color="#BDBDBD" />
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? 'Aucune mission trouvée' : 'Aucune mission'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery ? 'Essayez une autre recherche' : 'Les missions apparaîtront ici'}
             </Text>
           </View>
         }
@@ -383,205 +238,153 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F5F5',
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    gap: 12,
+    backgroundColor: '#F5F5F5',
   },
   loadingText: {
-    color: '#666',
-    fontSize: 14,
+    marginTop: 12,
+    color: '#757575',
   },
+
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  title: {
-    fontSize: 20,
+  headerTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#212121',
   },
-  demoBadge: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
     borderRadius: 4,
-    marginTop: 4,
-    gap: 4,
-    alignSelf: 'flex-start',
   },
-  demoText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  newMissionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1565C0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginLeft: 12,
-  },
-  newMissionButtonText: {
-    color: '#fff',
+  statusText: {
     fontSize: 12,
     fontWeight: '600',
-    marginLeft: 4,
   },
+
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 8,
     marginHorizontal: 16,
-    marginVertical: 8,
+    marginVertical: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 44,
     fontSize: 16,
-    color: '#333',
+    color: '#212121',
   },
-  filterButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  filterMenu: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 12,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  filterSection: {
-    marginBottom: 12,
-  },
-  filterTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#555',
-  },
-  filterOptions: {
+
+  statsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    gap: 12,
   },
-  filterOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-    marginRight: 8,
-    marginBottom: 8,
+  statItem: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  filterOptionActive: {
-    backgroundColor: '#1565C0',
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1565C0',
   },
-  filterText: {
-    fontSize: 14,
-    color: '#555',
+  statLabel: {
+    fontSize: 12,
+    color: '#757575',
+    marginTop: 2,
   },
-  filterTextActive: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '500',
-  },
+
   syncButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E53935',
-    borderRadius: 8,
+    backgroundColor: '#D32F2F',
     marginHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 12,
     paddingVertical: 12,
-    elevation: 4,
-    shadowColor: '#E53935',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-  },
-  syncButtonDisabled: {
-    backgroundColor: '#EF9A9A',
-    elevation: 0,
+    borderRadius: 8,
+    gap: 8,
   },
   syncButtonText: {
     color: '#fff',
-    marginLeft: 8,
+    fontSize: 14,
     fontWeight: '600',
-    fontSize: 15,
   },
+
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFEBEE',
     padding: 12,
     marginHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 12,
     borderRadius: 8,
+    gap: 8,
   },
   errorText: {
-    color: '#F44336',
-    marginLeft: 8,
+    color: '#C62828',
     fontSize: 14,
     flex: 1,
   },
-  offlineBanner: {
-    backgroundColor: '#E53935',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    gap: 6,
-  },
-  offlineBannerText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 12,
-  },
+
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 24,
+  },
+
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#616161',
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#9E9E9E',
+    marginTop: 4,
   },
 });

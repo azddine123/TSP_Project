@@ -5,7 +5,9 @@
  * Grands boutons tactiles, présets de quantités, feedback immédiat.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { stockApi, materielApi, getApiErrorMessage } from '../../services/api';
+// Import FORCÉ des mocks
+import { mockStockApi as stockApi, mockMaterielApi as materielApi } from '../../mock/adminApi';
+import { getApiErrorMessage } from '../../services/api';
 import type { StockRow, Materiel, StockMouvement, MouvementType } from '../../types';
 import { formatDateTime } from '../../constants';
 
@@ -282,7 +284,7 @@ export default function StockPage() {
     setLoading(true); setError(null);
     try {
       const [s, m] = await Promise.all([stockApi.getMine(), materielApi.getAll()]);
-      setStocks(s); setMateriels(m);
+      setStocks(s as StockRow[]); setMateriels(m as Materiel[]);
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setLoading(false); }
   }, []);

@@ -370,9 +370,9 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 220,
+    height: 130,
+    borderRadius: 12,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
@@ -384,9 +384,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 200,
+    height: 110,
+    borderRadius: 8,
   },
   title: {
     fontSize: 32,

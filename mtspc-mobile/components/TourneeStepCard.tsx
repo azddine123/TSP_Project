@@ -1,278 +1,578 @@
-/**
- * TourneeStepCard — Carte d'une étape VRP dans l'itinéraire du distributeur
- * ==========================================================================
- *
- * Affiche visuellement une étape de la tournée calculée par OR-Tools :
- * - Numéro d'ordre + nom du douar
- * - Badge de priorité coloré (CRITIQUE=rouge, HAUTE=orange, MOYENNE=jaune, BASSE=vert)
- * - Distance et temps estimé depuis l'étape précédente
- * - Score TOPSIS + population
- * - Statut visuel : À faire / En cours / Livré ✅
- * - Bouton "Commencer la livraison" (navigue vers BordereauDouar)
- */
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
-import {
-    View, Text, StyleSheet, TouchableOpacity,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { 
+  useAnimatedStyle, 
+  withSpring, 
+  withTiming,
+  useSharedValue 
+} from 'react-native-reanimated';
 import { EtapeVRP, NiveauPriorite } from '../types/app';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme';
 
 type StatutEtape = 'a_faire' | 'en_cours' | 'livree';
 
 interface TourneeStepCardProps {
-    etape: EtapeVRP;
-    statut: StatutEtape;
-    isActive: boolean;          // Étape courante (en cours de navigation)
-    onStartPress?: () => void;       // Clic "Commencer la livraison"
+  etape: EtapeVRP;
+  statut: StatutEtape;
+  isActive: boolean;
+  onStartPress?: () => void;
+  index?: number;
 }
 
-// ── Mapping Priorité → Couleur ───────────────────────────────────────────────
-
-const PRIORITY_CONFIG: Record<NiveauPriorite, { color: string; bg: string; label: string }> = {
-    CRITIQUE: { color: '#fff', bg: '#D32F2F', label: 'CRITIQUE' },
-    HAUTE: { color: '#fff', bg: '#E64A19', label: 'HAUTE' },
-    MOYENNE: { color: '#333', bg: '#FBC02D', label: 'MOYENNE' },
-    BASSE: { color: '#fff', bg: '#388E3C', label: 'BASSE' },
+const PRIORITY_CONFIG: Record<NiveauPriorite, { 
+  color: string; 
+  bg: string; 
+  gradient: string[];
+  icon: string;
+}> = {
+  CRITIQUE: { 
+    color: '#fff', 
+    bg: '#D32F2F', 
+    gradient: ['#D32F2F', '#B71C1C'],
+    icon: 'alert-circle',
+  },
+  HAUTE: { 
+    color: '#fff', 
+    bg: '#E64A19', 
+    gradient: ['#E64A19', '#D84315'],
+    icon: 'flag',
+  },
+  MOYENNE: { 
+    color: '#333', 
+    bg: '#FBC02D', 
+    gradient: ['#FBC02D', '#F9A825'],
+    icon: 'flag-variant',
+  },
+  BASSE: { 
+    color: '#fff', 
+    bg: '#388E3C', 
+    gradient: ['#388E3C', '#2E7D32'],
+    icon: 'flag-variant-outline',
+  },
 };
 
-const STATUT_CONFIG: Record<StatutEtape, { icon: string; color: string; label: string }> = {
-    a_faire: { icon: 'ellipse-outline', color: '#9E9E9E', label: 'À faire' },
-    en_cours: { icon: 'navigate', color: '#1565C0', label: 'En cours' },
-    livree: { icon: 'checkmark-circle', color: '#388E3C', label: 'Livré ✅' },
+const STATUT_CONFIG: Record<StatutEtape, { 
+  icon: string; 
+  color: string; 
+  bg: string;
+  label: string;
+  pulse?: boolean;
+}> = {
+  a_faire: { 
+    icon: 'ellipse-outline', 
+    color: COLORS.text.tertiary, 
+    bg: COLORS.surfaceVariant,
+    label: 'À faire',
+  },
+  en_cours: { 
+    icon: 'navigate-circle', 
+    color: COLORS.primary[800], 
+    bg: COLORS.primary[50],
+    label: 'En cours',
+    pulse: true,
+  },
+  livree: { 
+    icon: 'checkmark-circle', 
+    color: COLORS.success.dark, 
+    bg: COLORS.success[50],
+    label: 'Livré',
+  },
 };
 
-// ── Composant ─────────────────────────────────────────────────────────────────
+const StepNumber: React.FC<{ 
+  number: number; 
+  isActive: boolean; 
+  statut: StatutEtape;
+}> = ({ number, isActive, statut }) => {
+  const scale = useSharedValue(1);
+  
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  React.useEffect(() => {
+    if (statut === 'en_cours') {
+      scale.value = withSpring(1.1, { damping: 10, stiffness: 200 });
+    } else {
+      scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+    }
+  }, [statut]);
+
+  const isDone = statut === 'livree';
+
+  return (
+    <Animated.View style={[
+      styles.stepNumberContainer,
+      isActive && styles.stepNumberActive,
+      isDone && styles.stepNumberDone,
+      animatedStyle,
+    ]}>
+      {isDone ? (
+        <Ionicons name="checkmark" size={18} color="#fff" />
+      ) : (
+        <Text style={[
+          styles.stepNumberText,
+          isActive && styles.stepNumberTextActive,
+        ]}>
+          {number}
+        </Text>
+      )}
+    </Animated.View>
+  );
+};
+
+const InfoChip: React.FC<{ 
+  icon: string; 
+  value: string; 
+  label: string;
+  color?: string;
+}> = ({ icon, value, label, color = COLORS.text.secondary }) => (
+  <View style={styles.infoChip}>
+    <View style={[styles.infoChipIcon, { backgroundColor: `${color}15` }]}>
+      <Ionicons name={icon as any} size={14} color={color} />
+    </View>
+    <View>
+      <Text style={styles.infoChipValue}>{value}</Text>
+      <Text style={styles.infoChipLabel}>{label}</Text>
+    </View>
+  </View>
+);
+
+const ResourceItem: React.FC<{ 
+  icon: string; 
+  value: number; 
+  label: string;
+  color: string;
+}> = ({ icon, value, label, color }) => (
+  <View style={styles.resourceItem}>
+    <MaterialCommunityIcons name={icon as any} size={16} color={color} />
+    <Text style={styles.resourceValue}>{value}</Text>
+    <Text style={styles.resourceLabel}>{label}</Text>
+  </View>
+);
 
 export default function TourneeStepCard({
-    etape,
-    statut,
-    isActive,
-    onStartPress,
+  etape,
+  statut,
+  isActive,
+  onStartPress,
+  index = 0,
 }: TourneeStepCardProps) {
-    const priority = PRIORITY_CONFIG[etape.priorite];
-    const statutCfg = STATUT_CONFIG[statut];
-    const totalRessources =
-        etape.ressources.tentes +
-        etape.ressources.couvertures +
-        etape.ressources.vivres +
-        etape.ressources.kits_med;
+  const priority = PRIORITY_CONFIG[etape.priorite];
+  const statutCfg = STATUT_CONFIG[statut];
+  
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(20);
 
-    return (
-        <View style={[
-            styles.card,
-            isActive && styles.cardActive,
-            statut === 'livree' && styles.cardDone,
-        ]}>
+  React.useEffect(() => {
+    opacity.value = withTiming(1, { duration: 400 + index * 100 });
+    translateY.value = withSpring(0, { damping: 15, stiffness: 200 });
+  }, [index]);
 
-            {/* ── En-tête : numéro + douar + badge priorité ── */}
-            <View style={styles.header}>
-                <View style={[styles.stepNumber, isActive && styles.stepNumberActive]}>
-                    <Text style={styles.stepNumberText}>{etape.ordre}</Text>
-                </View>
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
 
-                <View style={styles.headerContent}>
-                    <Text style={[styles.douarName, statut === 'livree' && styles.textDone]}>
-                        {etape.douarNom}
-                    </Text>
-                    <View style={styles.row}>
-                        {/* Badge Priorité */}
-                        <View style={[styles.priorityBadge, { backgroundColor: priority.bg }]}>
-                            <Text style={[styles.priorityText, { color: priority.color }]}>
-                                {priority.label}
-                            </Text>
-                        </View>
-                        {/* Statut */}
-                        <View style={styles.row}>
-                            <Ionicons name={statutCfg.icon as any} size={14} color={statutCfg.color} />
-                            <Text style={[styles.statutText, { color: statutCfg.color }]}>
-                                {statutCfg.label}
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-            </View>
+  const totalRessources =
+    etape.ressources.tentes +
+    etape.ressources.couvertures +
+    etape.ressources.vivres +
+    etape.ressources.kits_med;
 
-            {/* ── Infos de déplacement ── */}
-            <View style={styles.infoRow}>
-                <InfoPill icon="navigate-outline" text={`${etape.distanceKm} km`} />
-                <InfoPill icon="time-outline" text={`${etape.tempsEstimeMin} min`} />
-                <InfoPill icon="people-outline" text={`${etape.population} hab.`} />
-                <InfoPill icon="bar-chart-outline" text={`C_i: ${etape.scoreTopsis.toFixed(2)}`} />
-            </View>
-
-            {/* ── Résumé des ressources à décharger ── */}
-            <View style={styles.ressourcesRow}>
-                <Ionicons name="cube-outline" size={13} color="#666" />
-                <Text style={styles.ressourcesText}>
-                    {`${etape.ressources.tentes} tentes · ${etape.ressources.couvertures} couvertures · `}
-                    {`${etape.ressources.vivres} vivres · ${etape.ressources.kits_med} kits`}
+  return (
+    <Animated.View style={[
+      styles.container,
+      isActive && styles.containerActive,
+      statut === 'livree' && styles.containerDone,
+      animatedStyle,
+    ]}>
+      <View style={[styles.priorityBar, { backgroundColor: priority.bg }]} />
+      
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <StepNumber 
+            number={etape.ordre} 
+            isActive={isActive} 
+            statut={statut}
+          />
+          
+          <View style={styles.headerContent}>
+            <Text style={[
+              styles.douarName,
+              statut === 'livree' && styles.textDone,
+            ]}>
+              {etape.douarNom}
+            </Text>
+            
+            <View style={styles.badgesRow}>
+              <View style={[styles.priorityBadge, { backgroundColor: priority.bg }]}>
+                <MaterialCommunityIcons name={priority.icon as any} size={12} color={priority.color} />
+                <Text style={[styles.priorityText, { color: priority.color }]}>
+                  {etape.priorite}
                 </Text>
+              </View>
+              
+              <View style={[styles.statusBadge, { backgroundColor: statutCfg.bg }]}>
+                <Ionicons name={statutCfg.icon as any} size={12} color={statutCfg.color} />
+                <Text style={[styles.statusText, { color: statutCfg.color }]}>
+                  {statutCfg.label}
+                </Text>
+                {statutCfg.pulse && <View style={styles.pulseIndicator} />}
+              </View>
             </View>
-
-            {/* ── Bouton "Commencer la livraison" (seulement si étape active) ── */}
-            {isActive && statut !== 'livree' && onStartPress && (
-                <TouchableOpacity
-                    style={styles.startButton}
-                    onPress={onStartPress}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="cube" size={18} color="#fff" />
-                    <Text style={styles.startButtonText}>Commencer la livraison</Text>
-                    <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </TouchableOpacity>
-            )}
+          </View>
         </View>
-    );
-}
 
-// ── Composant interne : Pill d'info ──────────────────────────────────────────
-
-function InfoPill({ icon, text }: { icon: string; text: string }) {
-    return (
-        <View style={styles.pill}>
-            <Ionicons name={icon as any} size={12} color="#555" />
-            <Text style={styles.pillText}>{text}</Text>
+        <View style={styles.topsisContainer}>
+          <View style={styles.topsisBar}>
+            <View 
+              style={[
+                styles.topsisFill, 
+                { width: `${Math.min(etape.scoreTopsis * 100, 100)}%` },
+                etape.scoreTopsis > 0.7 && styles.topsisFillHigh,
+                etape.scoreTopsis > 0.4 && etape.scoreTopsis <= 0.7 && styles.topsisFillMedium,
+              ]} 
+            />
+          </View>
+          <Text style={styles.topsisText}>
+            Score priorité: <Text style={styles.topsisValue}>{etape.scoreTopsis.toFixed(3)}</Text>
+          </Text>
         </View>
-    );
-}
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+        <View style={styles.infoRow}>
+          <InfoChip 
+            icon="navigate-outline" 
+            value={`${etape.distanceKm}`}
+            label="km"
+          />
+          <InfoChip 
+            icon="time-outline" 
+            value={`${etape.tempsEstimeMin}`}
+            label="min"
+          />
+          <InfoChip 
+            icon="people-outline" 
+            value={`${etape.population}`}
+            label="hab."
+          />
+        </View>
+
+        <View style={styles.ressourcesContainer}>
+          <View style={styles.ressourcesHeader}>
+            <Ionicons name="cube-outline" size={16} color={COLORS.text.secondary} />
+            <Text style={styles.ressourcesTitle}>Ressources à livrer</Text>
+            <View style={styles.totalBadge}>
+              <Text style={styles.totalBadgeText}>{totalRessources} unités</Text>
+            </View>
+          </View>
+          
+          <View style={styles.ressourcesGrid}>
+            <ResourceItem 
+              icon="tent" 
+              value={etape.ressources.tentes}
+              label="Tentes"
+              color={COLORS.primary[800]}
+            />
+            <ResourceItem 
+              icon="bed-blank" 
+              value={etape.ressources.couvertures}
+              label="Couvertures"
+              color={COLORS.secondary[700]}
+            />
+            <ResourceItem 
+              icon="food-apple" 
+              value={etape.ressources.vivres}
+              label="Vivres"
+              color={COLORS.warning.dark}
+            />
+            <ResourceItem 
+              icon="medical-bag" 
+              value={etape.ressources.kits_med}
+              label="Kits méd."
+              color={COLORS.error.dark}
+            />
+          </View>
+        </View>
+
+        {isActive && statut !== 'livree' && onStartPress && (
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={onStartPress}
+            activeOpacity={0.85}
+          >
+            <View style={styles.startButtonIcon}>
+              <Ionicons name="cube" size={20} color={COLORS.primary[800]} />
+            </View>
+            <Text style={styles.startButtonText}>Commencer la livraison</Text>
+            <Ionicons name="arrow-forward" size={20} color={COLORS.primary[800]} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </Animated.View>
+  );
+}
 
 const styles = StyleSheet.create({
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 14,
-        marginHorizontal: 16,
-        marginVertical: 6,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        borderLeftWidth: 4,
-        borderLeftColor: '#E0E0E0',
-    },
-    cardActive: {
-        borderLeftColor: '#1565C0',
-        elevation: 4,
-        shadowOpacity: 0.15,
-    },
-    cardDone: {
-        opacity: 0.65,
-        borderLeftColor: '#388E3C',
-    },
-
-    header: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 10,
-        gap: 10,
-    },
-    stepNumber: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#E8EAF6',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    stepNumberActive: {
-        backgroundColor: '#1565C0',
-    },
-    stepNumberText: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#1565C0',
-    },
-    headerContent: {
-        flex: 1,
-        gap: 4,
-    },
-    douarName: {
-        fontSize: 17,
-        fontWeight: '700',
-        color: '#1A1A2E',
-    },
-    textDone: {
-        color: '#999',
-        textDecorationLine: 'line-through',
-    },
-    row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        flexWrap: 'wrap',
-    },
-    priorityBadge: {
-        borderRadius: 6,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-    },
-    priorityText: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 0.5,
-    },
-    statutText: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginLeft: 2,
-    },
-
-    infoRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-        marginBottom: 8,
-    },
-    pill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F4F6F9',
-        borderRadius: 20,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        gap: 4,
-    },
-    pillText: {
-        fontSize: 11,
-        color: '#555',
-    },
-
-    ressourcesRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        padding: 8,
-        backgroundColor: '#F8F9FF',
-        borderRadius: 8,
-        marginBottom: 6,
-    },
-    ressourcesText: {
-        fontSize: 12,
-        color: '#555',
-        flex: 1,
-    },
-
-    startButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#1565C0',
-        borderRadius: 10,
-        paddingVertical: 12,
-        marginTop: 8,
-        gap: 8,
-        elevation: 3,
-        shadowColor: '#1565C0',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.35,
-        shadowRadius: 6,
-    },
-    startButtonText: {
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: '700',
-    },
+  container: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.xl,
+    marginHorizontal: SPACING.md,
+    marginVertical: SPACING.xs,
+    ...SHADOWS.sm,
+    overflow: 'hidden',
+  },
+  containerActive: {
+    ...SHADOWS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary[200],
+  },
+  containerDone: {
+    opacity: 0.75,
+    backgroundColor: COLORS.gray[50],
+  },
+  
+  priorityBar: {
+    width: 6,
+  },
+  
+  content: {
+    flex: 1,
+    padding: SPACING.lg,
+  },
+  
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+    gap: SPACING.md,
+  },
+  stepNumberContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.xs,
+  },
+  stepNumberActive: {
+    backgroundColor: COLORS.primary[800],
+    ...SHADOWS.primary,
+  },
+  stepNumberDone: {
+    backgroundColor: COLORS.success.main,
+  },
+  stepNumberText: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: '800',
+    color: COLORS.text.secondary,
+  },
+  stepNumberTextActive: {
+    color: COLORS.text.inverse,
+  },
+  headerContent: {
+    flex: 1,
+    gap: SPACING.xs,
+  },
+  douarName: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: '800',
+    color: COLORS.text.primary,
+    lineHeight: 24,
+  },
+  textDone: {
+    color: COLORS.text.tertiary,
+    textDecorationLine: 'line-through',
+  },
+  
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    flexWrap: 'wrap',
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.sm,
+    gap: 4,
+  },
+  priorityText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: BORDER_RADIUS.full,
+    gap: 4,
+    position: 'relative',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  pulseIndicator: {
+    position: 'absolute',
+    right: 4,
+    top: 4,
+    width: 6,
+    height: 6,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: COLORS.primary[800],
+  },
+  
+  topsisContainer: {
+    marginBottom: SPACING.md,
+  },
+  topsisBar: {
+    height: 6,
+    backgroundColor: COLORS.surfaceVariant,
+    borderRadius: BORDER_RADIUS.full,
+    overflow: 'hidden',
+    marginBottom: SPACING.xs,
+  },
+  topsisFill: {
+    height: '100%',
+    backgroundColor: COLORS.success.main,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  topsisFillHigh: {
+    backgroundColor: COLORS.error.main,
+  },
+  topsisFillMedium: {
+    backgroundColor: COLORS.warning.main,
+  },
+  topsisText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text.secondary,
+    fontWeight: '500',
+  },
+  topsisValue: {
+    color: COLORS.text.primary,
+    fontWeight: '700',
+  },
+  
+  infoRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceVariant,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+    gap: SPACING.xs,
+    flex: 1,
+  },
+  infoChipIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: BORDER_RADIUS.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoChipValue: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '800',
+    color: COLORS.text.primary,
+  },
+  infoChipLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text.secondary,
+  },
+  
+  ressourcesContainer: {
+    backgroundColor: COLORS.surfaceVariant,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  ressourcesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+    gap: SPACING.xs,
+  },
+  ressourcesTitle: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '600',
+    color: COLORS.text.secondary,
+  },
+  totalBadge: {
+    backgroundColor: COLORS.primary[100],
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: BORDER_RADIUS.full,
+  },
+  totalBadgeText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.primary[800],
+  },
+  ressourcesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  resourceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+    gap: 4,
+    minWidth: 80,
+  },
+  resourceValue: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '800',
+    color: COLORS.text.primary,
+  },
+  resourceLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text.secondary,
+  },
+  
+  startButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.primary[50],
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginTop: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary[200],
+  },
+  startButtonIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.sm,
+  },
+  startButtonText: {
+    flex: 1,
+    marginHorizontal: SPACING.md,
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '800',
+    color: COLORS.primary[800],
+  },
 });

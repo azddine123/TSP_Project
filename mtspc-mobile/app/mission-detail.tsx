@@ -13,7 +13,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Platform, Modal, Dimensions,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from 'react-native-maps';
+import { MapView, Marker, Polyline, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from '../components/MapViewWrapper';
 import NetInfo from '@react-native-community/netinfo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';

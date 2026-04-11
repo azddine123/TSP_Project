@@ -54,7 +54,7 @@ export default function DistributeurPage() {
               <line x1="12" y1="18" x2="12.01" y2="18" strokeLinecap="round" />
             </svg>
             <span className="text-sm font-bold text-blue-800">
-              Ouvrez l'app Logistique ReliefChain sur votre téléphone
+              Ouvrez l'app NAJDA sur votre téléphone
             </span>
           </div>
 

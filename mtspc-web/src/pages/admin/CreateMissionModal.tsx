@@ -3,10 +3,14 @@
  * Toute la logique métier est identique à l'original.
  */
 import React, { useEffect, useState } from 'react';
+// Import FORCÉ des mocks
 import {
-  missionApi, entrepotApi, distributeurApi, materielApi,
-  getApiErrorMessage,
-} from '../../services/api';
+  mockMissionApi as missionApi,
+  mockEntrepotApi as entrepotApi,
+  mockDistributeurApi as distributeurApi,
+  mockMaterielApi as materielApi,
+} from '../../mock/adminApi';
+import { getApiErrorMessage } from '../../services/api';
 import type { Entrepot, Distributeur, Materiel, CreateMissionDto, MissionPriorite } from '../../types';
 import { MISSION_PRIORITE_LABEL } from '../../constants';
 

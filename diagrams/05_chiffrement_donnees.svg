@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 680" width="1100" height="680" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="1100" height="680" fill="#0a0f1e"/>
+
+  <!-- Title -->
+  <rect x="150" y="18" width="800" height="48" rx="10" fill="#0d2137" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="550" y="40" text-anchor="middle" fill="#ef5350" font-size="16" font-weight="bold">🔐 Chiffrement des Données — NAJDA</text>
+  <text x="550" y="56" text-anchor="middle" fill="#ef9a9a" font-size="11">Données protégées en transit et au repos — AES-256 · TLS 1.3 · BCrypt</text>
+
+  <!-- ═══ EN TRANSIT ═══ -->
+  <rect x="20" y="90" width="510" height="480" rx="14" fill="#0d1b2e" stroke="#4fc3f7" stroke-width="2"/>
+  <rect x="20" y="90" width="510" height="44" rx="14" fill="#0d2137"/>
+  <text x="275" y="110" text-anchor="middle" fill="#4fc3f7" font-size="14" font-weight="bold">🔒 Données EN TRANSIT</text>
+  <text x="275" y="125" text-anchor="middle" fill="#90caf9" font-size="10">Chiffrement de toutes les communications réseau</text>
+
+  <!-- TLS Block -->
+  <rect x="40" y="148" width="470" height="100" rx="10" fill="#051428" stroke="#4fc3f7" stroke-width="1.5"/>
+  <text x="275" y="170" text-anchor="middle" fill="#4fc3f7" font-size="13" font-weight="bold">🔒 TLS 1.3 — Transport Layer Security</text>
+  <text x="275" y="190" text-anchor="middle" fill="#90caf9" font-size="10">• Handshake cryptographique à chaque connexion</text>
+  <text x="275" y="207" text-anchor="middle" fill="#90caf9" font-size="10">• Chiffrement symétrique AES-GCM pendant la session</text>
+  <text x="275" y="224" text-anchor="middle" fill="#90caf9" font-size="10">• Perfect Forward Secrecy (PFS) — clé unique par session</text>
+  <text x="275" y="239" text-anchor="middle" fill="#90caf9" font-size="10">• Certificat SSL/TLS vérifié par autorité de certification</text>
+
+  <!-- JWT Block -->
+  <rect x="40" y="262" width="220" height="110" rx="10" fill="#051428" stroke="#66bb6a" stroke-width="1.5"/>
+  <text x="150" y="282" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">🔑 JWT Token</text>
+  <text x="150" y="298" text-anchor="middle" fill="#a5d6a7" font-size="9">• Signé RS256 (clé asymétrique)</text>
+  <text x="150" y="313" text-anchor="middle" fill="#a5d6a7" font-size="9">• Expiration courte (15 min)</text>
+  <text x="150" y="328" text-anchor="middle" fill="#a5d6a7" font-size="9">• Refresh token sécurisé</text>
+  <text x="150" y="343" text-anchor="middle" fill="#a5d6a7" font-size="9">• Révocation instantanée</text>
+  <text x="150" y="358" text-anchor="middle" fill="#a5d6a7" font-size="9">• Payload chiffré (données sensibles)</text>
+
+  <!-- HTTPS Block -->
+  <rect x="290" y="262" width="220" height="110" rx="10" fill="#051428" stroke="#ab47bc" stroke-width="1.5"/>
+  <text x="400" y="282" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="bold">🌐 HTTPS Strict</text>
+  <text x="400" y="298" text-anchor="middle" fill="#ce93d8" font-size="9">• HSTS activé (force HTTPS)</text>
+  <text x="400" y="313" text-anchor="middle" fill="#ce93d8" font-size="9">• Redirection HTTP → HTTPS</text>
+  <text x="400" y="328" text-anchor="middle" fill="#ce93d8" font-size="9">• CORS strict configuré</text>
+  <text x="400" y="343" text-anchor="middle" fill="#ce93d8" font-size="9">• Headers sécurité (CSP, X-Frame)</text>
+  <text x="400" y="358" text-anchor="middle" fill="#ce93d8" font-size="9">• Certificate Pinning (mobile)</text>
+
+  <!-- Transmission flow -->
+  <rect x="40" y="385" width="470" height="80" rx="10" fill="#051428" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="275" y="405" text-anchor="middle" fill="#4fc3f7" font-size="12" font-weight="bold">📡 Schéma de transmission</text>
+  <text x="100" y="425" fill="#90caf9" font-size="10">Client</text>
+  <line x1="140" y1="422" x2="220" y2="422" stroke="#4fc3f7" stroke-width="1.5" marker-end="url(#arr1)"/>
+  <text x="175" y="416" text-anchor="middle" fill="#ffa726" font-size="9">Chiffré TLS</text>
+  <rect x="222" y="412" width="106" height="20" rx="4" fill="#1a3a5c" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="275" y="425" text-anchor="middle" fill="#4fc3f7" font-size="9">🔒 Canal TLS</text>
+  <line x1="330" y1="422" x2="410" y2="422" stroke="#4fc3f7" stroke-width="1.5" marker-end="url(#arr1)"/>
+  <text x="370" y="416" text-anchor="middle" fill="#ffa726" font-size="9">Chiffré TLS</text>
+  <text x="420" y="425" fill="#90caf9" font-size="10">Serveur</text>
+  <text x="275" y="455" text-anchor="middle" fill="#546e7a" font-size="9">Interception impossible — données illisibles sur le réseau</text>
+
+  <!-- Anti-MITM -->
+  <rect x="40" y="478" width="470" height="60" rx="10" fill="#051428" stroke="#ef5350" stroke-width="1"/>
+  <text x="275" y="498" text-anchor="middle" fill="#ef5350" font-size="11" font-weight="bold">🛡️ Protection MITM (Man-in-the-Middle)</text>
+  <text x="275" y="514" text-anchor="middle" fill="#ef9a9a" font-size="9">Certificate Pinning sur mobile · HSTS Preloading · OCSP Stapling</text>
+  <text x="275" y="528" text-anchor="middle" fill="#ef9a9a" font-size="9">Attaque interception détectée et bloquée automatiquement</text>
+
+  <!-- ═══ AU REPOS ═══ -->
+  <rect x="570" y="90" width="510" height="480" rx="14" fill="#0d1b2e" stroke="#ab47bc" stroke-width="2"/>
+  <rect x="570" y="90" width="510" height="44" rx="14" fill="#1a0a2e"/>
+  <text x="825" y="110" text-anchor="middle" fill="#ab47bc" font-size="14" font-weight="bold">🗄️ Données AU REPOS</text>
+  <text x="825" y="125" text-anchor="middle" fill="#ce93d8" font-size="10">Chiffrement des données stockées en base et sur l'appareil</text>
+
+  <!-- AES-256 -->
+  <rect x="590" y="148" width="470" height="100" rx="10" fill="#1a0a2e" stroke="#ab47bc" stroke-width="1.5"/>
+  <text x="825" y="170" text-anchor="middle" fill="#ab47bc" font-size="13" font-weight="bold">🔐 AES-256 — Advanced Encryption Standard</text>
+  <text x="825" y="190" text-anchor="middle" fill="#ce93d8" font-size="10">• Chiffrement symétrique 256-bit — standard militaire</text>
+  <text x="825" y="207" text-anchor="middle" fill="#ce93d8" font-size="10">• Toutes les colonnes sensibles chiffrées individuellement</text>
+  <text x="825" y="224" text-anchor="middle" fill="#ce93d8" font-size="10">• Chiffrement transparent via le HSM — invisible pour les devs</text>
+  <text x="825" y="239" text-anchor="middle" fill="#ce93d8" font-size="10">• Base de données entière chiffrée au niveau disque</text>
+
+  <!-- HSM -->
+  <rect x="590" y="262" width="220" height="110" rx="10" fill="#1a0a2e" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="700" y="282" text-anchor="middle" fill="#ef5350" font-size="12" font-weight="bold">🔐 HSM</text>
+  <text x="700" y="298" text-anchor="middle" fill="#ef9a9a" font-size="9">• Hardware Security Module</text>
+  <text x="700" y="313" text-anchor="middle" fill="#ef9a9a" font-size="9">• Clés jamais exposées en RAM</text>
+  <text x="700" y="328" text-anchor="middle" fill="#ef9a9a" font-size="9">• FIPS 140-2 Level 3 certifié</text>
+  <text x="700" y="343" text-anchor="middle" fill="#ef9a9a" font-size="9">• Rotation automatique des clés</text>
+  <text x="700" y="358" text-anchor="middle" fill="#ef9a9a" font-size="9">• Inviolable physiquement</text>
+
+  <!-- BCrypt -->
+  <rect x="840" y="262" width="220" height="110" rx="10" fill="#1a0a2e" stroke="#66bb6a" stroke-width="1.5"/>
+  <text x="950" y="282" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">🧂 BCrypt</text>
+  <text x="950" y="298" text-anchor="middle" fill="#a5d6a7" font-size="9">• Mots de passe hachés + salés</text>
+  <text x="950" y="313" text-anchor="middle" fill="#a5d6a7" font-size="9">• Cost factor 12 (lent par design)</text>
+  <text x="950" y="328" text-anchor="middle" fill="#a5d6a7" font-size="9">• Rainbow table impossible</text>
+  <text x="950" y="343" text-anchor="middle" fill="#a5d6a7" font-size="9">• Stocké irréversiblement</text>
+  <text x="950" y="358" text-anchor="middle" fill="#a5d6a7" font-size="9">• Jamais affiché ou loggé</text>
+
+  <!-- Data categories -->
+  <rect x="590" y="385" width="470" height="80" rx="10" fill="#1a0a2e" stroke="#ab47bc" stroke-width="1"/>
+  <text x="825" y="405" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="bold">📊 Catégories de données chiffrées</text>
+  <rect x="600" y="413" width="140" height="20" rx="4" fill="#2e1b2e" stroke="#ab47bc" stroke-width="1"/>
+  <text x="670" y="426" text-anchor="middle" fill="#ce93d8" font-size="9">🧑 Données bénéficiaires</text>
+  <rect x="750" y="413" width="130" height="20" rx="4" fill="#2e1b2e" stroke="#ef5350" stroke-width="1"/>
+  <text x="815" y="426" text-anchor="middle" fill="#ef9a9a" font-size="9">🔑 Credentials</text>
+  <rect x="890" y="413" width="160" height="20" rx="4" fill="#2e1b2e" stroke="#ffa726" stroke-width="1"/>
+  <text x="970" y="426" text-anchor="middle" fill="#ffd54f" font-size="9">📦 Données stocks sensibles</text>
+  <rect x="600" y="438" width="200" height="20" rx="4" fill="#2e1b2e" stroke="#66bb6a" stroke-width="1"/>
+  <text x="700" y="451" text-anchor="middle" fill="#a5d6a7" font-size="9">📍 Coordonnées GPS distributions</text>
+  <rect x="810" y="438" width="240" height="20" rx="4" fill="#2e1b2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="930" y="451" text-anchor="middle" fill="#90caf9" font-size="9">📋 Journaux d'audit (signés)</text>
+
+  <!-- Mobile encryption -->
+  <rect x="590" y="478" width="470" height="60" rx="10" fill="#1a0a2e" stroke="#ffa726" stroke-width="1"/>
+  <text x="825" y="498" text-anchor="middle" fill="#ffa726" font-size="11" font-weight="bold">📱 Chiffrement Mobile (Offline)</text>
+  <text x="825" y="514" text-anchor="middle" fill="#ffd54f" font-size="9">SQLite chiffré · Clé dérivée de la biométrie (PBKDF2) · Données illisibles sans empreinte</text>
+  <text x="825" y="528" text-anchor="middle" fill="#ffd54f" font-size="9">Keystore Android / iOS Secure Enclave — clé jamais exportable</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arr1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4fc3f7"/>
+    </marker>
+  </defs>
+
+  <!-- Footer -->
+  <rect x="20" y="588" width="1060" height="75" rx="10" fill="#0d1b2e" stroke="#546e7a" stroke-width="1" opacity="0.9"/>
+  <text x="550" y="608" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="bold">📖 Résumé du chiffrement NAJDA</text>
+  <rect x="36" y="617" width="230" height="32" rx="6" fill="#051428" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="151" y="630" text-anchor="middle" fill="#4fc3f7" font-size="10" font-weight="bold">En transit</text>
+  <text x="151" y="643" text-anchor="middle" fill="#90caf9" font-size="9">TLS 1.3 · HTTPS · JWT RS256</text>
+  <rect x="276" y="617" width="230" height="32" rx="6" fill="#1a0a2e" stroke="#ab47bc" stroke-width="1"/>
+  <text x="391" y="630" text-anchor="middle" fill="#ab47bc" font-size="10" font-weight="bold">Au repos</text>
+  <text x="391" y="643" text-anchor="middle" fill="#ce93d8" font-size="9">AES-256 · HSM · BCrypt</text>
+  <rect x="516" y="617" width="230" height="32" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="631" y="630" text-anchor="middle" fill="#ffa726" font-size="10" font-weight="bold">Sur mobile</text>
+  <text x="631" y="643" text-anchor="middle" fill="#ffd54f" font-size="9">SQLite chiffré · Secure Enclave</text>
+  <rect x="756" y="617" width="310" height="32" rx="6" fill="#1b2e1b" stroke="#66bb6a" stroke-width="1"/>
+  <text x="911" y="630" text-anchor="middle" fill="#66bb6a" font-size="10" font-weight="bold">Résistance aux attaques</text>
+  <text x="911" y="643" text-anchor="middle" fill="#a5d6a7" font-size="9">MITM · Brute Force · SQL Injection · vol appareil</text>
+</svg>

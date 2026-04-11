@@ -161,11 +161,26 @@ const AppSidebar: React.FC = () => {
       <div className={`py-8 flex ${!show ? 'lg:justify-center' : 'justify-start'}`}>
         <Link to="/" className="flex items-center gap-2">
           {show ? (
-            <span className="text-xl font-bold text-brand-500 font-outfit tracking-tight">
-              ReliefChain
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg bg-white">
+                <img 
+                  src="/NAJDA_Logo.png" 
+                  alt="NAJDA" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="text-xl font-bold text-brand-500 font-outfit tracking-tight">
+                NAJDA
+              </span>
+            </div>
           ) : (
-            <span className="text-xl font-bold text-brand-500">RC</span>
+            <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg bg-white">
+              <img 
+                src="/NAJDA_Logo.png" 
+                alt="NAJDA" 
+                className="w-full h-full object-cover"
+              />
+            </div>
           )}
         </Link>
       </div>

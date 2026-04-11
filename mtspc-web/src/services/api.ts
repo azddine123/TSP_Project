@@ -300,6 +300,112 @@ export const usersApi = {
     api.post(`/users/${id}/reset-password`).then((r) => r.data),
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOCK API CONDITIONNEL
+// =====================
+// Active les mocks quand USE_MOCK_DATA = true
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import { USE_MOCK_DATA as MOCK_ENABLED } from './mockApi';
+import * as mockApi from './mockApi';
+
+/**
+ * Proxy API conditionnel : utilise les mocks si MOCK_ENABLED = true
+ * Sinon utilise l'API réelle (axios)
+ */
+export const conditionalStockApi = {
+  getAll: () => MOCK_ENABLED ? mockApi.stockApi.getAll() : stockApi.getAll(),
+  getMine: () => MOCK_ENABLED ? mockApi.stockApi.getAll() : stockApi.getMine(),
+  createMouvement: (dto: unknown) => stockApi.createMouvement(dto as CreateMouvementDto),
+  getMouvements: (params?: unknown) => stockApi.getMouvements(params as { page?: number; limit?: number; type?: 'ENTREE' | 'SORTIE'; materielId?: string }),
+};
+
+export const conditionalMissionApi = {
+  getAll: () => MOCK_ENABLED ? mockApi.adminMissionApi.getAll() : missionApi.getAll(),
+  create: (dto: CreateMissionDto) => MOCK_ENABLED ? mockApi.missionApi.create(dto) : missionApi.create(dto),
+};
+
+export const conditionalAuditApi = {
+  getLogs: (params?: { page?: number; limit?: number; operation?: string }) => 
+    MOCK_ENABLED ? mockApi.auditApi.getLogs(params) : auditApi.getLogs(params),
+};
+
+export const conditionalEntrepotApi = {
+  getAll: () => MOCK_ENABLED ? mockApi.entrepotApi.getAll() : entrepotApi.getAll(),
+  getMine: () => entrepotApi.getMine(),
+};
+
+export const conditionalDistributeurApi = {
+  getAll: () => MOCK_ENABLED ? mockApi.distributeurApi.getAll() : distributeurApi.getAll(),
+};
+
+export const conditionalDouarApi = {
+  getAll: (params?: { province?: string }) => 
+    MOCK_ENABLED 
+      ? mockApi.douarApi.getByProvince(params?.province || '') 
+      : douarApi.getAll(params),
+  search: (q: string) => douarApi.search(q),
+};
+
+export const conditionalCriseApi = {
+  getAll: () => MOCK_ENABLED ? mockApi.criseApi.getAll() : criseApi.getAll(),
+  getActive: () => criseApi.getActive(),
+  getById: (id: string) => criseApi.getById(id),
+  create: (dto: CreateCriseDto) => criseApi.create(dto),
+  updateStatut: (id: string, statut: 'suspendue' | 'cloturee') => criseApi.updateStatut(id, statut),
+  updateSeverites: (id: string, severites: CreateCriseDto['severitesParDouar']) => criseApi.updateSeverites(id, severites),
+};
+
+export const conditionalVehiculeApi = {
+  getMine: () => MOCK_ENABLED 
+    ? Promise.resolve(mockApi.vehiculeApi.getAll().then(v => v.filter(vh => vh.entrepotId === 'entrepot-1'))) 
+    : vehiculeApi.getMine(),
+  create: (dto: CreateVehiculeDto) => vehiculeApi.create(dto),
+  updateStatut: (id: string, dto: UpdateVehiculeStatutDto) => vehiculeApi.updateStatut(id, dto),
+  remove: (id: string) => vehiculeApi.remove(id),
+};
+
+export const conditionalTourneeApi = {
+  getByCrise: (criseId: string) => tourneeApi.getByCrise(criseId),
+  getMine: () => tourneeApi.getMine(),
+  getById: (id: string) => tourneeApi.getById(id),
+  assigner: (id: string, dto: AssignerTourneeDto) => tourneeApi.assigner(id, dto),
+  reassigner: (id: string, dto: AssignerTourneeDto) => tourneeApi.reassigner(id, dto),
+  annuler: (id: string) => tourneeApi.annuler(id),
+};
+
+export const conditionalAlgoApi = {
+  runPipeline: (dto: RunPipelineDto) => algoApi.runPipeline(dto),
+  getStatus: (pipelineId: string) => algoApi.getStatus(pipelineId),
+  getHistory: (criseId: string) => algoApi.getHistory(criseId),
+  recalcul: (dto: RunPipelineDto) => algoApi.recalcul(dto),
+};
+
+export const conditionalSupervisionApi = {
+  getSnapshot: () => supervisionApi.getSnapshot(),
+  getStreamUrl: () => supervisionApi.getStreamUrl(),
+};
+
+export const conditionalEvenementApi = {
+  getByCrise: (criseId: string, page = 1, limit = 20) => evenementApi.getByCrise(criseId, page, limit),
+  getById: (id: string) => evenementApi.getById(id),
+  create: (dto: CreateEvenementDto) => evenementApi.create(dto),
+  sendAlert: (dto: SendAlertDto) => evenementApi.sendAlert(dto),
+  updateStatut: (id: string, statut: 'ouvert' | 'en_traitement' | 'resolu') => evenementApi.updateStatut(id, statut),
+};
+
+export const conditionalUsersApi = {
+  getAdmins: () => usersApi.getAdmins(),
+  getById: (id: string) => usersApi.getById(id),
+  create: (dto: CreateAdminEntrepotDto) => usersApi.create(dto),
+  updateStatut: (id: string, dto: UpdateAdminStatutDto) => usersApi.updateStatut(id, dto),
+  delete: (id: string) => usersApi.delete(id),
+  resetPassword: (id: string) => usersApi.resetPassword(id),
+};
+
+// Ré-export des mocks pour utilisation directe
+export { mockApi };
+
 export default api;
 
 // ── Ré-export des types pour la rétrocompatibilité ────────────────────────────

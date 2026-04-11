@@ -2,7 +2,17 @@
  * DASHBOARD ADMIN ENTREPÔT — Tailwind CSS
  */
 import { useEffect, useState, useCallback } from 'react';
-import { stockApi, missionApi } from '../../services/api';
+// Import FORCÉ des mocks - toujours utilisés même avec auth
+import { MOCK_STOCK, MOCK_ADMIN_MISSIONS } from '../../mock';
+
+// API MOCK UNIQUEMENT - ignore l'API réelle
+const stockApi = {
+  getAll: () => Promise.resolve([...MOCK_STOCK])
+};
+
+const missionApi = {
+  getAll: () => Promise.resolve([...MOCK_ADMIN_MISSIONS])
+};
 import type { StockRow, Mission } from '../../types';
 import {
   MISSION_STATUT_LABEL, MISSION_PRIORITE_LABEL,
@@ -110,7 +120,7 @@ export default function AdminDashboard() {
       const [s, m] = await Promise.all([stockApi.getAll(), missionApi.getAll()]);
       setStocks(s); setMissions(m);
     } catch {
-      setError('Impossible de charger les données. Vérifiez que le backend est démarré.');
+      setError('Impossible de charger les données.');
     } finally {
       setLoading(false);
     }

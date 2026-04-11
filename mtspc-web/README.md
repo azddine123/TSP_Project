@@ -1,183 +1,413 @@
-# ReliefChain — Frontend Web
+# MTSP-Web — Centre de Contrôle Web
 
-Interface de gestion logistique humanitaire pour la région Béni Mellal-Khénifra.
+> **Framework** : React 18 + TypeScript  
+> **Build Tool** : Vite  
+> **Styling** : Tailwind CSS  
+> **Routing** : React Router v6  
+> **Cartographie** : Leaflet + React-Leaflet  
+> **Authentification** : Keycloak JS  
+> **Version** : 1.0.0
 
-## Stack technique
+## 📋 Vue d'ensemble
 
-| Outil | Version | Rôle |
-|---|---|---|
-| React | 18.3 | Framework UI |
-| TypeScript | 5.4 | Typage statique |
-| Vite | 5.3 | Bundler & dev server |
-| MUI / MUI X DataGrid | 5.15 / 7.5 | Composants UI |
-| Leaflet / react-leaflet | 1.9 / 4.2 | Carte interactive |
-| Axios | 1.7 | Client HTTP |
-| Keycloak-JS | 24 | Authentification SSO |
-| React Router | 6.23 | Routage côté client |
+Le **Centre de Contrôle Web** de la plateforme NAJDA est une application React destinée aux **Super-Administrateurs** et **Administrateurs d'entrepôt**. Il fournit une interface complète pour :
 
----
-
-## Prérequis
-
-- Node.js 18+
-- Services suivants actifs (voir `LAUNCH_GUIDE.md` à la racine) :
-  - **Keycloak** sur `http://localhost:8180`
-  - **Backend NestJS** sur `http://localhost:9090`
+- 📊 **Supervision en temps réel** des opérations
+- 🗺️ **Visualisation cartographique** des missions et véhicules
+- 📦 **Gestion des stocks** et mouvements
+- 🚛 **Planification des missions** et tournées
+- 👥 **Administration des utilisateurs** (SuperAdmin)
+- 🔍 **Audit et traçabilité** de toutes les actions
 
 ---
 
-## Installation & lancement
+## 🏗️ Architecture
 
-```bash
-cd mtspc-web
-cp .env.example .env     # Vérifier les variables (voir ci-dessous)
-npm install
-npm run dev              # Démarre sur http://localhost:3000
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    MTSP-Web Architecture                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │                  React Router v6                       │ │
+│  ├───────────────────────────────────────────────────────┤ │
+│  │                                                       │ │
+│  │  /                    → HomeRedirect (selon rôle)     │ │
+│  │  /login               → Page de connexion             │ │
+│  │  /admin/*             → Dashboard Admin Entrepôt      │ │
+│  │  /superadmin/*        → Dashboard SuperAdmin          │ │
+│  │  /mobile-only         → Info distributeur             │ │
+│  │                                                       │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                           │                                 │
+│                           ▼                                 │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │                  Layout & Navigation                   │ │
+│  │  • AppLayout          → Structure principale          │ │
+│  │  • AppSidebar         → Menu latéral (collapsible)    │ │
+│  │  • AppHeader          → Header avec profil            │ │
+│  │  • SidebarContext     → État du menu                  │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                           │                                 │
+│                           ▼                                 │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │                  Contexts (Global State)               │ │
+│  │  • AuthContext        → Keycloak + rôles utilisateur  │ │
+│  │  • (Données via hooks useDataFetch)                   │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                           │                                 │
+│                           ▼                                 │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │                  Services & API                        │ │
+│  │  • keycloak.ts        → Instance Keycloak JS          │ │
+│  │  • useDataFetch.ts    → Hooks de fetch avec cache     │ │
+│  │  • API Layer          → Axios + interceptors          │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Variables d'environnement (`.env`)
+---
+
+## 📁 Structure des dossiers
+
+```
+mtspc-web/
+├── src/
+│   ├── main.tsx                   # Point d'entrée React
+│   ├── App.tsx                    # Routage principal
+│   │
+│   ├── pages/                     # Pages de l'application
+│   │   ├── LoginPage.tsx          # Authentification Keycloak
+│   │   ├── DistributeurPage.tsx   # Info "mobile only"
+│   │   │
+│   │   ├── admin/                 # Routes ADMIN_ENTREPOT
+│   │   │   ├── index.tsx          # Export AdminDashboard
+│   │   │   ├── AdminDashboard.tsx # Layout admin
+│   │   │   ├── AdminOverview.tsx  # Vue d'ensemble
+│   │   │   ├── StockPage.tsx      # Gestion des stocks
+│   │   │   ├── TourneesPage.tsx   # Tournées et itinéraires
+│   │   │   ├── VehiculesPage.tsx  # Gestion du parc
+│   │   │   ├── SuiviTerrainPage.tsx # Suivi des distributeurs
+│   │   │   └── CreateMissionModal.tsx # Création mission
+│   │   │
+│   │   └── superadmin/            # Routes SUPER_ADMIN
+│   │       ├── index.tsx          # Export SuperAdminDashboard
+│   │       ├── SuperAdminDashboard.tsx # Layout superadmin
+│   │       ├── CrisesPage.tsx     # Gestion des crises
+│   │       ├── SupervisionPage.tsx # Carte régionale temps réel
+│   │       ├── DispatchPage.tsx   # Dispatch missions
+│   │       ├── UsersPage.tsx      # Gestion utilisateurs
+│   │       ├── IncidentsPage.tsx  # Gestion incidents
+│   │       ├── AuditPage.tsx      # Journal d'audit
+│   │       └── PipelinePage.tsx   # Lancement algorithmes IA
+│   │
+│   ├── layout/                    # Composants de layout
+│   │   ├── AppLayout.tsx          # Structure principale
+│   │   ├── AppSidebar.tsx         # Menu latéral
+│   │   ├── AppHeader.tsx          # Header avec navigation
+│   │   └── SidebarContext.tsx     # État du sidebar
+│   │
+│   ├── components/                # Composants réutilisables
+│   │   └── ProtectedRoute.tsx     # Garde de route par rôle
+│   │
+│   ├── contexts/                  # Contexts React
+│   │   └── AuthContext.tsx        # Auth Keycloak + rôles
+│   │
+│   ├── hooks/                     # Custom hooks
+│   │   └── useDataFetch.ts        # Fetch avec cache/SWR
+│   │
+│   ├── types/                     # Types TypeScript
+│   │   └── index.ts               # Interfaces partagées
+│   │
+│   └── keycloak.ts                # Configuration Keycloak JS
+│
+├── public/                        # Assets statiques
+│   └── NAJDA_Logo.png             # Logo de la plateforme
+│
+├── index.html                     # Template HTML
+├── vite.config.ts                 # Configuration Vite
+├── tailwind.config.js             # Configuration Tailwind
+├── postcss.config.js              # Configuration PostCSS
+├── tsconfig.json                  # Configuration TypeScript
+└── package.json                   # Dépendances
+```
+
+---
+
+## 🔐 Authentification
+
+### Intégration Keycloak
+
+**Fichier** : `src/keycloak.ts`
+
+```typescript
+import Keycloak from 'keycloak-js';
+
+const keycloak = new Keycloak({
+  url: import.meta.env.VITE_KEYCLOAK_URL,
+  realm: 'Logistique',
+  clientId: 'logistique-web',
+});
+```
+
+### Flux d'authentification
+
+1. **Initialisation** : Keycloak.init() vérifie le token existant
+2. **Login** : Redirection vers Keycloak si non authentifié
+3. **Token** : Stocké en mémoire (pas de refresh token pour SPA)
+4. **Déconnexion** : Appel à Keycloak.logout() + redirection
+
+### Routage par rôle
+
+```typescript
+// App.tsx
+function HomeRedirect() {
+  const { hasRole } = useAuth();
+  if (hasRole('SUPER_ADMIN'))    return <Navigate to="/superadmin" />;
+  if (hasRole('ADMIN_ENTREPOT')) return <Navigate to="/admin" />;
+  return <Navigate to="/mobile-only" />;
+}
+```
+
+### ProtectedRoute
+
+```typescript
+<Route
+  path="/admin/*"
+  element={
+    <ProtectedRoute allowedRoles={['ADMIN_ENTREPOT']}>
+      <AdminDashboard />
+    </ProtectedRoute>
+  }
+/>
+```
+
+---
+
+## 🗺️ Cartographie
+
+### Leaflet + React-Leaflet
+
+**Fichier** : Utilisé dans `SupervisionPage.tsx`, `SuiviTerrainPage.tsx`
+
+```typescript
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+
+<MapContainer center={[32.32, -6.35]} zoom={8}>
+  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+  <Marker position={[douar.lat, douar.lng]}>
+    <Popup>{douar.nom}</Popup>
+  </Marker>
+</MapContainer>
+```
+
+### Couches disponibles
+
+- **OpenStreetMap** : Fond de carte standard
+- **Satellite** : (Optionnel) Google Maps Satellite
+- **Douars** : Marqueurs des villages
+- **Véhicules** : Position en temps réel (WebSocket)
+- **Missions** : Itinéraires colorés par statut
+
+---
+
+## 📊 Dashboards
+
+### Admin Entrepôt (`/admin`)
+
+Accès réservé aux gestionnaires d'entrepôt.
+
+| Page | Description |
+|------|-------------|
+| Vue d'ensemble | KPIs stocks, missions en cours, alertes |
+| Stocks | Inventaire, mouvements, seuils critiques |
+| Tournées | Planification VRP, optimisation IA |
+| Véhicules | État du parc, maintenance, assignation |
+| Suivi Terrain | Position GPS des distributeurs |
+
+### SuperAdmin (`/superadmin`)
+
+Accès complet pour la direction régionale.
+
+| Page | Description |
+|------|-------------|
+| Crises | Gestion des situations d'urgence |
+| Supervision | Carte régionale temps réel |
+| Dispatch | Assignation des ressources |
+| Utilisateurs | CRUD utilisateurs Keycloak |
+| Incidents | Traçabilité des problèmes |
+| Audit | Journal complet des actions |
+| Pipeline IA | Lancement algorithmes AHP/TOPSIS/VRP |
+
+---
+
+## 🚀 Démarrage
+
+### Prérequis
+- Node.js ≥ 18
+- Backend et Keycloak démarrés
+
+### Installation
+
+```bash
+cd mtspc-web/
+
+# 1. Installer les dépendances
+npm install
+
+# 2. Configurer l'environnement
+cp .env.example .env
+# Éditer .env avec les URLs
+
+# 3. Lancer en développement
+npm run dev
+
+# 4. Build de production
+npm run build
+```
+
+### Variables d'environnement (.env)
 
 ```env
+# === API Backend ===
+VITE_API_URL=http://localhost:9090/api/v1
+
+# === Keycloak ===
 VITE_KEYCLOAK_URL=http://localhost:8180
 VITE_KEYCLOAK_REALM=Logistique
 VITE_KEYCLOAK_CLIENT_ID=logistique-web
-VITE_API_URL=http://localhost:9090/api/v1
+
+# === Environment ===
+VITE_ENV=development
 ```
 
-### Scripts disponibles
+> Les variables doivent commencer par `VITE_` pour être exposées au client.
+
+### Accès
+
+- **Développement** : http://localhost:3000
+- **Production** : Fichiers statiques dans `dist/`
+
+---
+
+## 📦 Build et Déploiement
+
+### Build production
 
 ```bash
-npm run dev      # Serveur de développement (HMR)
-npm run build    # Vérification TypeScript + build production → dist/
-npm run preview  # Prévisualiser le build de production
+npm run build
+```
+
+Génère le dossier `dist/` avec :
+- Fichiers JS/CSS optimisés
+- Assets avec hash pour cache-busting
+- `index.html` prêt au déploiement
+
+### Déploiement
+
+#### Option 1 : Serveur statique
+
+```bash
+# Avec serve
+npx serve dist
+
+# Avec Nginx
+# Copier dist/ dans /var/www/html/
+```
+
+#### Option 2 : Docker
+
+```dockerfile
+FROM nginx:alpine
+COPY dist/ /usr/share/nginx/html/
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
 ```
 
 ---
 
-## Architecture
+## 🎨 Design System
 
-```
-src/
-├── main.tsx                  # Point d'entrée React
-├── App.tsx                   # Routage principal par rôle
-├── theme.ts                  # Thème MUI centralisé
-├── keycloak.ts               # Instance Keycloak singleton
-│
-├── types/
-│   └── index.ts              # Interfaces TypeScript partagées (source unique)
-│
-├── constants/
-│   └── index.ts              # Couleurs, labels, enums, formatage dates
-│
-├── contexts/
-│   └── AuthContext.tsx       # État d'auth global (useAuth hook)
-│
-├── hooks/
-│   └── useDataFetch.ts       # Hook générique loading/error/data
-│
-├── services/
-│   └── api.ts                # Client Axios + appels API métier
-│
-├── components/
-│   ├── Navbar.tsx            # Barre de navigation (role-based)
-│   ├── ProtectedRoute.tsx    # Garde d'accès par rôle
-│   ├── PageHeader.tsx        # En-tête de page standardisée
-│   ├── DataState.tsx         # États loading / error / empty
-│   └── RoleBadge.tsx         # Chip de rôle réutilisable
-│
-└── pages/
-    ├── DistributeurPage.tsx              # Accès mobile-only
-    ├── admin/
-    │   ├── AdminDashboard.tsx            # Stock + Missions (ADMIN_ENTREPOT)
-    │   └── CreateMissionModal.tsx        # Formulaire création mission
-    └── superadmin/
-        ├── SuperAdminDashboard.tsx       # Carte + Audit logs (SUPER_ADMIN)
-        └── SuperAdminDashboard.css       # Styles Leaflet popup
+### Couleurs
+
+| Couleur | Hex | Usage |
+|---------|-----|-------|
+| Brand Primary | `#0D47A1` | Header, boutons primaires |
+| Brand Secondary | `#1565C0` | Hover, accents |
+| Success | `#10B981` | Validation, succès |
+| Warning | `#F59E0B` | Alerte, attention |
+| Danger | `#EF4444` | Erreur, critique |
+
+### Breakpoints Tailwind
+
+```javascript
+// tailwind.config.js
+screens: {
+  'sm': '640px',
+  'md': '768px',
+  'lg': '1024px',
+  'xl': '1280px',
+}
 ```
 
 ---
 
-## Authentification & RBAC
+## 🧪 Tests
 
-L'authentification est entièrement déléguée à **Keycloak** (OAuth2 / OpenID Connect).
+```bash
+# Lancer les tests
+npm test
 
-| Rôle | Route | Accès |
-|---|---|---|
-| `SUPER_ADMIN` | `/superadmin` | Carte régionale + audit logs |
-| `ADMIN_ENTREPOT` | `/admin` | Stock + création de missions |
-| `DISTRIBUTEUR` | `/mobile-only` | Redirection vers l'app mobile |
+# Mode watch
+npm test -- --watch
 
-- **`AuthContext`** initialise Keycloak au démarrage et force le login (`onLoad: 'login-required'`).
-- **`ProtectedRoute`** vérifie le rôle côté React et affiche une page "Accès Refusé" si nécessaire.
-- **`api.ts`** injecte le JWT Bearer dans chaque requête et rafraîchit le token automatiquement (seuil 30s).
+# Coverage
+npm test -- --coverage
+```
 
 ---
 
-## Couche API
+## 🔧 Dépannage
 
-Tous les appels passent par `src/services/api.ts` :
+### Problème : "Keycloak is not initialized"
+**Solution** : Vérifier que les variables `VITE_KEYCLOAK_*` sont définies dans `.env`.
 
+### Problème : CORS sur les appels API
+**Solution** : Ajouter l'origine du frontend dans les `Web origins` du client Keycloak.
+
+### Problème : Carte Leaflet vide
+**Solution** : Vérifier que les styles CSS de Leaflet sont importés :
 ```typescript
-stockApi.getAll()          // GET  /stocks
-missionApi.getAll()        // GET  /missions
-missionApi.create(dto)     // POST /missions
-auditApi.getLogs(params)   // GET  /audit?page=&limit=&operation=
-entrepotApi.getAll()       // GET  /entrepots
-distributeurApi.getAll()   // GET  /distributeurs
-materielApi.getAll()       // GET  /materiels
+import 'leaflet/dist/leaflet.css';
 ```
 
-En cas d'erreur, utiliser `getApiErrorMessage(err)` pour obtenir un message lisible.
+### Problème : Hot reload lent
+**Solution** : Augmenter la mémoire de Node :
+```bash
+export NODE_OPTIONS="--max-old-space-size=4096"
+```
 
 ---
 
-## Conventions de développement
+## 📚 Ressources
 
-### Typage
-- Toutes les interfaces métier sont dans `src/types/index.ts`.
-- Ne pas redéfinir de types localement s'ils existent déjà dans `types/`.
-- Les composants MUI DataGrid utilisent `GridColDef` et `GridRenderCellParams<T>`.
-
-### Constantes
-- Les couleurs MUI, labels et formats de date sont dans `src/constants/index.ts`.
-- Ne pas dupliquer les maps couleur/label dans les composants.
-
-### Styles
-- Utiliser le prop `sx` de MUI en priorité.
-- Pas de `style={{}}` inline dans les composants React — exception : les Popups Leaflet (hors ThemeProvider), où des fichiers `.css` dédiés sont utilisés.
-- Le thème global est dans `src/theme.ts`.
-
-### Gestion des états de données
-- Utiliser `<DataState loading error empty>` pour tous les états loading/error/empty.
-- Utiliser `useDataFetch(fetcher)` pour le pattern simple (un seul endpoint).
-- Pour les chargements parallèles (`Promise.all`), gérer manuellement les états.
-
-### Composants réutilisables
-- `PageHeader` — en-tête de page avec titre, sous-titre et actions.
-- `DataState` — loading / error / empty state unifié.
-- `RoleBadge` — chip de rôle Keycloak coloré.
+- [React Documentation](https://react.dev)
+- [Vite Guide](https://vitejs.dev/guide/)
+- [Tailwind CSS](https://tailwindcss.com)
+- [React Router](https://reactrouter.com)
+- [Leaflet](https://leafletjs.com)
+- [Keycloak JS Adapter](https://www.keycloak.org/docs/latest/securing_apps/)
 
 ---
 
-## Décisions techniques
+## 👥 Équipe
 
-| Décision | Raison |
-|---|---|
-| Keycloak `onLoad: 'login-required'` | L'app ne s'affiche jamais sans authentification |
-| Token refresh à 30s (API) + 60s (onTokenExpired) | Double filet de sécurité session |
-| MUI DataGrid côté client (stock, missions) | Volumes < 10 000 lignes, filtres natifs suffisants |
-| MUI DataGrid côté serveur (audit logs) | Volume potentiellement élevé, pagination serveur obligatoire |
-| Leaflet + OpenStreetMap | Pas de clé API requise, licence libre |
-| `src/types/` séparé de `src/services/api.ts` | Source unique de vérité, évite les doublons inter-fichiers |
+- **Azddine EL Hamdaoui**
+- **Youssef Ait Karroum**
 
 ---
 
-## Améliorations futures (backlog)
+## 📄 Licence
 
-- [ ] Tests unitaires (Vitest + Testing Library)
-- [ ] Filtre par entrepôt / date dans les audit logs
-- [ ] Notifications temps réel (WebSocket) pour alertes de stock
-- [ ] Export CSV des missions et des logs d'audit
-- [ ] Mode sombre (thème MUI dark mode)
-- [ ] Pagination côté serveur pour les missions et stocks
-- [ ] Internationalisation (i18n) — actuellement fr-MA hardcodé
+Projet académique — Tous droits réservés © 2024

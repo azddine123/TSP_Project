@@ -91,7 +91,7 @@ const AppHeader: React.FC = () => {
 
           {/* Nom de l'app — visible uniquement sur mobile (la sidebar le cache sur desktop) */}
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 lg:hidden">
-            ReliefChain
+            NAJDA
           </span>
         </div>
 

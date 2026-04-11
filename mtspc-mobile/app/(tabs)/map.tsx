@@ -11,7 +11,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, Platform, StatusBar, Alert,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT, Region } from 'react-native-maps';
+import { MapView, Marker, PROVIDER_GOOGLE, PROVIDER_DEFAULT, Region } from '../../components/MapViewWrapper';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -126,7 +126,7 @@ function EntrepotInfoCard({ entrepot, onClose }: { entrepot: EntrepotStatique; o
 // ── Écran principal ───────────────────────────────────────────────────────────
 
 export default function MapScreen() {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [locationGranted, setLocationGranted] = useState(false);

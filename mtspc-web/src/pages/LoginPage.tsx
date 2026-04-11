@@ -34,20 +34,26 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-[420px]">
 
-        {/* En-tête */}
+        {/* En-tête avec Logo */}
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-            style={{ background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)', boxShadow: '0 8px 32px rgba(21,101,192,0.4)' }}
-          >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-              <line x1="3" y1="9" x2="21" y2="9" />
-            </svg>
+          <div className="relative inline-block mb-4">
+            <div 
+              className="w-28 h-28 rounded-full overflow-hidden shadow-2xl"
+              style={{ 
+                background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+                boxShadow: '0 8px 32px rgba(21,101,192,0.5), 0 0 0 4px rgba(255,255,255,0.1)' 
+              }}
+            >
+              <img 
+                src="/NAJDA_Logo.png" 
+                alt="NAJDA Logo" 
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-wide">ReliefChain</h1>
+          <h1 className="text-3xl font-extrabold text-white tracking-wide">NAJDA</h1>
           <p className="text-sm text-white/55 mt-1">
-            Plateforme Logistique Humanitaire · Béni Mellal-Khénifra
+            Plateforme de distribution humanitaire . Béni Mellal-Khénifra
           </p>
         </div>
 

@@ -4,7 +4,20 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { stockApi, vehiculeApi, tourneeApi, entrepotApi, getApiErrorMessage } from '../../services/api';
+// Import FORCÉ des mocks - Entrepôt A uniquement
+import { 
+  ENTREPOT_A,
+  STOCK_ENTREPOT_A,
+  VEHICULES_ENTREPOT_A,
+  TOURNEES_ENTREPOT_A,
+} from '../../mock';
+import { getApiErrorMessage } from '../../services/api';
+
+// API MOCK UNIQUEMENT - Entrepôt A pour l'admin
+const stockApi = { getMine: () => Promise.resolve([...STOCK_ENTREPOT_A]) };
+const vehiculeApi = { getMine: () => Promise.resolve([...VEHICULES_ENTREPOT_A]) };
+const tourneeApi = { getMine: () => Promise.resolve([...TOURNEES_ENTREPOT_A]) };
+const entrepotApi = { getMine: () => Promise.resolve({...ENTREPOT_A}) };
 import type { StockRow, Vehicule, Tournee, Entrepot } from '../../types';
 import { formatDateTime } from '../../constants';
 
@@ -62,7 +75,10 @@ export default function AdminOverview() {
         vehiculeApi.getMine(),
         tourneeApi.getMine(),
       ]);
-      setEntrepot(e); setStocks(s); setVehicules(v); setTournees(t);
+      setEntrepot(e as Entrepot); 
+      setStocks(s as StockRow[]); 
+      setVehicules(v as unknown as Vehicule[]); 
+      setTournees(t as unknown as Tournee[]);
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {

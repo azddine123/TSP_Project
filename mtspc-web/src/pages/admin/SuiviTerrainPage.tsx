@@ -7,7 +7,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { supervisionApi, tourneeApi, entrepotApi, getApiErrorMessage } from '../../services/api';
+// Import FORCÉ des mocks
+import { mockSupervisionApi as supervisionApi, mockTourneeApi as tourneeApi, mockEntrepotApi as entrepotApi } from '../../mock/adminApi';
+import { getApiErrorMessage } from '../../services/api';
 import type { Tournee, Entrepot, VehiculePosition } from '../../types';
 
 // Fix Leaflet default icon
@@ -60,14 +62,14 @@ export default function SuiviTerrainPage() {
     setLoading(true); setError(null);
     try {
       const [e, t] = await Promise.all([entrepotApi.getMine(), tourneeApi.getMine()]);
-      setEntrepot(e);
-      setTournees(t.filter((x) => x.statut === 'en_cours'));
+      setEntrepot(e as Entrepot);
+      setTournees((t as unknown as Tournee[]).filter((x) => x.statut === 'en_cours'));
 
       // Snapshot initial pour afficher immédiatement
-      const snap = await supervisionApi.getSnapshot();
+      const snap = await supervisionApi.getSnapshot() as { tourneesActives: number; alertes: number; lastUpdate: string; vehicules?: VehiculePosition[] };
       // Filtrer les véhicules appartenant aux tournées de cet entrepôt
-      const myTourneeIds = new Set(t.map((x) => x.id));
-      setVehicules(snap.vehicules.filter((v) => myTourneeIds.has(v.tourneeId)));
+      const myTourneeIds = new Set(t.map((x: unknown) => (x as Tournee).id));
+      setVehicules((snap.vehicules || []).filter((v) => myTourneeIds.has(v.tourneeId)));
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setLoading(false); }
   }, []);
@@ -76,26 +78,16 @@ export default function SuiviTerrainPage() {
 
   // SSE stream — filtrage client sur les tournées de cet entrepôt
   useEffect(() => {
-    const url = supervisionApi.getStreamUrl();
-    const es  = new EventSource(url);
-    esRef.current = es;
+    // SSE désactivé en mode mock
+    setConnected(true);
+    // const url = supervisionApi.getStreamUrl();
+    // const es  = new EventSource(url);
+    // esRef.current = es;
 
-    es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
-
-    es.onmessage = (event) => {
-      try {
-        const snap = JSON.parse(event.data);
-        setTournees((prev) => {
-          const myIds = new Set(prev.map((t) => t.id));
-          // Mise à jour du suivi GPS
-          setVehicules(snap.vehicules.filter((v: VehiculePosition) => myIds.has(v.tourneeId)));
-          return prev;
-        });
-      } catch { /* ignore parse errors */ }
+    return () => { 
+      // es.close(); 
+      setConnected(false); 
     };
-
-    return () => { es.close(); setConnected(false); };
   }, []);
 
   // Entrepôt center
@@ -138,6 +130,10 @@ export default function SuiviTerrainPage() {
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
         </div>
+      ) : !entrepot ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-8 text-center">
+          <p className="text-yellow-700">Aucun entrepôt associé à votre compte.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Carte Leaflet */}
@@ -163,19 +159,21 @@ export default function SuiviTerrainPage() {
               {/* Étapes (douars) des tournées en cours */}
               {activeTournees.map((t, ti) => {
                 const color = COLORS[ti % COLORS.length];
-                const latlngs = [...t.etapes]
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const etapes = t.etapes as any[];
+                const latlngs = etapes
                   .sort((a, b) => a.ordre - b.ordre)
-                  .filter((e) => e.douar.latitude && e.douar.longitude)
-                  .map((e): [number, number] => [e.douar.latitude, e.douar.longitude]);
+                  .filter((e) => e && (e.lat !== undefined) && (e.lng !== undefined))
+                  .map((e): [number, number] => [e.lat as number, e.lng as number]);
 
                 return (
                   <div key={t.id}>
                     {latlngs.length > 1 && (
                       <Polyline positions={latlngs} pathOptions={{ color, weight: 2, dashArray: '5,8', opacity: 0.6 }} />
                     )}
-                    {t.etapes.map((e) => e.douar.latitude && (
-                      <Marker key={e.id}
-                        position={[e.douar.latitude, e.douar.longitude]}
+                    {etapes.map((e) => e && e.lat !== undefined && e.lng !== undefined && (
+                      <Marker key={`${t.id}-${e.ordre}`}
+                        position={[e.lat as number, e.lng as number]}
                         icon={L.divIcon({
                           className: '',
                           html: `<div style="width:10px;height:10px;border-radius:50%;background:${
@@ -184,8 +182,7 @@ export default function SuiviTerrainPage() {
                           iconSize: [10, 10], iconAnchor: [5, 5],
                         })}>
                         <Popup>
-                          <strong>{e.ordre}. {e.douar.nom}</strong><br/>
-                          {e.douar.commune}<br/>
+                          <strong>{e.ordre}. {e.douar?.nom || `Douar ${e.ordre}`}</strong><br/>
                           <span style={{ color: e.statut === 'livree' ? '#10B981' : '#6B7280' }}>
                             {e.statut}
                           </span>

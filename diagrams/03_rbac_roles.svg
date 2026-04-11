@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 680" width="1100" height="680" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="1100" height="680" fill="#0a0f1e"/>
+
+  <!-- Title -->
+  <rect x="150" y="18" width="800" height="48" rx="10" fill="#0d2137" stroke="#ab47bc" stroke-width="1.5"/>
+  <text x="550" y="40" text-anchor="middle" fill="#ab47bc" font-size="16" font-weight="bold">🛂 Gestion des Rôles — RBAC — NAJDA</text>
+  <text x="550" y="56" text-anchor="middle" fill="#ce93d8" font-size="11">Role-Based Access Control — chaque rôle a des droits strictement définis</text>
+
+  <!-- ─────────────────────── SUPERADMIN ─────────────────────── -->
+  <rect x="20" y="90" width="320" height="530" rx="14" fill="#0d1b2e" stroke="#ef5350" stroke-width="2"/>
+  <rect x="20" y="90" width="320" height="46" rx="14" fill="#ef5350"/>
+  <text x="180" y="110" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="bold">👑 SuperAdmin</text>
+  <text x="180" y="127" text-anchor="middle" fill="#ffcdd2" font-size="10">Accès total — gestion de la plateforme</text>
+
+  <!-- SA permissions -->
+  <rect x="36" y="147" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="163" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="163" fill="#ffffff" font-size="11">Créer / gérer tous les utilisateurs</text>
+
+  <rect x="36" y="186" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="202" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="202" fill="#ffffff" font-size="11">Créer / gérer tous les entrepôts</text>
+
+  <rect x="36" y="225" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="241" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="241" fill="#ffffff" font-size="11">Voir tous les tableaux de bord</text>
+
+  <rect x="36" y="264" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="280" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="280" fill="#ffffff" font-size="11">Accès aux rapports et statistiques</text>
+
+  <rect x="36" y="303" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="319" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="319" fill="#ffffff" font-size="11">Gérer les missions et tournées</text>
+
+  <rect x="36" y="342" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="358" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="358" fill="#ffffff" font-size="11">Superviser le suivi terrain GPS</text>
+
+  <rect x="36" y="381" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="397" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="397" fill="#ffffff" font-size="11">Consulter les logs d'audit</text>
+
+  <rect x="36" y="420" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="436" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="436" fill="#ffffff" font-size="11">Gérer les stocks globaux</text>
+
+  <rect x="36" y="459" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="475" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="475" fill="#ffffff" font-size="11">Configuration sécurité système</text>
+
+  <rect x="36" y="498" width="288" height="32" rx="6" fill="#1a0a0a" stroke="#ef5350" stroke-width="1"/>
+  <text x="55" y="514" fill="#ef9a9a" font-size="10">✅</text>
+  <text x="70" y="514" fill="#ffffff" font-size="11">Alertes critiques et urgences</text>
+
+  <rect x="36" y="537" width="288" height="66" rx="6" fill="#2d0000" stroke="#ef5350" stroke-width="1"/>
+  <text x="180" y="557" text-anchor="middle" fill="#ef5350" font-size="10" font-weight="bold">🔐 Authentification requise</text>
+  <text x="180" y="573" text-anchor="middle" fill="#ef9a9a" font-size="9">Email + Mot de passe fort</text>
+  <text x="180" y="588" text-anchor="middle" fill="#ef9a9a" font-size="9">2FA recommandé · Session limitée</text>
+
+  <!-- ─────────────────────── ADMIN ENTREPÔT ─────────────────────── -->
+  <rect x="390" y="90" width="320" height="530" rx="14" fill="#0d1b2e" stroke="#ffa726" stroke-width="2"/>
+  <rect x="390" y="90" width="320" height="46" rx="14" fill="#ffa726"/>
+  <text x="550" y="110" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="bold">🏭 Admin Entrepôt</text>
+  <text x="550" y="127" text-anchor="middle" fill="#fff8e1" font-size="10">Accès local — gestion de son entrepôt</text>
+
+  <rect x="406" y="147" width="288" height="32" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="425" y="163" fill="#ffd54f" font-size="10">✅</text>
+  <text x="440" y="163" fill="#ffffff" font-size="11">Gérer les distributeurs assignés</text>
+
+  <rect x="406" y="186" width="288" height="32" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="425" y="202" fill="#ffd54f" font-size="10">✅</text>
+  <text x="440" y="202" fill="#ffffff" font-size="11">Créer et gérer les missions</text>
+
+  <rect x="406" y="225" width="288" height="32" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="425" y="241" fill="#ffd54f" font-size="10">✅</text>
+  <text x="440" y="241" fill="#ffffff" font-size="11">Gérer le stock de l'entrepôt</text>
+
+  <rect x="406" y="264" width="288" height="32" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="425" y="280" fill="#ffd54f" font-size="10">✅</text>
+  <text x="440" y="280" fill="#ffffff" font-size="11">Planifier les tournées</text>
+
+  <rect x="406" y="303" width="288" height="32" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="425" y="319" fill="#ffd54f" font-size="10">✅</text>
+  <text x="440" y="319" fill="#ffffff" font-size="11">Voir les rapports locaux</text>
+
+  <rect x="406" y="342" width="288" height="32" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="425" y="358" fill="#ffd54f" font-size="10">✅</text>
+  <text x="440" y="358" fill="#ffffff" font-size="11">Suivre les distributions en cours</text>
+
+  <rect x="406" y="381" width="288" height="32" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="425" y="397" fill="#ffd54f" font-size="10">✅</text>
+  <text x="440" y="397" fill="#ffffff" font-size="11">Gérer les véhicules locaux</text>
+
+  <rect x="406" y="420" width="288" height="32" rx="6" fill="#0d0d00" stroke="#546e7a" stroke-width="1"/>
+  <text x="425" y="436" fill="#546e7a" font-size="10">❌</text>
+  <text x="440" y="436" fill="#546e7a" font-size="11">Accès autres entrepôts (interdit)</text>
+
+  <rect x="406" y="459" width="288" height="32" rx="6" fill="#0d0d00" stroke="#546e7a" stroke-width="1"/>
+  <text x="425" y="475" fill="#546e7a" font-size="10">❌</text>
+  <text x="440" y="475" fill="#546e7a" font-size="11">Gestion utilisateurs globale (interdit)</text>
+
+  <rect x="406" y="498" width="288" height="32" rx="6" fill="#0d0d00" stroke="#546e7a" stroke-width="1"/>
+  <text x="425" y="514" fill="#546e7a" font-size="10">❌</text>
+  <text x="440" y="514" fill="#546e7a" font-size="11">Config. sécurité système (interdit)</text>
+
+  <rect x="406" y="537" width="288" height="66" rx="6" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="550" y="557" text-anchor="middle" fill="#ffa726" font-size="10" font-weight="bold">🔐 Authentification requise</text>
+  <text x="550" y="573" text-anchor="middle" fill="#ffd54f" font-size="9">Email + Mot de passe</text>
+  <text x="550" y="588" text-anchor="middle" fill="#ffd54f" font-size="9">Scope limité à son entrepôt</text>
+
+  <!-- ─────────────────────── DISTRIBUTEUR ─────────────────────── -->
+  <rect x="760" y="90" width="320" height="530" rx="14" fill="#0d1b2e" stroke="#4fc3f7" stroke-width="2"/>
+  <rect x="760" y="90" width="320" height="46" rx="14" fill="#1a3a5c"/>
+  <text x="920" y="110" text-anchor="middle" fill="#4fc3f7" font-size="14" font-weight="bold">📱 Distributeur</text>
+  <text x="920" y="127" text-anchor="middle" fill="#90caf9" font-size="10">Accès mobile — missions assignées uniquement</text>
+
+  <rect x="776" y="147" width="288" height="32" rx="6" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="795" y="163" fill="#90caf9" font-size="10">✅</text>
+  <text x="810" y="163" fill="#ffffff" font-size="11">Voir ses missions assignées</text>
+
+  <rect x="776" y="186" width="288" height="32" rx="6" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="795" y="202" fill="#90caf9" font-size="10">✅</text>
+  <text x="810" y="202" fill="#ffffff" font-size="11">Confirmer les livraisons</text>
+
+  <rect x="776" y="225" width="288" height="32" rx="6" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="795" y="241" fill="#90caf9" font-size="10">✅</text>
+  <text x="810" y="241" fill="#ffffff" font-size="11">Naviguer avec GPS temps réel</text>
+
+  <rect x="776" y="264" width="288" height="32" rx="6" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="795" y="280" fill="#90caf9" font-size="10">✅</text>
+  <text x="810" y="280" fill="#ffffff" font-size="11">Scanner les bénéficiaires</text>
+
+  <rect x="776" y="303" width="288" height="32" rx="6" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="795" y="319" fill="#90caf9" font-size="10">✅</text>
+  <text x="810" y="319" fill="#ffffff" font-size="11">Travailler en mode hors-ligne</text>
+
+  <rect x="776" y="342" width="288" height="32" rx="6" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="795" y="358" fill="#90caf9" font-size="10">✅</text>
+  <text x="810" y="358" fill="#ffffff" font-size="11">Signaler une anomalie</text>
+
+  <rect x="776" y="381" width="288" height="32" rx="6" fill="#0d0d00" stroke="#546e7a" stroke-width="1"/>
+  <text x="795" y="397" fill="#546e7a" font-size="10">❌</text>
+  <text x="810" y="397" fill="#546e7a" font-size="11">Gérer les stocks (interdit)</text>
+
+  <rect x="776" y="420" width="288" height="32" rx="6" fill="#0d0d00" stroke="#546e7a" stroke-width="1"/>
+  <text x="795" y="436" fill="#546e7a" font-size="10">❌</text>
+  <text x="810" y="436" fill="#546e7a" font-size="11">Voir les missions des autres (interdit)</text>
+
+  <rect x="776" y="459" width="288" height="32" rx="6" fill="#0d0d00" stroke="#546e7a" stroke-width="1"/>
+  <text x="795" y="475" fill="#546e7a" font-size="10">❌</text>
+  <text x="810" y="475" fill="#546e7a" font-size="11">Accès tableau de bord (interdit)</text>
+
+  <rect x="776" y="498" width="288" height="32" rx="6" fill="#0d0d00" stroke="#546e7a" stroke-width="1"/>
+  <text x="795" y="514" fill="#546e7a" font-size="10">❌</text>
+  <text x="810" y="514" fill="#546e7a" font-size="11">Modifier les tournées (interdit)</text>
+
+  <rect x="776" y="537" width="288" height="66" rx="6" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="920" y="557" text-anchor="middle" fill="#4fc3f7" font-size="10" font-weight="bold">🔐 Authentification renforcée</text>
+  <text x="920" y="573" text-anchor="middle" fill="#90caf9" font-size="9">Biométrie (empreinte / Face ID) + PIN</text>
+  <text x="920" y="588" text-anchor="middle" fill="#90caf9" font-size="9">Données locales chiffrées (offline)</text>
+
+  <!-- Footer -->
+  <rect x="20" y="638" width="1060" height="30" rx="8" fill="#0d1b2e" stroke="#ab47bc" stroke-width="1" opacity="0.8"/>
+  <text x="550" y="649" text-anchor="middle" fill="#ab47bc" font-size="10" font-weight="bold">Principe du moindre privilège :</text>
+  <text x="660" y="649" text-anchor="middle" fill="#ce93d8" font-size="10">chaque utilisateur accède uniquement aux ressources strictement nécessaires à son rôle</text>
+  <text x="550" y="662" text-anchor="middle" fill="#546e7a" font-size="9">NAJDA © 2026 — RBAC conforme aux bonnes pratiques de sécurité (OWASP, NIST)</text>
+</svg>

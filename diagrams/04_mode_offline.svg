@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 620" width="1100" height="620" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="1100" height="620" fill="#0a0f1e"/>
+
+  <!-- Title -->
+  <rect x="150" y="18" width="800" height="48" rx="10" fill="#0d2137" stroke="#ffa726" stroke-width="1.5"/>
+  <text x="550" y="40" text-anchor="middle" fill="#ffa726" font-size="16" font-weight="bold">📴 Mode Offline Sécurisé — App Mobile NAJDA</text>
+  <text x="550" y="56" text-anchor="middle" fill="#ffcc80" font-size="11">Fonctionnement hors-réseau + synchronisation sécurisée au retour</text>
+
+  <!-- ═══ PHASE 1 : EN LIGNE ═══ -->
+  <rect x="20" y="90" width="320" height="460" rx="14" fill="#0d1b2e" stroke="#4fc3f7" stroke-width="2"/>
+  <rect x="20" y="90" width="320" height="42" rx="14" fill="#1a3a5c"/>
+  <text x="180" y="108" text-anchor="middle" fill="#4fc3f7" font-size="13" font-weight="bold">📶 Phase 1 — En Ligne</text>
+  <text x="180" y="123" text-anchor="middle" fill="#90caf9" font-size="10">Connexion active au backend</text>
+
+  <rect x="36" y="144" width="288" height="70" rx="8" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="180" y="165" text-anchor="middle" fill="#4fc3f7" font-size="12" font-weight="bold">🔑 Authentification</text>
+  <text x="180" y="181" text-anchor="middle" fill="#90caf9" font-size="10">Biométrie + PIN vérifié</text>
+  <text x="180" y="196" text-anchor="middle" fill="#90caf9" font-size="10">JWT Token récupéré et stocké</text>
+
+  <rect x="36" y="225" width="288" height="70" rx="8" fill="#0a1a2e" stroke="#66bb6a" stroke-width="1"/>
+  <text x="180" y="246" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">📥 Téléchargement des données</text>
+  <text x="180" y="262" text-anchor="middle" fill="#a5d6a7" font-size="10">Missions assignées synchronisées</text>
+  <text x="180" y="277" text-anchor="middle" fill="#a5d6a7" font-size="10">Liste bénéficiaires chiffrée</text>
+
+  <rect x="36" y="306" width="288" height="70" rx="8" fill="#0a1a2e" stroke="#ab47bc" stroke-width="1"/>
+  <text x="180" y="327" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="bold">💾 Stockage local chiffré</text>
+  <text x="180" y="343" text-anchor="middle" fill="#ce93d8" font-size="10">SQLite + AES-256</text>
+  <text x="180" y="358" text-anchor="middle" fill="#ce93d8" font-size="10">Clé dérivée de la biométrie</text>
+
+  <rect x="36" y="387" width="288" height="50" rx="8" fill="#0a1a2e" stroke="#ffa726" stroke-width="1"/>
+  <text x="180" y="408" text-anchor="middle" fill="#ffa726" font-size="12" font-weight="bold">🗺️ Carte hors-ligne</text>
+  <text x="180" y="424" text-anchor="middle" fill="#ffcc80" font-size="10">Tuiles cartographiques sauvegardées</text>
+
+  <rect x="36" y="448" width="288" height="50" rx="8" fill="#0a1a2e" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="180" y="469" text-anchor="middle" fill="#4fc3f7" font-size="12" font-weight="bold">⏱️ File d'attente locale</text>
+  <text x="180" y="485" text-anchor="middle" fill="#90caf9" font-size="10">Actions mises en file avant envoi</text>
+
+  <!-- ═══ PHASE 2 : HORS LIGNE ═══ -->
+  <rect x="390" y="90" width="320" height="460" rx="14" fill="#0d1b2e" stroke="#ffa726" stroke-width="2"/>
+  <rect x="390" y="90" width="320" height="42" rx="14" fill="#2e2000"/>
+  <text x="550" y="108" text-anchor="middle" fill="#ffa726" font-size="13" font-weight="bold">📴 Phase 2 — Hors Ligne</text>
+  <text x="550" y="123" text-anchor="middle" fill="#ffd54f" font-size="10">Fonctionnement autonome sécurisé</text>
+
+  <rect x="406" y="144" width="288" height="70" rx="8" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="550" y="165" text-anchor="middle" fill="#ffa726" font-size="12" font-weight="bold">📱 App toujours fonctionnelle</text>
+  <text x="550" y="181" text-anchor="middle" fill="#ffd54f" font-size="10">Accès aux missions téléchargées</text>
+  <text x="550" y="196" text-anchor="middle" fill="#ffd54f" font-size="10">Navigation GPS (données locales)</text>
+
+  <rect x="406" y="225" width="288" height="70" rx="8" fill="#1e1500" stroke="#ef5350" stroke-width="1"/>
+  <text x="550" y="246" text-anchor="middle" fill="#ef5350" font-size="12" font-weight="bold">🔐 Accès données chiffrées</text>
+  <text x="550" y="262" text-anchor="middle" fill="#ef9a9a" font-size="10">Déchiffrement local via biométrie</text>
+  <text x="550" y="277" text-anchor="middle" fill="#ef9a9a" font-size="10">Aucune clé en clair sur l'appareil</text>
+
+  <rect x="406" y="306" width="288" height="70" rx="8" fill="#1e1500" stroke="#66bb6a" stroke-width="1"/>
+  <text x="550" y="327" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">✍️ Actions enregistrées</text>
+  <text x="550" y="343" text-anchor="middle" fill="#a5d6a7" font-size="10">Livraisons confirmées localement</text>
+  <text x="550" y="358" text-anchor="middle" fill="#a5d6a7" font-size="10">Horodatage et signature locale</text>
+
+  <rect x="406" y="387" width="288" height="50" rx="8" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="550" y="408" text-anchor="middle" fill="#ffa726" font-size="12" font-weight="bold">📝 Log local immuable</text>
+  <text x="550" y="424" text-anchor="middle" fill="#ffd54f" font-size="10">Chaque action tracée offline</text>
+
+  <rect x="406" y="448" width="288" height="50" rx="8" fill="#1e1500" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="550" y="469" text-anchor="middle" fill="#4fc3f7" font-size="12" font-weight="bold">🚫 Protection vol appareil</text>
+  <text x="550" y="485" text-anchor="middle" fill="#90caf9" font-size="10">Données illisibles sans biométrie</text>
+
+  <!-- ═══ PHASE 3 : SYNCHRONISATION ═══ -->
+  <rect x="760" y="90" width="320" height="460" rx="14" fill="#0d1b2e" stroke="#66bb6a" stroke-width="2"/>
+  <rect x="760" y="90" width="320" height="42" rx="14" fill="#1b2e1b"/>
+  <text x="920" y="108" text-anchor="middle" fill="#66bb6a" font-size="13" font-weight="bold">🔄 Phase 3 — Synchronisation</text>
+  <text x="920" y="123" text-anchor="middle" fill="#a5d6a7" font-size="10">Retour du réseau — sync sécurisée</text>
+
+  <rect x="776" y="144" width="288" height="70" rx="8" fill="#1b2e1b" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="920" y="165" text-anchor="middle" fill="#4fc3f7" font-size="12" font-weight="bold">📶 Réseau détecté</text>
+  <text x="920" y="181" text-anchor="middle" fill="#90caf9" font-size="10">Sync automatique déclenchée</text>
+  <text x="920" y="196" text-anchor="middle" fill="#90caf9" font-size="10">Nouveau token JWT obtenu</text>
+
+  <rect x="776" y="225" width="288" height="70" rx="8" fill="#1b2e1b" stroke="#ffa726" stroke-width="1"/>
+  <text x="920" y="246" text-anchor="middle" fill="#ffa726" font-size="12" font-weight="bold">📤 Envoi des données</text>
+  <text x="920" y="262" text-anchor="middle" fill="#ffd54f" font-size="10">Actions offline chiffrées TLS</text>
+  <text x="920" y="277" text-anchor="middle" fill="#ffd54f" font-size="10">Envoi par lot signé numériquement</text>
+
+  <rect x="776" y="306" width="288" height="70" rx="8" fill="#1b2e1b" stroke="#ab47bc" stroke-width="1"/>
+  <text x="920" y="327" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="bold">🔍 Vérification intégrité</text>
+  <text x="920" y="343" text-anchor="middle" fill="#ce93d8" font-size="10">Backend vérifie les signatures</text>
+  <text x="920" y="358" text-anchor="middle" fill="#ce93d8" font-size="10">Détection doublons et conflits</text>
+
+  <rect x="776" y="387" width="288" height="50" rx="8" fill="#1b2e1b" stroke="#66bb6a" stroke-width="1"/>
+  <text x="920" y="408" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">✅ Confirmation serveur</text>
+  <text x="920" y="424" text-anchor="middle" fill="#a5d6a7" font-size="10">Données validées et intégrées</text>
+
+  <rect x="776" y="448" width="288" height="50" rx="8" fill="#1b2e1b" stroke="#ef5350" stroke-width="1"/>
+  <text x="920" y="469" text-anchor="middle" fill="#ef5350" font-size="12" font-weight="bold">🗑️ Nettoyage local</text>
+  <text x="920" y="485" text-anchor="middle" fill="#ef9a9a" font-size="10">Cache sécurisé vidé post-sync</text>
+
+  <!-- Arrows between phases -->
+  <defs>
+    <marker id="arrowO" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#ffa726"/>
+    </marker>
+    <marker id="arrowG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#66bb6a"/>
+    </marker>
+  </defs>
+
+  <!-- Phase 1 → Phase 2 -->
+  <line x1="342" y1="320" x2="388" y2="320" stroke="#ffa726" stroke-width="2.5" stroke-dasharray="5,3" marker-end="url(#arrowO)"/>
+  <rect x="348" y="303" width="35" height="16" rx="3" fill="#0a0f1e"/>
+  <text x="365" y="315" text-anchor="middle" fill="#ffa726" font-size="9" font-weight="bold">Réseau</text>
+  <text x="365" y="325" text-anchor="middle" fill="#ffa726" font-size="8">coupé</text>
+
+  <!-- Phase 2 → Phase 3 -->
+  <line x1="712" y1="320" x2="758" y2="320" stroke="#66bb6a" stroke-width="2.5" marker-end="url(#arrowG)"/>
+  <rect x="718" y="303" width="35" height="16" rx="3" fill="#0a0f1e"/>
+  <text x="735" y="315" text-anchor="middle" fill="#66bb6a" font-size="9" font-weight="bold">Réseau</text>
+  <text x="735" y="325" text-anchor="middle" fill="#66bb6a" font-size="8">retrouvé</text>
+
+  <!-- Footer -->
+  <rect x="20" y="568" width="1060" height="40" rx="8" fill="#0d1b2e" stroke="#ffa726" stroke-width="1" opacity="0.8"/>
+  <text x="550" y="583" text-anchor="middle" fill="#ffa726" font-size="11" font-weight="bold">Principe clé :</text>
+  <text x="640" y="583" text-anchor="middle" fill="#ffcc80" font-size="11">les données offline sont aussi sécurisées que les données en ligne — chiffrement de bout en bout</text>
+  <text x="550" y="600" text-anchor="middle" fill="#546e7a" font-size="9">NAJDA © 2026 — Architecture résiliente conçue pour les zones à faible connectivité</text>
+</svg>

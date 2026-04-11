@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="1200" height="720" fill="#060b18"/>
+
+  <!-- Background glow effects -->
+  <radialGradient id="glow1" cx="20%" cy="50%" r="30%">
+    <stop offset="0%" stop-color="#1a3a5c" stop-opacity="0.4"/>
+    <stop offset="100%" stop-color="#060b18" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="glow2" cx="50%" cy="50%" r="30%">
+    <stop offset="0%" stop-color="#1b2e1b" stop-opacity="0.4"/>
+    <stop offset="100%" stop-color="#060b18" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="glow3" cx="80%" cy="50%" r="30%">
+    <stop offset="0%" stop-color="#2e1b2e" stop-opacity="0.4"/>
+    <stop offset="100%" stop-color="#060b18" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="1200" height="720" fill="url(#glow1)" opacity="0.6"/>
+  <rect width="1200" height="720" fill="url(#glow2)" opacity="0.6"/>
+  <rect width="1200" height="720" fill="url(#glow3)" opacity="0.6"/>
+
+  <!-- Grand titre -->
+  <rect x="100" y="14" width="1000" height="60" rx="12" fill="#0a1a30" stroke="#4fc3f7" stroke-width="2"/>
+  <text x="600" y="40" text-anchor="middle" fill="#4fc3f7" font-size="20" font-weight="bold">🛡️ NAJDA — Vue Globale de Sécurité</text>
+  <text x="600" y="62" text-anchor="middle" fill="#90caf9" font-size="12">Plateforme intelligente de distribution humanitaire · Architecture sécurisée de bout en bout</text>
+
+  <!-- ══════════ COLONNE GAUCHE : UTILISATEURS ══════════ -->
+  <rect x="16" y="92" width="230" height="560" rx="14" fill="#0a1828" stroke="#4fc3f7" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="131" y="114" text-anchor="middle" fill="#4fc3f7" font-size="12" font-weight="bold">👥 UTILISATEURS</text>
+
+  <!-- SuperAdmin card -->
+  <rect x="28" y="125" width="206" height="78" rx="10" fill="#1a3a5c" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="131" y="147" text-anchor="middle" font-size="20">🖥️</text>
+  <text x="131" y="166" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">SuperAdmin</text>
+  <text x="131" y="181" text-anchor="middle" fill="#ef9a9a" font-size="9">Accès total · Web · 2FA</text>
+  <rect x="35" y="187" width="50" height="12" rx="3" fill="#ef5350" opacity="0.8"/>
+  <text x="60" y="197" text-anchor="middle" fill="#fff" font-size="8">ROLE: ROOT</text>
+
+  <!-- Admin Entrepôt card -->
+  <rect x="28" y="215" width="206" height="78" rx="10" fill="#1a3a5c" stroke="#ffa726" stroke-width="1.5"/>
+  <text x="131" y="237" text-anchor="middle" font-size="20">🖥️</text>
+  <text x="131" y="256" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">Admin Entrepôt</text>
+  <text x="131" y="271" text-anchor="middle" fill="#ffd54f" font-size="9">Accès local · Web</text>
+  <rect x="35" y="277" width="70" height="12" rx="3" fill="#ffa726" opacity="0.8"/>
+  <text x="70" y="287" text-anchor="middle" fill="#fff" font-size="8">ROLE: ADMIN</text>
+
+  <!-- Distributeur card -->
+  <rect x="28" y="305" width="206" height="90" rx="10" fill="#1a3a5c" stroke="#4fc3f7" stroke-width="1.5"/>
+  <text x="131" y="327" text-anchor="middle" font-size="20">📱</text>
+  <text x="131" y="346" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">Distributeur</text>
+  <text x="131" y="361" text-anchor="middle" fill="#90caf9" font-size="9">App Mobile · Biométrie</text>
+  <rect x="35" y="368" width="90" height="12" rx="3" fill="#1a3a5c" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="80" y="378" text-anchor="middle" fill="#4fc3f7" font-size="8">ROLE: DISTRIBUTOR</text>
+  <rect x="28" y="407" width="206" height="36" rx="8" fill="#1e1500" stroke="#ffa726" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="131" y="421" text-anchor="middle" fill="#ffa726" font-size="10" font-weight="bold">📴 Mode Offline</text>
+  <text x="131" y="435" text-anchor="middle" fill="#ffd54f" font-size="8">SQLite AES-256 · Sync sécurisée</text>
+
+  <!-- Security badges -->
+  <rect x="28" y="458" width="96" height="30" rx="6" fill="#0d2137" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="76" y="477" text-anchor="middle" fill="#4fc3f7" font-size="9" font-weight="bold">🔒 TLS 1.3</text>
+  <rect x="134" y="458" width="100" height="30" rx="6" fill="#0d2137" stroke="#66bb6a" stroke-width="1"/>
+  <text x="184" y="477" text-anchor="middle" fill="#66bb6a" font-size="9" font-weight="bold">🔑 JWT Auth</text>
+  <rect x="28" y="496" width="206" height="30" rx="6" fill="#0d2137" stroke="#ab47bc" stroke-width="1"/>
+  <text x="131" y="515" text-anchor="middle" fill="#ab47bc" font-size="9" font-weight="bold">🛂 RBAC — Principe du moindre privilège</text>
+  <rect x="28" y="534" width="206" height="30" rx="6" fill="#0d2137" stroke="#ffa726" stroke-width="1"/>
+  <text x="131" y="553" text-anchor="middle" fill="#ffa726" font-size="9" font-weight="bold">🔐 BCrypt — Passwords hachés</text>
+  <rect x="28" y="572" width="206" height="30" rx="6" fill="#0d2137" stroke="#ef5350" stroke-width="1"/>
+  <text x="131" y="591" text-anchor="middle" fill="#ef5350" font-size="9" font-weight="bold">🚫 Rate Limiting — Anti-brute force</text>
+  <rect x="28" y="610" width="206" height="30" rx="6" fill="#0d2137" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="131" y="629" text-anchor="middle" fill="#4fc3f7" font-size="9" font-weight="bold">📱 Cert Pinning — Anti-MITM mobile</text>
+
+  <!-- ══════════ COLONNE CENTRALE : BACKEND ══════════ -->
+  <rect x="270" y="92" width="650" height="560" rx="14" fill="#0a180a" stroke="#66bb6a" stroke-width="2" stroke-dasharray="7,3"/>
+  <text x="595" y="114" text-anchor="middle" fill="#66bb6a" font-size="13" font-weight="bold">⚙️ BACKEND — API NestJS SÉCURISÉ</text>
+
+  <!-- API Gateway -->
+  <rect x="286" y="124" width="618" height="60" rx="10" fill="#1b2e1b" stroke="#66bb6a" stroke-width="1.5"/>
+  <text x="595" y="148" text-anchor="middle" fill="#66bb6a" font-size="13" font-weight="bold">⚡ API Gateway</text>
+  <text x="595" y="165" text-anchor="middle" fill="#a5d6a7" font-size="10">Firewall Applicatif · Validation des entrées · CORS · OWASP Protection · Rate Limiting</text>
+
+  <!-- Row 2 -->
+  <rect x="286" y="196" width="295" height="90" rx="10" fill="#1b2e1b" stroke="#4fc3f7" stroke-width="1.5"/>
+  <text x="433" y="218" text-anchor="middle" fill="#4fc3f7" font-size="12" font-weight="bold">🔑 Auth Service</text>
+  <text x="433" y="235" text-anchor="middle" fill="#90caf9" font-size="9">JWT · OAuth2 · BCrypt · Biométrie</text>
+  <text x="433" y="250" text-anchor="middle" fill="#90caf9" font-size="9">Token refresh · Révocation · 2FA</text>
+  <text x="433" y="265" text-anchor="middle" fill="#90caf9" font-size="9">Session management sécurisé</text>
+  <text x="433" y="280" text-anchor="middle" fill="#90caf9" font-size="9">Anti-brute force · Captcha</text>
+
+  <rect x="609" y="196" width="295" height="90" rx="10" fill="#1b2e1b" stroke="#ab47bc" stroke-width="1.5"/>
+  <text x="756" y="218" text-anchor="middle" fill="#ab47bc" font-size="12" font-weight="bold">🛂 RBAC &amp; Authorization</text>
+  <text x="756" y="235" text-anchor="middle" fill="#ce93d8" font-size="9">Guards NestJS · Decorators</text>
+  <text x="756" y="250" text-anchor="middle" fill="#ce93d8" font-size="9">Permissions granulaires par route</text>
+  <text x="756" y="265" text-anchor="middle" fill="#ce93d8" font-size="9">Vérification à chaque requête</text>
+  <text x="756" y="280" text-anchor="middle" fill="#ce93d8" font-size="9">Isolation des données par scope</text>
+
+  <!-- Row 3 : Business modules -->
+  <rect x="286" y="300" width="618" height="100" rx="10" fill="#1b2e1b" stroke="#66bb6a" stroke-width="1.5"/>
+  <text x="595" y="320" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">🧠 Modules Métier</text>
+  <rect x="296" y="328" width="106" height="28" rx="5" fill="#0d1b0d" stroke="#66bb6a" stroke-width="1"/>
+  <text x="349" y="345" text-anchor="middle" fill="#a5d6a7" font-size="9">📋 Missions</text>
+  <rect x="410" y="328" width="106" height="28" rx="5" fill="#0d1b0d" stroke="#66bb6a" stroke-width="1"/>
+  <text x="463" y="345" text-anchor="middle" fill="#a5d6a7" font-size="9">📦 Stocks</text>
+  <rect x="524" y="328" width="106" height="28" rx="5" fill="#0d1b0d" stroke="#66bb6a" stroke-width="1"/>
+  <text x="577" y="345" text-anchor="middle" fill="#a5d6a7" font-size="9">🗺️ Tournées</text>
+  <rect x="638" y="328" width="106" height="28" rx="5" fill="#0d1b0d" stroke="#66bb6a" stroke-width="1"/>
+  <text x="691" y="345" text-anchor="middle" fill="#a5d6a7" font-size="9">🚚 Véhicules</text>
+  <rect x="752" y="328" width="140" height="28" rx="5" fill="#0d1b0d" stroke="#66bb6a" stroke-width="1"/>
+  <text x="822" y="345" text-anchor="middle" fill="#a5d6a7" font-size="9">📊 Distributions</text>
+  <text x="595" y="384" text-anchor="middle" fill="#546e7a" font-size="9">Validation stricte · ORM sécurisé · Requêtes paramétrées (anti SQL injection)</text>
+
+  <!-- Row 4 -->
+  <rect x="286" y="414" width="295" height="90" rx="10" fill="#1b2e1b" stroke="#ffa726" stroke-width="1.5"/>
+  <text x="433" y="436" text-anchor="middle" fill="#ffa726" font-size="12" font-weight="bold">📋 Audit Logger</text>
+  <text x="433" y="453" text-anchor="middle" fill="#ffcc80" font-size="9">Journalisation immuable</text>
+  <text x="433" y="468" text-anchor="middle" fill="#ffcc80" font-size="9">Signature RSA · Hash SHA-256</text>
+  <text x="433" y="483" text-anchor="middle" fill="#ffcc80" font-size="9">Chaîne inviolable · Non-répudiation</text>
+  <text x="433" y="498" text-anchor="middle" fill="#ffcc80" font-size="9">Alertes anomalies temps réel</text>
+
+  <rect x="609" y="414" width="295" height="90" rx="10" fill="#1b2e1b" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="756" y="436" text-anchor="middle" fill="#ef5350" font-size="12" font-weight="bold">🔐 Encryption Layer</text>
+  <text x="756" y="453" text-anchor="middle" fill="#ef9a9a" font-size="9">AES-256 chiffrement des données</text>
+  <text x="756" y="468" text-anchor="middle" fill="#ef9a9a" font-size="9">Gestion clés via HSM</text>
+  <text x="756" y="483" text-anchor="middle" fill="#ef9a9a" font-size="9">Données sensibles masquées</text>
+  <text x="756" y="498" text-anchor="middle" fill="#ef9a9a" font-size="9">Chiffrement transparent</text>
+
+  <!-- Row 5 : Monitoring -->
+  <rect x="286" y="518" width="618" height="60" rx="10" fill="#1b2e1b" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="595" y="540" text-anchor="middle" fill="#4fc3f7" font-size="11" font-weight="bold">📡 Monitoring &amp; Sécurité Temps Réel</text>
+  <text x="595" y="558" text-anchor="middle" fill="#90caf9" font-size="9">Surveillance continue · Détection intrusion (IDS) · Alertes automatiques · Dashboard sécurité</text>
+  <text x="595" y="572" text-anchor="middle" fill="#90caf9" font-size="9">Scan vulnérabilités périodique · Pentests réguliers</text>
+
+  <!-- ══════════ COLONNE DROITE : BASE DE DONNÉES ══════════ -->
+  <rect x="946" y="92" width="238" height="560" rx="14" fill="#0f0a1e" stroke="#ab47bc" stroke-width="2" stroke-dasharray="6,3"/>
+  <text x="1065" y="114" text-anchor="middle" fill="#ab47bc" font-size="11" font-weight="bold">🗄️ BASE DE DONNÉES</text>
+
+  <!-- PostgreSQL -->
+  <rect x="960" y="124" width="210" height="100" rx="10" fill="#2e1b2e" stroke="#ab47bc" stroke-width="1.5"/>
+  <text x="1065" y="148" text-anchor="middle" font-size="20">🐘</text>
+  <text x="1065" y="168" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">PostgreSQL</text>
+  <text x="1065" y="184" text-anchor="middle" fill="#ce93d8" font-size="9">Chiffré au repos AES-256</text>
+  <text x="1065" y="198" text-anchor="middle" fill="#ce93d8" font-size="9">Accès : Backend uniquement</text>
+  <text x="1065" y="212" text-anchor="middle" fill="#ce93d8" font-size="9">0 accès direct externe</text>
+
+  <!-- HSM -->
+  <rect x="960" y="238" width="210" height="100" rx="10" fill="#2e1b2e" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="1065" y="262" text-anchor="middle" font-size="20">🔐</text>
+  <text x="1065" y="282" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">HSM</text>
+  <text x="1065" y="298" text-anchor="middle" fill="#ef9a9a" font-size="9">Hardware Security Module</text>
+  <text x="1065" y="313" text-anchor="middle" fill="#ef9a9a" font-size="9">FIPS 140-2 Level 3</text>
+  <text x="1065" y="327" text-anchor="middle" fill="#ef9a9a" font-size="9">Inviolable physiquement</text>
+
+  <!-- Backup -->
+  <rect x="960" y="352" width="210" height="80" rx="10" fill="#2e1b2e" stroke="#66bb6a" stroke-width="1.5"/>
+  <text x="1065" y="374" text-anchor="middle" font-size="18">💽</text>
+  <text x="1065" y="393" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Backup Chiffré</text>
+  <text x="1065" y="409" text-anchor="middle" fill="#a5d6a7" font-size="9">Auto · AES-256 · Hors-site</text>
+  <text x="1065" y="422" text-anchor="middle" fill="#a5d6a7" font-size="9">RTO &lt; 1h · RPO &lt; 15min</text>
+
+  <!-- Monitoring -->
+  <rect x="960" y="446" width="210" height="80" rx="10" fill="#2e1b2e" stroke="#4fc3f7" stroke-width="1.5"/>
+  <text x="1065" y="468" text-anchor="middle" font-size="18">📊</text>
+  <text x="1065" y="487" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Monitoring DB</text>
+  <text x="1065" y="503" text-anchor="middle" fill="#90caf9" font-size="9">Requêtes anormales</text>
+  <text x="1065" y="516" text-anchor="middle" fill="#90caf9" font-size="9">Alertes intrusion DB</text>
+
+  <!-- Compliance -->
+  <rect x="960" y="540" width="210" height="80" rx="10" fill="#2e1b2e" stroke="#ffa726" stroke-width="1.5"/>
+  <text x="1065" y="560" text-anchor="middle" font-size="18">✅</text>
+  <text x="1065" y="579" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Compliance</text>
+  <text x="1065" y="595" text-anchor="middle" fill="#ffcc80" font-size="9">RGPD · ISO 27001</text>
+  <text x="1065" y="608" text-anchor="middle" fill="#ffcc80" font-size="9">Audit trail certifié</text>
+
+  <!-- ══════════ ARROWS LEFT → CENTER ══════════ -->
+  <defs>
+    <marker id="aB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4fc3f7"/>
+    </marker>
+    <marker id="aG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#66bb6a"/>
+    </marker>
+    <marker id="aP" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#ab47bc"/>
+    </marker>
+  </defs>
+
+  <line x1="246" y1="165" x2="284" y2="155" stroke="#ef5350" stroke-width="2" marker-end="url(#aG)"/>
+  <line x1="246" y1="255" x2="284" y2="195" stroke="#ffa726" stroke-width="2" marker-end="url(#aG)"/>
+  <line x1="246" y1="350" x2="284" y2="195" stroke="#4fc3f7" stroke-width="2" marker-end="url(#aG)"/>
+  <rect x="250" y="220" width="40" height="14" rx="3" fill="#060b18"/>
+  <text x="270" y="230" text-anchor="middle" fill="#4fc3f7" font-size="8">HTTPS</text>
+  <rect x="250" y="236" width="40" height="14" rx="3" fill="#060b18"/>
+  <text x="270" y="246" text-anchor="middle" fill="#66bb6a" font-size="8">TLS 1.3</text>
+
+  <!-- CENTER → RIGHT arrows -->
+  <line x1="906" y1="300" x2="944" y2="280" stroke="#ab47bc" stroke-width="2" marker-end="url(#aP)"/>
+  <rect x="910" y="278" width="40" height="14" rx="3" fill="#060b18"/>
+  <text x="930" y="288" text-anchor="middle" fill="#ab47bc" font-size="8">SQL+TLS</text>
+
+  <!-- ══════════ FOOTER LÉGENDE ══════════ -->
+  <rect x="16" y="666" width="1168" height="42" rx="10" fill="#0a1828" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="50" y="682" fill="#4fc3f7" font-size="10" font-weight="bold">🔒 TLS 1.3</text>
+  <text x="50" y="696" fill="#90caf9" font-size="9">Chiffr. transit</text>
+  <text x="170" y="682" fill="#ab47bc" font-size="10" font-weight="bold">🔐 AES-256</text>
+  <text x="170" y="696" fill="#ce93d8" font-size="9">Chiffr. repos</text>
+  <text x="290" y="682" fill="#66bb6a" font-size="10" font-weight="bold">🔑 JWT</text>
+  <text x="290" y="696" fill="#a5d6a7" font-size="9">Auth token</text>
+  <text x="380" y="682" fill="#ef5350" font-size="10" font-weight="bold">🔐 HSM</text>
+  <text x="380" y="696" fill="#ef9a9a" font-size="9">Gestion clés</text>
+  <text x="470" y="682" fill="#ffa726" font-size="10" font-weight="bold">🛂 RBAC</text>
+  <text x="470" y="696" fill="#ffcc80" font-size="9">Accès par rôle</text>
+  <text x="560" y="682" fill="#66bb6a" font-size="10" font-weight="bold">🧂 BCrypt</text>
+  <text x="560" y="696" fill="#a5d6a7" font-size="9">Hash passwords</text>
+  <text x="660" y="682" fill="#4fc3f7" font-size="10" font-weight="bold">📋 Audit Log</text>
+  <text x="660" y="696" fill="#90caf9" font-size="9">Trace immuable</text>
+  <text x="770" y="682" fill="#ffa726" font-size="10" font-weight="bold">📴 Offline</text>
+  <text x="770" y="696" fill="#ffcc80" font-size="9">SQLite chiffré</text>
+  <text x="860" y="682" fill="#ef5350" font-size="10" font-weight="bold">🚫 Rate Limit</text>
+  <text x="860" y="696" fill="#ef9a9a" font-size="9">Anti-brute force</text>
+  <text x="970" y="682" fill="#ab47bc" font-size="10" font-weight="bold">🛡️ OWASP</text>
+  <text x="970" y="696" fill="#ce93d8" font-size="9">Protection top 10</text>
+  <text x="1080" y="682" fill="#546e7a" font-size="9">NAJDA © 2026</text>
+  <text x="1080" y="696" fill="#546e7a" font-size="9">All rights reserved</text>
+</svg>

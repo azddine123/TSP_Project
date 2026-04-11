@@ -5,7 +5,30 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { auditApi, entrepotApi } from '../../services/api';
+// Import FORCÉ des mocks - toujours utilisés même avec auth
+import { MOCK_ENTREPOTS, MOCK_AUDIT_LOGS } from '../../mock';
+
+// API MOCK UNIQUEMENT
+const entrepotApi = {
+  getAll: () => Promise.resolve([...MOCK_ENTREPOTS])
+};
+
+const auditApi = {
+  getLogs: (params?: { page?: number; limit?: number; operation?: string }) => {
+    let logs = [...MOCK_AUDIT_LOGS];
+    if (params?.operation) {
+      logs = logs.filter(l => l.operation === params.operation);
+    }
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 10;
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    return Promise.resolve({
+      data: logs.slice(start, end),
+      meta: { total: logs.length },
+    });
+  }
+};
 import type { AuditLog, Entrepot } from '../../types';
 import {
   ENTREPOT_STATUT_COLOR, formatDateTime,

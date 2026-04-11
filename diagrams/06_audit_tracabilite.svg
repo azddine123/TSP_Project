@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 660" width="1100" height="660" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="1100" height="660" fill="#0a0f1e"/>
+
+  <!-- Title -->
+  <rect x="150" y="18" width="800" height="48" rx="10" fill="#0d2137" stroke="#ffa726" stroke-width="1.5"/>
+  <text x="550" y="40" text-anchor="middle" fill="#ffa726" font-size="16" font-weight="bold">📋 Traçabilité &amp; Audit Log — NAJDA</text>
+  <text x="550" y="56" text-anchor="middle" fill="#ffcc80" font-size="11">Journalisation immuable de toutes les actions — intégrité garantie</text>
+
+  <!-- ═══ WHAT IS LOGGED ═══ -->
+  <rect x="20" y="90" width="340" height="480" rx="14" fill="#0d1b2e" stroke="#ffa726" stroke-width="2"/>
+  <rect x="20" y="90" width="340" height="44" rx="14" fill="#1e1500"/>
+  <text x="190" y="110" text-anchor="middle" fill="#ffa726" font-size="13" font-weight="bold">📝 Ce qui est journalisé</text>
+  <text x="190" y="125" text-anchor="middle" fill="#ffcc80" font-size="10">Chaque événement système est enregistré</text>
+
+  <rect x="36" y="147" width="308" height="40" rx="8" fill="#1e1500" stroke="#ef5350" stroke-width="1"/>
+  <text x="56" y="162" fill="#ef5350" font-size="16">🔑</text>
+  <text x="80" y="162" fill="#ffffff" font-size="11" font-weight="bold">Authentification</text>
+  <text x="80" y="178" fill="#ef9a9a" font-size="9">Connexion · Déconnexion · Échec · Token refresh</text>
+
+  <rect x="36" y="197" width="308" height="40" rx="8" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="56" y="212" fill="#ffa726" font-size="16">👁️</text>
+  <text x="80" y="212" fill="#ffffff" font-size="11" font-weight="bold">Consultation de données</text>
+  <text x="80" y="228" fill="#ffcc80" font-size="9">Qui a consulté quoi, quand, depuis quelle IP</text>
+
+  <rect x="36" y="247" width="308" height="40" rx="8" fill="#1e1500" stroke="#66bb6a" stroke-width="1"/>
+  <text x="56" y="262" fill="#66bb6a" font-size="16">✏️</text>
+  <text x="80" y="262" fill="#ffffff" font-size="11" font-weight="bold">Modifications</text>
+  <text x="80" y="278" fill="#a5d6a7" font-size="9">Création · Modification · Suppression de données</text>
+
+  <rect x="36" y="297" width="308" height="40" rx="8" fill="#1e1500" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="56" y="312" fill="#4fc3f7" font-size="16">📦</text>
+  <text x="80" y="312" fill="#ffffff" font-size="11" font-weight="bold">Distributions</text>
+  <text x="80" y="328" fill="#90caf9" font-size="9">Confirmation livraison · Signature bénéficiaire · GPS</text>
+
+  <rect x="36" y="347" width="308" height="40" rx="8" fill="#1e1500" stroke="#ab47bc" stroke-width="1"/>
+  <text x="56" y="362" fill="#ab47bc" font-size="16">🛂</text>
+  <text x="80" y="362" fill="#ffffff" font-size="11" font-weight="bold">Contrôle d'accès</text>
+  <text x="80" y="378" fill="#ce93d8" font-size="9">Tentatives accès refusé · Escalade de privilèges</text>
+
+  <rect x="36" y="397" width="308" height="40" rx="8" fill="#1e1500" stroke="#ef5350" stroke-width="1"/>
+  <text x="56" y="412" fill="#ef5350" font-size="16">⚠️</text>
+  <text x="80" y="412" fill="#ffffff" font-size="11" font-weight="bold">Alertes &amp; Anomalies</text>
+  <text x="80" y="428" fill="#ef9a9a" font-size="9">Intrusion détectée · Comportement suspect</text>
+
+  <rect x="36" y="447" width="308" height="40" rx="8" fill="#1e1500" stroke="#ffa726" stroke-width="1"/>
+  <text x="56" y="462" fill="#ffa726" font-size="16">⚙️</text>
+  <text x="80" y="462" fill="#ffffff" font-size="11" font-weight="bold">Actions système</text>
+  <text x="80" y="478" fill="#ffcc80" font-size="9">Config modifiée · Backup déclenché · Restart</text>
+
+  <rect x="36" y="497" width="308" height="40" rx="8" fill="#1e1500" stroke="#66bb6a" stroke-width="1"/>
+  <text x="56" y="512" fill="#66bb6a" font-size="16">📱</text>
+  <text x="80" y="512" fill="#ffffff" font-size="11" font-weight="bold">Actions Offline</text>
+  <text x="80" y="528" fill="#a5d6a7" font-size="9">Actions enregistrées hors-ligne · Sync vérifiée</text>
+
+  <!-- ═══ STRUCTURE DU LOG ═══ -->
+  <rect x="380" y="90" width="340" height="480" rx="14" fill="#0d1b2e" stroke="#4fc3f7" stroke-width="2"/>
+  <rect x="380" y="90" width="340" height="44" rx="14" fill="#0d2137"/>
+  <text x="550" y="110" text-anchor="middle" fill="#4fc3f7" font-size="13" font-weight="bold">🧱 Structure d'une entrée log</text>
+  <text x="550" y="125" text-anchor="middle" fill="#90caf9" font-size="10">Format JSON signé et horodaté</text>
+
+  <!-- JSON block -->
+  <rect x="396" y="144" width="308" height="300" rx="8" fill="#020810" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="410" y="164" fill="#546e7a" font-size="10">{</text>
+  <text x="420" y="182" fill="#ef5350" font-size="10">"id":</text>
+  <text x="455" y="182" fill="#a5d6a7" font-size="10">"uuid-v4-unique",</text>
+  <text x="420" y="198" fill="#ef5350" font-size="10">"timestamp":</text>
+  <text x="500" y="198" fill="#ffd54f" font-size="10">"2026-04-08T10:23:45Z",</text>
+  <text x="420" y="214" fill="#ef5350" font-size="10">"user_id":</text>
+  <text x="480" y="214" fill="#a5d6a7" font-size="10">"uuid-distributeur",</text>
+  <text x="420" y="230" fill="#ef5350" font-size="10">"user_role":</text>
+  <text x="490" y="230" fill="#ffcc80" font-size="10">"DISTRIBUTEUR",</text>
+  <text x="420" y="246" fill="#ef5350" font-size="10">"action":</text>
+  <text x="468" y="246" fill="#ce93d8" font-size="10">"LIVRAISON_CONFIRMER",</text>
+  <text x="420" y="262" fill="#ef5350" font-size="10">"resource":</text>
+  <text x="476" y="262" fill="#a5d6a7" font-size="10">"mission/456/douar/12",</text>
+  <text x="420" y="278" fill="#ef5350" font-size="10">"ip_source":</text>
+  <text x="485" y="278" fill="#90caf9" font-size="10">"41.248.x.x",</text>
+  <text x="420" y="294" fill="#ef5350" font-size="10">"gps_coords":</text>
+  <text x="494" y="294" fill="#90caf9" font-size="10">"33.123,-7.456",</text>
+  <text x="420" y="310" fill="#ef5350" font-size="10">"result":</text>
+  <text x="462" y="310" fill="#66bb6a" font-size="10">"SUCCESS",</text>
+  <text x="420" y="326" fill="#ef5350" font-size="10">"device":</text>
+  <text x="464" y="326" fill="#a5d6a7" font-size="10">"mobile-android-v3",</text>
+  <text x="420" y="342" fill="#ef5350" font-size="10">"hash_prev":</text>
+  <text x="487" y="342" fill="#ffa726" font-size="10">"sha256:a3f9b2...",</text>
+  <text x="420" y="358" fill="#ef5350" font-size="10">"signature":</text>
+  <text x="482" y="358" fill="#ffa726" font-size="10">"RSA:7f2d1a9c..."</text>
+  <text x="410" y="374" fill="#546e7a" font-size="10">}</text>
+  <text x="420" y="392" fill="#ffa726" font-size="9">// hash_prev = lien vers l'entrée précédente</text>
+  <text x="420" y="406" fill="#ffa726" font-size="9">// structure en chaîne = falsification détectée</text>
+  <text x="420" y="420" fill="#ffa726" font-size="9">// signature = authentification de l'entrée</text>
+  <text x="420" y="434" fill="#546e7a" font-size="9">// comparable à une blockchain d'audit</text>
+
+  <!-- Integrity guarantee -->
+  <rect x="396" y="460" width="308" height="78" rx="8" fill="#1a0a2e" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="550" y="480" text-anchor="middle" fill="#ef5350" font-size="12" font-weight="bold">🔗 Intégrité garantie</text>
+  <text x="550" y="497" text-anchor="middle" fill="#ef9a9a" font-size="9">Chaque log contient le hash du log précédent</text>
+  <text x="550" y="512" text-anchor="middle" fill="#ef9a9a" font-size="9">Modification d'un log = rupture de la chaîne</text>
+  <text x="550" y="527" text-anchor="middle" fill="#ef5350" font-size="9" font-weight="bold">→ Falsification immédiatement détectée</text>
+
+  <!-- ═══ ACCÈS AUX LOGS ═══ -->
+  <rect x="740" y="90" width="340" height="480" rx="14" fill="#0d1b2e" stroke="#66bb6a" stroke-width="2"/>
+  <rect x="740" y="90" width="340" height="44" rx="14" fill="#1b2e1b"/>
+  <text x="910" y="110" text-anchor="middle" fill="#66bb6a" font-size="13" font-weight="bold">🔍 Accès &amp; Consultation</text>
+  <text x="910" y="125" text-anchor="middle" fill="#a5d6a7" font-size="10">Qui peut voir les logs et comment</text>
+
+  <!-- Who can access -->
+  <rect x="756" y="147" width="308" height="90" rx="8" fill="#1b2e1b" stroke="#66bb6a" stroke-width="1"/>
+  <text x="910" y="167" text-anchor="middle" fill="#66bb6a" font-size="11" font-weight="bold">👥 Droits d'accès aux logs</text>
+  <rect x="766" y="176" width="130" height="22" rx="4" fill="#0d1b2e" stroke="#ef5350" stroke-width="1"/>
+  <text x="831" y="190" text-anchor="middle" fill="#ef5350" font-size="9">👑 SuperAdmin — Lecture seule</text>
+  <rect x="906" y="176" width="148" height="22" rx="4" fill="#0d1b2e" stroke="#546e7a" stroke-width="1"/>
+  <text x="980" y="190" text-anchor="middle" fill="#546e7a" font-size="9">❌ Admin — Aucun accès</text>
+  <rect x="766" y="202" width="148" height="22" rx="4" fill="#0d1b2e" stroke="#546e7a" stroke-width="1"/>
+  <text x="840" y="216" text-anchor="middle" fill="#546e7a" font-size="9">❌ Distributeur — Aucun accès</text>
+  <text x="910" y="232" text-anchor="middle" fill="#a5d6a7" font-size="9">Aucune modification possible pour personne</text>
+
+  <!-- Retention -->
+  <rect x="756" y="250" width="308" height="80" rx="8" fill="#1b2e1b" stroke="#ffa726" stroke-width="1"/>
+  <text x="910" y="270" text-anchor="middle" fill="#ffa726" font-size="11" font-weight="bold">📅 Rétention des logs</text>
+  <text x="910" y="288" text-anchor="middle" fill="#ffcc80" font-size="9">Conservation : 5 ans minimum</text>
+  <text x="910" y="303" text-anchor="middle" fill="#ffcc80" font-size="9">Archivage automatique chiffré AES-256</text>
+  <text x="910" y="318" text-anchor="middle" fill="#ffcc80" font-size="9">Backup hors-site sécurisé · Redondance</text>
+
+  <!-- Alerts -->
+  <rect x="756" y="344" width="308" height="80" rx="8" fill="#1b2e1b" stroke="#ef5350" stroke-width="1"/>
+  <text x="910" y="364" text-anchor="middle" fill="#ef5350" font-size="11" font-weight="bold">🚨 Alertes automatiques</text>
+  <text x="910" y="382" text-anchor="middle" fill="#ef9a9a" font-size="9">5+ échecs auth → Alerte + blocage IP</text>
+  <text x="910" y="397" text-anchor="middle" fill="#ef9a9a" font-size="9">Accès hors plage horaire → Alerte</text>
+  <text x="910" y="412" text-anchor="middle" fill="#ef9a9a" font-size="9">Anomalie géographique → Alerte</text>
+
+  <!-- Export -->
+  <rect x="756" y="438" width="308" height="80" rx="8" fill="#1b2e1b" stroke="#4fc3f7" stroke-width="1"/>
+  <text x="910" y="458" text-anchor="middle" fill="#4fc3f7" font-size="11" font-weight="bold">📤 Export &amp; Compliance</text>
+  <text x="910" y="476" text-anchor="middle" fill="#90caf9" font-size="9">Export CSV/JSON chiffré pour audit externe</text>
+  <text x="910" y="491" text-anchor="middle" fill="#90caf9" font-size="9">Compatible RGPD · Audit humanitaire</text>
+  <text x="910" y="506" text-anchor="middle" fill="#90caf9" font-size="9">Rapport automatique hebdomadaire</text>
+
+  <!-- Footer -->
+  <rect x="20" y="588" width="1060" height="55" rx="10" fill="#0d1b2e" stroke="#ffa726" stroke-width="1" opacity="0.9"/>
+  <text x="550" y="608" text-anchor="middle" fill="#ffa726" font-size="12" font-weight="bold">Principe fondamental :</text>
+  <text x="700" y="608" text-anchor="middle" fill="#ffcc80" font-size="12">tout ce qui se passe dans NAJDA laisse une trace immuable</text>
+  <text x="550" y="628" text-anchor="middle" fill="#90caf9" font-size="10">Chaîne de logs · Signature RSA · Hash SHA-256 · Horodatage UTC · Non répudiation garantie</text>
+  <text x="550" y="641" text-anchor="middle" fill="#546e7a" font-size="9">NAJDA © 2026 — Audit trail conforme aux exigences humanitaires internationales</text>
+</svg>
