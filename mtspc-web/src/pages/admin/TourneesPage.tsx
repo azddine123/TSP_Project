@@ -35,6 +35,14 @@ function EtapesList({ etapes }: { etapes: Tournee['etapes'] }) {
   );
 }
 
+// Priorité labels / couleurs pour TourneeCard
+const PRIORITE_COLOR: Record<string, string> = {
+  CRITIQUE: 'bg-red-100 text-red-700',
+  HAUTE:    'bg-orange-100 text-orange-700',
+  MOYENNE:  'bg-yellow-100 text-yellow-700',
+  BASSE:    'bg-green-100 text-green-700',
+};
+
 function TourneeCard({
   tournee, starting, onStart,
 }: {
@@ -42,92 +50,186 @@ function TourneeCard({
   starting: string | null;
   onStart: (id: string) => void;
 }) {
-  const cfg         = STATUT_CONFIG[tournee.statut];
+  const [expanded, setExpanded] = useState(false);
+
+  const cfg           = STATUT_CONFIG[tournee.statut];
   const etapesLivrees = tournee.etapes.filter((e) => e.statut === 'livree').length;
   const progression   = tournee.etapes.length > 0
     ? Math.round((etapesLivrees / tournee.etapes.length) * 100)
     : 0;
 
+  // Accès étendu aux étapes (avec priorite, scoreTopsis, ressources)
+  type EtapeExt = typeof tournee.etapes[0] & { priorite?: string; scoreTopsis?: number; ressources?: Record<string, number> };
+  const etapesExt = tournee.etapes as EtapeExt[];
+
   return (
-    <div className={`bg-white dark:bg-gray-900 rounded-2xl border shadow-theme-sm p-5 space-y-4 ${
+    <div className={`bg-white dark:bg-gray-900 rounded-2xl border shadow-theme-sm overflow-hidden ${
       tournee.statut === 'planifiee' ? 'border-yellow-200 dark:border-yellow-900/40' :
       tournee.statut === 'en_cours'  ? 'border-blue-200  dark:border-blue-900/40'   :
       'border-gray-200 dark:border-gray-800'
     }`}>
-      {/* En-tête */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
-            {tournee.statut === 'planifiee' && !tournee.distributeur && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600">Non assigné</span>
-            )}
-          </div>
-          <p className="font-bold text-gray-900 dark:text-white">
-            {tournee.entrepot.nom}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {tournee.etapes.length} douar(s) · {tournee.distanceTotale} km · ~{tournee.tempsEstime} min
-          </p>
-        </div>
-        <div className="text-right shrink-0">
-          {tournee.distributeur ? (
-            <div>
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                {tournee.distributeur.prenom} {tournee.distributeur.nom}
-              </p>
-              <p className="text-xs text-gray-400">Distributeur</p>
+      {/* En-tête cliquable */}
+      <div
+        className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
+              {(tournee as unknown as { missionNumero?: string }).missionNumero && (
+                <span className="text-xs font-mono text-gray-500">
+                  {(tournee as unknown as { missionNumero: string }).missionNumero}
+                </span>
+              )}
+              {tournee.statut === 'planifiee' && !tournee.distributeur && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600">Non assigné</span>
+              )}
             </div>
-          ) : (
-            <p className="text-xs text-gray-400 italic">Aucun distributeur</p>
-          )}
+            <p className="font-bold text-gray-900 dark:text-white">{tournee.entrepot.nom}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {tournee.etapes.length} douar(s) · {tournee.distanceTotale} km · ~{tournee.tempsEstime} min
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {tournee.distributeur ? (
+              <div className="text-right">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  {tournee.distributeur.prenom} {tournee.distributeur.nom}
+                </p>
+                <p className="text-xs text-gray-400">Distributeur</p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 italic">Aucun distributeur</p>
+            )}
+            <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${expanded ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
         </div>
+
+        {/* Progression */}
+        {tournee.statut === 'en_cours' && tournee.etapes.length > 0 && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-gray-500">Progression</span>
+              <span className="font-bold text-blue-600">{etapesLivrees}/{tournee.etapes.length} ({progression}%)</span>
+            </div>
+            <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${progression}%` }} />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Séquence des étapes */}
-      <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Séquence de livraison</p>
-        <EtapesList etapes={tournee.etapes} />
-      </div>
+      {/* Détail expandable */}
+      {expanded && (
+        <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
+          {/* Séquence étapes */}
+          <div className="px-5 pt-4 pb-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Séquence de livraison</p>
+            <EtapesList etapes={tournee.etapes} />
+          </div>
 
-      {/* Progression (si en cours) */}
-      {tournee.statut === 'en_cours' && tournee.etapes.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-gray-500">Progression</span>
-            <span className="font-bold text-blue-600">{etapesLivrees}/{tournee.etapes.length} ({progression}%)</span>
-          </div>
-          <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${progression}%` }} />
-          </div>
+          {/* Détail douars avec priorités et ressources */}
+          {etapesExt.some(e => e.priorite || e.scoreTopsis) && (
+            <div className="px-5 pb-4 space-y-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-2">Détail par douar</p>
+              {etapesExt.map(etape => (
+                <div key={etape.id} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {(etape as unknown as { douar?: { nom: string } }).douar?.nom ?? (etape as unknown as { douarNom?: string }).douarNom ?? `Étape ${etape.ordre}`}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {(etape as unknown as { population?: number }).population?.toLocaleString('fr-FR') ?? '—'} hab.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {etape.priorite && (
+                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${PRIORITE_COLOR[etape.priorite] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {etape.priorite}
+                        </span>
+                      )}
+                      {etape.scoreTopsis !== undefined && (
+                        <span className="text-xs font-bold text-brand-600 tabular-nums">
+                          {(etape.scoreTopsis * 100).toFixed(0)}%
+                        </span>
+                      )}
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+                        etape.statut === 'livree'    ? 'bg-green-100 text-green-700' :
+                        etape.statut === 'en_route'  ? 'bg-blue-100 text-blue-700 animate-pulse' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>{etape.statut}</span>
+                    </div>
+                  </div>
+                  {etape.ressources && Object.keys(etape.ressources).some(k => (etape.ressources as Record<string,number>)[k] > 0) && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(etape.ressources as Record<string,number>).tentes > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">⛺ {(etape.ressources as Record<string,number>).tentes}</span>
+                      )}
+                      {(etape.ressources as Record<string,number>).vivres > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 bg-yellow-50 text-yellow-600 rounded">🛒 {(etape.ressources as Record<string,number>).vivres}</span>
+                      )}
+                      {(etape.ressources as Record<string,number>).eau_litres > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 bg-cyan-50 text-cyan-600 rounded">💧 {(etape.ressources as Record<string,number>).eau_litres?.toLocaleString('fr-FR')} L</span>
+                      )}
+                      {(etape.ressources as Record<string,number>).kits_med > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 bg-red-50 text-red-600 rounded">🏥 {(etape.ressources as Record<string,number>).kits_med}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Actions */}
+          {(tournee.statut === 'planifiee' && tournee.distributeur) && (
+            <div className="px-5 pb-5">
+              {starting === tournee.id ? (
+                <div className="flex justify-center py-2">
+                  <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+                </div>
+              ) : (
+                <button onClick={(e) => { e.stopPropagation(); onStart(tournee.id); }}
+                  className="w-full py-3 rounded-xl font-bold text-sm text-white bg-brand-500 hover:bg-brand-600 transition-colors flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="9 11 12 14 22 4"/>
+                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                  </svg>
+                  Chargement terminé — Départ autorisé
+                </button>
+              )}
+            </div>
+          )}
+
+          {tournee.statut === 'planifiee' && !tournee.distributeur && (
+            <div className="px-5 pb-5">
+              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-2.5 text-xs text-orange-600 dark:text-orange-400 text-center">
+                En attente d'affectation d'un distributeur par le Super Admin
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Actions */}
-      {tournee.statut === 'planifiee' && tournee.distributeur && (
-        <div className="pt-1">
+      {/* Actions compactes (quand pas expanded) */}
+      {!expanded && tournee.statut === 'planifiee' && tournee.distributeur && (
+        <div className="px-5 pb-4">
           {starting === tournee.id ? (
-            <div className="flex justify-center py-2">
-              <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
-            </div>
+            <div className="flex justify-center py-1"><div className="w-4 h-4 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" /></div>
           ) : (
-            <button
-              onClick={() => onStart(tournee.id)}
-              className="w-full py-3 rounded-xl font-bold text-sm text-white bg-brand-500 hover:bg-brand-600 transition-colors flex items-center justify-center gap-2"
-            >
+            <button onClick={(e) => { e.stopPropagation(); onStart(tournee.id); }}
+              className="w-full py-2.5 rounded-xl font-bold text-sm text-white bg-brand-500 hover:bg-brand-600 transition-colors flex items-center justify-center gap-2">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 11 12 14 22 4"/>
-                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
               </svg>
-              Chargement terminé — Départ autorisé
+              Départ autorisé
             </button>
           )}
-        </div>
-      )}
-
-      {tournee.statut === 'planifiee' && !tournee.distributeur && (
-        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-2.5 text-xs text-orange-600 dark:text-orange-400 text-center">
-          En attente d'affectation d'un distributeur par le Super Admin
         </div>
       )}
     </div>

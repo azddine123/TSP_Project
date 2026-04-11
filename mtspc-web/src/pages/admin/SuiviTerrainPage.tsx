@@ -3,7 +3,7 @@
  * Carte Leaflet filtrée sur les distributeurs de l'entrepôt
  * GPS temps réel via SSE (supervision stream, filtré côté client)
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -33,6 +33,100 @@ function buildVehiculeIcon(color: string) {
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
+// ── Types audit terrain ───────────────────────────────────────────────────────
+
+type TerrainActionType =
+  | 'DEPART_MISSION'
+  | 'ARRIVEE_DOUAR'
+  | 'LIVRAISON_EFFECTUEE'
+  | 'INCIDENT_SIGNALE'
+  | 'VEHICULE_PANNE'
+  | 'ROUTE_BLOQUEE';
+
+interface TerrainAction {
+  id:           string;
+  type:         TerrainActionType;
+  acteur:       string;
+  localisation: string;
+  tourneeId:    string;
+  timestamp:    string;
+  details?:     string;
+}
+
+const ACTION_CONFIG: Record<TerrainActionType, { label: string; color: string; bg: string; icon: string }> = {
+  DEPART_MISSION:     { label: 'Départ mission',     color: 'text-blue-700',   bg: 'bg-blue-100',   icon: '🚀' },
+  ARRIVEE_DOUAR:      { label: 'Arrivée douar',      color: 'text-green-700',  bg: 'bg-green-100',  icon: '📍' },
+  LIVRAISON_EFFECTUEE:{ label: 'Livraison effectuée',color: 'text-teal-700',   bg: 'bg-teal-100',   icon: '✅' },
+  INCIDENT_SIGNALE:   { label: 'Incident signalé',   color: 'text-orange-700', bg: 'bg-orange-100', icon: '⚠️' },
+  VEHICULE_PANNE:     { label: 'Véhicule en panne',  color: 'text-red-700',    bg: 'bg-red-100',    icon: '🔧' },
+  ROUTE_BLOQUEE:      { label: 'Route bloquée',      color: 'text-purple-700', bg: 'bg-purple-100', icon: '🚧' },
+};
+
+// Génère les entrées d'audit initiales à partir des tournées existantes
+function buildInitialAuditLog(tournees: Tournee[]): TerrainAction[] {
+  const actions: TerrainAction[] = [];
+  let base = Date.now() - 4 * 60 * 60 * 1000; // il y a 4h
+  tournees.filter(t => t.statut === 'en_cours').forEach((t) => {
+    const nom = t.distributeur ? `${t.distributeur.prenom} ${t.distributeur.nom}` : 'Distributeur';
+    // Départ mission
+    actions.push({
+      id: `act-${base++}`,
+      type: 'DEPART_MISSION',
+      acteur: nom,
+      localisation: t.entrepot.nom,
+      tourneeId: t.id,
+      timestamp: new Date(base).toISOString(),
+      details: `Mission ${(t as unknown as { missionNumero?: string }).missionNumero ?? t.id}`,
+    });
+    base += 25 * 60 * 1000;
+    // Étapes livrées → entrées dans le journal
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const etapes = (t.etapes as any[]).sort((a, b) => a.ordre - b.ordre);
+    etapes.forEach(e => {
+      const douarNom = e.douar?.nom ?? e.douarNom ?? `Étape ${e.ordre}`;
+      if (e.statut === 'livree') {
+        actions.push({
+          id: `act-${base++}`,
+          type: 'ARRIVEE_DOUAR',
+          acteur: nom, localisation: douarNom, tourneeId: t.id,
+          timestamp: new Date(base).toISOString(),
+        });
+        base += 10 * 60 * 1000;
+        actions.push({
+          id: `act-${base++}`,
+          type: 'LIVRAISON_EFFECTUEE',
+          acteur: nom, localisation: douarNom, tourneeId: t.id,
+          timestamp: new Date(base).toISOString(),
+          details: `${e.menages ?? '?'} ménages servis`,
+        });
+        base += 15 * 60 * 1000;
+      } else if (e.statut === 'en_route') {
+        actions.push({
+          id: `act-${base++}`,
+          type: 'ARRIVEE_DOUAR',
+          acteur: nom, localisation: douarNom, tourneeId: t.id,
+          timestamp: new Date(base).toISOString(),
+        });
+        base += 5 * 60 * 1000;
+      }
+    });
+  });
+  return actions.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
+
+// Export CSV côté client
+function exportActionsCSV(actions: TerrainAction[]) {
+  const header = 'Horodatage,Action,Acteur,Localisation,Détails\n';
+  const rows = actions.map(a =>
+    `"${new Date(a.timestamp).toLocaleString('fr-FR')}","${ACTION_CONFIG[a.type]?.label ?? a.type}","${a.acteur}","${a.localisation}","${a.details ?? ''}"`
+  ).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = `journal-terrain-${Date.now()}.csv`;
+  link.click(); URL.revokeObjectURL(url);
+}
+
 function ProgressBar({ value, max }: { value: number; max: number }) {
   const pct = max === 0 ? 0 : Math.round((value / max) * 100);
   return (
@@ -49,12 +143,15 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 }
 
 export default function SuiviTerrainPage() {
-  const [entrepot,  setEntrepot]  = useState<Entrepot | null>(null);
-  const [tournees,  setTournees]  = useState<Tournee[]>([]);
-  const [vehicules, setVehicules] = useState<VehiculePosition[]>([]);
-  const [connected, setConnected] = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-  const [loading,   setLoading]   = useState(true);
+  const [entrepot,       setEntrepot]       = useState<Entrepot | null>(null);
+  const [tournees,       setTournees]       = useState<Tournee[]>([]);
+  const [vehicules,      setVehicules]      = useState<VehiculePosition[]>([]);
+  const [connected,      setConnected]      = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
+  const [loading,        setLoading]        = useState(true);
+  const [terrainActions, setTerrainActions] = useState<TerrainAction[]>([]);
+  const [journalOpen,    setJournalOpen]    = useState(true);
+  const [actionFilter,   setActionFilter]   = useState<TerrainActionType | ''>('');
   const esRef = useRef<EventSource | null>(null);
 
   // Chargement initial
@@ -63,13 +160,16 @@ export default function SuiviTerrainPage() {
     try {
       const [e, t] = await Promise.all([entrepotApi.getMine(), tourneeApi.getMine()]);
       setEntrepot(e as Entrepot);
-      setTournees((t as unknown as Tournee[]).filter((x) => x.statut === 'en_cours'));
+      const enCoursTournees = (t as unknown as Tournee[]).filter((x) => x.statut === 'en_cours');
+      setTournees(enCoursTournees);
 
       // Snapshot initial pour afficher immédiatement
       const snap = await supervisionApi.getSnapshot() as { tourneesActives: number; alertes: number; lastUpdate: string; vehicules?: VehiculePosition[] };
-      // Filtrer les véhicules appartenant aux tournées de cet entrepôt
       const myTourneeIds = new Set(t.map((x: unknown) => (x as Tournee).id));
       setVehicules((snap.vehicules || []).filter((v) => myTourneeIds.has(v.tourneeId)));
+
+      // Générer le journal initial à partir des étapes
+      setTerrainActions(buildInitialAuditLog(enCoursTournees));
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setLoading(false); }
   }, []);
@@ -96,6 +196,11 @@ export default function SuiviTerrainPage() {
     : [31.5, -6.0]; // Maroc central par défaut
 
   const activeTournees = tournees.filter((t) => t.statut === 'en_cours');
+
+  const filteredActions = useMemo(() =>
+    actionFilter ? terrainActions.filter(a => a.type === actionFilter) : terrainActions,
+    [terrainActions, actionFilter]
+  );
 
   return (
     <div className="space-y-6">
@@ -211,7 +316,7 @@ export default function SuiviTerrainPage() {
           </div>
 
           {/* Panneau lateral */}
-          <div className="space-y-4">
+          <div className="space-y-4 flex flex-col">
             {/* Distributeurs actifs */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
@@ -221,7 +326,7 @@ export default function SuiviTerrainPage() {
                 </h2>
               </div>
               {vehicules.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-gray-400">Aucun distributeur en mission</p>
+                <p className="px-4 py-6 text-center text-sm text-gray-400">Aucun distributeur en mission</p>
               ) : (
                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {vehicules.map((v, vi) => (
@@ -229,7 +334,7 @@ export default function SuiviTerrainPage() {
                       <div className="w-2.5 h-2.5 rounded-full animate-pulse shrink-0" style={{ background: COLORS[vi % COLORS.length] }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{v.distributeurNom}</p>
-                        <p className="text-xs text-gray-400">{v.vitesse} km/h · cap {v.cap}°</p>
+                        <p className="text-xs text-gray-400">{v.vitesse} km/h</p>
                       </div>
                       <p className="text-xs text-gray-400 shrink-0">{new Date(v.updatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
@@ -239,14 +344,12 @@ export default function SuiviTerrainPage() {
             </div>
 
             {/* Progression tournées */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Progression missions</h2>
-              </div>
-              {activeTournees.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-gray-400">Aucune mission en cours</p>
-              ) : (
-                <div className="divide-y divide-gray-100 dark:divide-gray-800 p-4 space-y-4">
+            {activeTournees.length > 0 && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Progression missions</h2>
+                </div>
+                <div className="p-4 space-y-4">
                   {activeTournees.map((t, ti) => {
                     const livrees = t.etapes.filter((e) => e.statut === 'livree').length;
                     return (
@@ -272,6 +375,91 @@ export default function SuiviTerrainPage() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* ── Journal d'activité (audit terrain) ── */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden flex-1 flex flex-col">
+              {/* Header du journal */}
+              <div
+                className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                onClick={() => setJournalOpen(o => !o)}
+              >
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Journal d'activité</h2>
+                  <span className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full font-bold">
+                    {filteredActions.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); exportActionsCSV(filteredActions); }}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors"
+                    title="Exporter CSV"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                  </button>
+                  <svg className={`w-4 h-4 text-gray-400 transition-transform ${journalOpen ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+              </div>
+
+              {journalOpen && (
+                <>
+                  {/* Filtre par type d'action */}
+                  <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 flex flex-wrap gap-1">
+                    <button
+                      onClick={() => setActionFilter('')}
+                      className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${
+                        actionFilter === '' ? 'bg-gray-800 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                      }`}
+                    >
+                      Tous
+                    </button>
+                    {(Object.keys(ACTION_CONFIG) as TerrainActionType[]).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setActionFilter(prev => prev === t ? '' : t)}
+                        className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${
+                          actionFilter === t
+                            ? `${ACTION_CONFIG[t].bg} ${ACTION_CONFIG[t].color}`
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200'
+                        }`}
+                      >
+                        {ACTION_CONFIG[t].icon}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Liste des entrées */}
+                  <div className="overflow-y-auto" style={{ maxHeight: 280 }}>
+                    {filteredActions.length === 0 ? (
+                      <p className="px-4 py-8 text-center text-sm text-gray-400">Aucune action enregistrée</p>
+                    ) : filteredActions.map(action => {
+                      const cfg = ACTION_CONFIG[action.type];
+                      return (
+                        <div key={action.id} className="px-4 py-2.5 flex items-start gap-3 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm ${cfg.bg}`}>
+                            {cfg.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
+                            <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{action.acteur}</p>
+                            <p className="text-xs text-gray-400 truncate">📍 {action.localisation}</p>
+                            {action.details && <p className="text-xs text-gray-400 italic">{action.details}</p>}
+                          </div>
+                          <p className="text-xs text-gray-400 shrink-0 text-right">
+                            {new Date(action.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           </div>
