@@ -488,6 +488,7 @@ export interface CreateVehiculeDto {
   marque?:         string;
   capacite?:       number;
   notes?:          string;
+  distributeurId?: string;
 }
 
 export interface UpdateVehiculeStatutDto {

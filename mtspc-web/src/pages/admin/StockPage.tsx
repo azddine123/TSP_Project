@@ -9,6 +9,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { mockStockApi as stockApi, mockMaterielApi as materielApi } from '../../mock/adminApi';
 import { getApiErrorMessage } from '../../services/api';
 import type { StockRow, Materiel, StockMouvement, MouvementType } from '../../types';
+
+// ── Catégories et unités disponibles ─────────────────────────────────────────
+const CATEGORIES = ['TENTE', 'EAU', 'MEDICAMENT', 'NOURRITURE', 'EQUIPEMENT', 'AUTRE'] as const;
+const UNITES     = ['unité', 'kit', 'litre', 'kg', 'pièce', 'carton'] as const;
 import { formatDateTime } from '../../constants';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -266,19 +270,155 @@ function QuickEntryPanel({ stocks, materiels, onDone }: QuickEntryPanelProps) {
   );
 }
 
+// ── Modal ajout d'un nouvel article ──────────────────────────────────────────
+
+interface AddArticleModalProps {
+  onClose:  () => void;
+  onAdded:  (row: StockRow) => void;
+}
+
+function AddArticleModal({ onClose, onAdded }: AddArticleModalProps) {
+  const [nom,      setNom]      = useState('');
+  const [categorie,setCat]      = useState<string>(CATEGORIES[0]);
+  const [unite,    setUnite]    = useState<string>(UNITES[0]);
+  const [quantite, setQuantite] = useState<number | ''>(0);
+  const [seuil,    setSeuil]    = useState<number | ''>(10);
+  const [saving,   setSaving]   = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+
+  async function handleSubmit() {
+    if (!nom.trim()) { setError('Le nom de l\'article est obligatoire.'); return; }
+    if (quantite === '' || seuil === '') { setError('Quantité et seuil d\'alerte sont obligatoires.'); return; }
+    setSaving(true); setError(null);
+    try {
+      const row = await stockApi.addArticle({
+        nom: nom.trim(), categorie, unite,
+        quantiteInitiale: Number(quantite),
+        seuilAlerte: Number(seuil),
+      });
+      onAdded(row as StockRow);
+      onClose();
+    } catch (e) {
+      setError(getApiErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">Nouvel article</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2 text-sm flex gap-2">
+              {error}<button onClick={() => setError(null)} className="ml-auto shrink-0">✕</button>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Nom de l'article *</label>
+            <input
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              placeholder="Ex: Sacs de couchage"
+              className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Catégorie</label>
+              <select
+                value={categorie}
+                onChange={(e) => setCat(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none"
+              >
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Unité</label>
+              <select
+                value={unite}
+                onChange={(e) => setUnite(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none"
+              >
+                {UNITES.map((u) => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Quantité initiale *</label>
+              <input
+                type="number" min="0"
+                value={quantite}
+                onChange={(e) => setQuantite(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10)))}
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none text-center font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Seuil d'alerte *</label>
+              <input
+                type="number" min="0"
+                value={seuil}
+                onChange={(e) => setSeuil(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10)))}
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none text-center font-bold"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving
+              ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Ajouter
+                </>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function StockPage() {
-  const [stocks,     setStocks]     = useState<StockRow[]>([]);
-  const [materiels,  setMateriels]  = useState<Materiel[]>([]);
-  const [mouvements, setMouvements] = useState<StockMouvement[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
-  const [tab,        setTab]        = useState<'inventaire' | 'historique'>('inventaire');
-  const [mouvPage,   setMouvPage]   = useState(1);
-  const [mouvTotal,  setMouvTotal]  = useState(0);
-  const [filterType, setFilterType] = useState<'' | 'ENTREE' | 'SORTIE'>('');
-  const [loadingMovs, setLoadingMovs] = useState(false);
+  const [stocks,         setStocks]         = useState<StockRow[]>([]);
+  const [materiels,      setMateriels]      = useState<Materiel[]>([]);
+  const [mouvements,     setMouvements]     = useState<StockMouvement[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState<string | null>(null);
+  const [tab,            setTab]            = useState<'inventaire' | 'historique'>('inventaire');
+  const [mouvPage,       setMouvPage]       = useState(1);
+  const [mouvTotal,      setMouvTotal]      = useState(0);
+  const [filterType,     setFilterType]     = useState<'' | 'ENTREE' | 'SORTIE'>('');
+  const [loadingMovs,    setLoadingMovs]    = useState(false);
+  const [showAddArticle, setShowAddArticle] = useState(false);
 
   const loadStocks = useCallback(async () => {
     setLoading(true); setError(null);
@@ -318,21 +458,44 @@ export default function StockPage() {
   const alertes = stocks.filter((s) => s.quantite <= s.seuilAlerte);
   const pages   = Math.ceil(mouvTotal / 50);
 
+  function handleArticleAdded(row: StockRow) {
+    setStocks((prev) => [...prev, row]);
+    setMateriels((prev) => [...prev, row.materiel as Materiel]);
+  }
+
   return (
     <div className="space-y-6">
+      {/* Modal ajout article */}
+      {showAddArticle && (
+        <AddArticleModal
+          onClose={() => setShowAddArticle(false)}
+          onAdded={handleArticleAdded}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Stock & Approvisionnement</h1>
           <p className="text-sm text-gray-500 mt-0.5">Saisie rapide des entrées/sorties · Historique horodaté</p>
         </div>
-        <button onClick={loadStocks} disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
-          <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-          </svg>
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAddArticle(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-lg transition-colors shadow-sm">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nouvel article
+          </button>
+          <button onClick={loadStocks} disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            Actualiser
+          </button>
+        </div>
       </div>
 
       {error && (

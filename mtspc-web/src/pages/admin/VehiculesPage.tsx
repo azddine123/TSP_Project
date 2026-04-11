@@ -3,6 +3,7 @@
  * Gestion des statuts : disponible | en_mission | maintenance
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Import FORCÉ des mocks
 import { mockVehiculeApi as vehiculeApi, mockDistributeurApi as distributeurApi } from '../../mock/adminApi';
 import { getApiErrorMessage } from '../../services/api';
@@ -21,26 +22,42 @@ const TYPE_ICON: Record<VehiculeType, React.ReactNode> = {
   MOTO:   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6l3 6H9l3-6h3z"/><path d="M12 12v-4"/></svg>,
 };
 
+// Couleurs par type de véhicule
+const TYPE_COLOR: Record<VehiculeType, string> = {
+  CAMION: 'bg-blue-100 text-blue-700',
+  PICKUP: 'bg-green-100 text-green-700',
+  '4X4':  'bg-orange-100 text-orange-700',
+  MOTO:   'bg-purple-100 text-purple-700',
+};
+
 // ── Modal création véhicule ───────────────────────────────────────────────────
 
-function CreateVehiculeModal({ onClose, onCreated }: { onClose: () => void; onCreated: (v: Vehicule) => void }) {
+function CreateVehiculeModal({
+  onClose, onCreated, distributeurs,
+}: {
+  onClose: () => void;
+  onCreated: (v: Vehicule) => void;
+  distributeurs: Distributeur[];
+}) {
   const [form, setForm] = useState<CreateVehiculeDto>({ immatriculation: '', type: 'CAMION' });
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState<string | null>(null);
+
+  const disponibles = distributeurs.filter(d => (d as unknown as { statut: string }).statut === 'disponible');
 
   async function handleSubmit() {
     if (!form.immatriculation.trim()) { setError('Immatriculation obligatoire.'); return; }
     setSaving(true); setError(null);
     try {
-      const v = await vehiculeApi.create(form as unknown as CreateVehiculeDto);
+      const v = await vehiculeApi.create(form as unknown as Record<string, unknown>);
       onCreated(v as Vehicule);
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setSaving(false); }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-theme-lg w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-theme-lg w-full max-w-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
           <h2 className="text-base font-bold text-gray-900 dark:text-white">Ajouter un véhicule</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
@@ -48,46 +65,69 @@ function CreateVehiculeModal({ onClose, onCreated }: { onClose: () => void; onCr
           </button>
         </div>
         <div className="px-6 py-5 space-y-4">
-          {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2 text-sm">{error}</div>}
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2 text-sm flex gap-2">{error}<button onClick={() => setError(null)} className="ml-auto">✕</button></div>}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Immatriculation *</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Immatriculation *</label>
               <input value={form.immatriculation} onChange={(e) => setForm((f) => ({ ...f, immatriculation: e.target.value.toUpperCase() }))}
-                placeholder="12345-A-67" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none uppercase" />
+                placeholder="12345-A-67" className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none uppercase" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Type *</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Type *</label>
               <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as VehiculeType }))}
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none">
+                className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none">
                 {(['CAMION', 'PICKUP', '4X4', 'MOTO'] as VehiculeType[]).map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Marque</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Marque</label>
               <input value={form.marque ?? ''} onChange={(e) => setForm((f) => ({ ...f, marque: e.target.value || undefined }))}
-                placeholder="Toyota, Iveco…" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none" />
+                placeholder="Toyota, Iveco…" className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Capacité (kg)</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Capacité (kg)</label>
               <input type="number" min="0" value={form.capacite ?? ''} onChange={(e) => setForm((f) => ({ ...f, capacite: e.target.value ? Number(e.target.value) : undefined }))}
-                placeholder="ex: 1500" className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none" />
+                placeholder="ex: 1500" className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none" />
             </div>
           </div>
+
+          {/* Sélection distributeur */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Notes</label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Assigner un distributeur <span className="font-normal normal-case">(optionnel — disponibles uniquement)</span>
+            </label>
+            <select
+              value={form.distributeurId ?? ''}
+              onChange={(e) => setForm((f) => ({ ...f, distributeurId: e.target.value || undefined }))}
+              className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none"
+            >
+              <option value="">— Aucun distributeur —</option>
+              {disponibles.map((d) => (
+                <option key={d.id} value={d.id}>{d.prenom} {d.nom}</option>
+              ))}
+            </select>
+            {disponibles.length === 0 && (
+              <p className="text-xs text-orange-500 mt-1">Aucun distributeur disponible actuellement.</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Notes</label>
             <textarea value={form.notes ?? ''} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value || undefined }))}
-              rows={2} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none resize-none"
+              rows={2} className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none resize-none"
               placeholder="État, particularités…" />
           </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 transition-colors">Annuler</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 transition-colors">Annuler</button>
           <button onClick={handleSubmit} disabled={saving}
-            className="px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2">
+            className="px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl disabled:opacity-50 transition-colors flex items-center gap-2">
             {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            Ajouter
+            Ajouter le véhicule
           </button>
         </div>
       </div>
@@ -98,29 +138,32 @@ function CreateVehiculeModal({ onClose, onCreated }: { onClose: () => void; onCr
 // ── Carte véhicule ────────────────────────────────────────────────────────────
 
 function VehiculeCard({
-  vehicule, distributeurs, updating,
-  onStatut, onDelete,
+  vehicule, updating, onStatut, onDelete, onVoirMissions,
 }: {
   vehicule: Vehicule;
-  distributeurs: Distributeur[];
   updating: string | null;
-  onStatut: (id: string, statut: VehiculeStatut, distributeurId?: string) => void;
+  onStatut: (id: string, statut: VehiculeStatut) => void;
   onDelete: (id: string) => void;
+  onVoirMissions: (immat: string) => void;
 }) {
-  const cfg    = STATUT_CONFIG[vehicule.statut];
-  const icon   = TYPE_ICON[vehicule.type];
-  const isUpd  = updating === vehicule.id;
+  const cfg   = STATUT_CONFIG[vehicule.statut];
+  const icon  = TYPE_ICON[vehicule.type];
+  const isUpd = updating === vehicule.id;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm p-5">
-      <div className="flex items-start justify-between mb-4">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm p-5 flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-400">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${TYPE_COLOR[vehicule.type]}`}>
             {icon}
           </div>
           <div>
-            <p className="font-bold text-gray-900 dark:text-white font-mono">{vehicule.immatriculation}</p>
-            <p className="text-xs text-gray-400">{vehicule.type}{vehicule.marque ? ` · ${vehicule.marque}` : ''}{vehicule.capacite ? ` · ${vehicule.capacite} kg` : ''}</p>
+            <p className="font-bold text-gray-900 dark:text-white font-mono text-sm">{vehicule.immatriculation}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${TYPE_COLOR[vehicule.type]}`}>{vehicule.type}</span>
+              {vehicule.marque && <span className="text-xs text-gray-400">{vehicule.marque}</span>}
+            </div>
           </div>
         </div>
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
@@ -129,18 +172,58 @@ function VehiculeCard({
         </span>
       </div>
 
-      {vehicule.distributeur && (
-        <p className="text-xs text-gray-500 mb-3">
-          <span className="font-medium">{vehicule.distributeur.prenom} {vehicule.distributeur.nom}</span>
-        </p>
+      {/* Infos détaillées */}
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        {vehicule.capacite && (
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2">
+            <p className="text-gray-400 mb-0.5">Capacité</p>
+            <p className="font-semibold text-gray-800 dark:text-white">{vehicule.capacite.toLocaleString('fr-FR')} kg</p>
+          </div>
+        )}
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2">
+          <p className="text-gray-400 mb-0.5">Statut</p>
+          <p className={`font-semibold ${cfg.color.split(' ')[1]}`}>{cfg.label}</p>
+        </div>
+      </div>
+
+      {/* Distributeur assigné */}
+      {vehicule.distributeur ? (
+        <div className="flex items-center gap-2.5 bg-blue-50 dark:bg-blue-950/20 rounded-xl px-3 py-2.5">
+          <div className="w-7 h-7 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-300 text-xs font-bold shrink-0">
+            {vehicule.distributeur.prenom[0]}{vehicule.distributeur.nom[0]}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">
+              {vehicule.distributeur.prenom} {vehicule.distributeur.nom}
+            </p>
+            <p className="text-xs text-gray-400">Distributeur assigné</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2 text-xs text-gray-400">
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/>
+          </svg>
+          Aucun distributeur assigné
+        </div>
       )}
 
+      {/* Notes */}
+      {vehicule.notes && (
+        <p className="text-xs text-gray-400 italic border-l-2 border-gray-200 pl-2">{vehicule.notes}</p>
+      )}
+
+      {/* Actions */}
       {isUpd ? (
-        <div className="flex justify-center py-2">
+        <div className="flex justify-center py-1">
           <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-100 dark:border-gray-800">
+          <button onClick={() => onVoirMissions(vehicule.immatriculation)}
+            className="px-3 py-1.5 text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors">
+            Voir missions
+          </button>
           {vehicule.statut !== 'disponible' && (
             <button onClick={() => onStatut(vehicule.id, 'disponible')}
               className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
@@ -166,6 +249,7 @@ function VehiculeCard({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function VehiculesPage() {
+  const navigate = useNavigate();
   const [vehicules,    setVehicules]    = useState<Vehicule[]>([]);
   const [distributeurs, setDistributeurs] = useState<Distributeur[]>([]);
   const [loading,      setLoading]      = useState(true);
@@ -185,6 +269,10 @@ export default function VehiculesPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  function handleVoirMissions(immat: string) {
+    navigate(`/admin/tournees?vehicule=${encodeURIComponent(immat)}`);
+  }
 
   async function handleStatut(id: string, statut: VehiculeStatut, distributeurId?: string) {
     setUpdating(id);
@@ -270,10 +358,10 @@ export default function VehiculesPage() {
             <VehiculeCard
               key={v.id}
               vehicule={v}
-              distributeurs={distributeurs}
               updating={updating}
               onStatut={handleStatut}
               onDelete={(id) => setConfirmDel(id)}
+              onVoirMissions={handleVoirMissions}
             />
           ))}
         </div>
@@ -284,6 +372,7 @@ export default function VehiculesPage() {
         <CreateVehiculeModal
           onClose={() => setShowCreate(false)}
           onCreated={(v) => { setVehicules((prev) => [...prev, v]); setShowCreate(false); }}
+          distributeurs={distributeurs}
         />
       )}
 

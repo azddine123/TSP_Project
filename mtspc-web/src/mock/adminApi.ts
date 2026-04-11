@@ -23,23 +23,48 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const mockStockApi = {
   getMine: async () => {
     await delay(400);
-    return [...STOCK_ENTREPOT_A];
+    return [..._stocks];
   },
-  
+
   getAll: async () => {
     await delay(500);
-    return [...STOCK_ENTREPOT_A];
+    return [..._stocks];
+  },
+
+  addArticle: async (dto: { nom: string; categorie: string; unite: string; quantiteInitiale: number; seuilAlerte: number }) => {
+    await delay(600);
+    const newMat = await mockMaterielApi.create({ nom: dto.nom, categorie: dto.categorie, unite: dto.unite });
+    const newStock = {
+      id: `stock-${Date.now()}`,
+      entrepot: { id: ENTREPOT_A.id, nom: ENTREPOT_A.nom, province: ENTREPOT_A.province },
+      materiel: newMat,
+      quantite: dto.quantiteInitiale,
+      seuilAlerte: dto.seuilAlerte,
+      updatedAt: new Date().toISOString(),
+    };
+    _stocks = [..._stocks, newStock];
+    return newStock;
   },
   
   createMouvement: async (dto: Record<string, unknown>) => {
     await delay(600);
+    // Mettre à jour le stock en mémoire
+    const mat = _materiels.find(m => m.id === dto.materielId);
+    const stockIdx = _stocks.findIndex(s => s.materiel.id === dto.materielId);
+    let stockApres = stockIdx >= 0 ? _stocks[stockIdx].quantite : 0;
+    if (dto.type === 'ENTREE') stockApres += Number(dto.quantite);
+    else stockApres = Math.max(0, stockApres - Number(dto.quantite));
+    if (stockIdx >= 0) {
+      _stocks = _stocks.map((s, i) => i === stockIdx ? { ...s, quantite: stockApres, updatedAt: new Date().toISOString() } : s);
+    }
     return {
       id: `mouv-${Date.now()}`,
       ...dto,
       createdAt: new Date().toISOString(),
       entrepotId: 'entrepot-a',
-      materiel: { id: dto.materielId, nom: 'Matériel', categorie: 'AUTRE', unite: 'unité' },
-      stockApres: 100,
+      materiel: mat || { id: dto.materielId, nom: 'Matériel', categorie: 'AUTRE', unite: 'unité' },
+      stockApres,
+      acteurNom: 'Admin Entrepôt',
       referenceDoc: dto.referenceDoc || null,
     } as StockMouvement;
   },
@@ -82,9 +107,25 @@ export const mockVehiculeApi = {
     return [...VEHICULES_ENTREPOT_A];
   },
   
-  create: async (dto: unknown) => {
+  create: async (dto: Record<string, unknown>) => {
     await delay(600);
-    return { id: `veh-${Date.now()}`, ...dto as object };
+    const dist = dto.distributeurId
+      ? DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId) ?? null
+      : null;
+    return {
+      id: `veh-${Date.now()}`,
+      entrepotId: ENTREPOT_A.id,
+      immatriculation: dto.immatriculation,
+      type: dto.type,
+      marque: dto.marque ?? null,
+      capacite: dto.capacite ?? null,
+      statut: 'disponible',
+      distributeurId: dto.distributeurId ?? null,
+      distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : null,
+      notes: dto.notes ?? null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
   },
   
   updateStatut: async (id: string, dto: { statut: string; distributeurId?: string }) => {
@@ -153,17 +194,31 @@ export const mockDistributeurApi = {
 // ============================================================================
 // MATERIEL API
 // ============================================================================
+
+// Liste mutable pour permettre l'ajout dynamique d'articles
+let _materiels = [
+  { id: 'mat-1', nom: 'Tentes familiales',    categorie: 'TENTE',      unite: 'unité'  },
+  { id: 'mat-2', nom: 'Couvertures thermiques',categorie: 'EQUIPEMENT', unite: 'unité'  },
+  { id: 'mat-3', nom: 'Kits alimentaires',     categorie: 'NOURRITURE', unite: 'kit'    },
+  { id: 'mat-4', nom: 'Eau potable',           categorie: 'EAU',        unite: 'litre'  },
+  { id: 'mat-5', nom: 'Kits médicaux',         categorie: 'MEDICAMENT', unite: 'kit'    },
+  { id: 'mat-6', nom: 'Kits d\'hygiène',       categorie: 'MEDICAMENT', unite: 'kit'    },
+];
+
+// Liste mutable des stocks (pour ajout d'articles)
+let _stocks = [...STOCK_ENTREPOT_A];
+
 export const mockMaterielApi = {
   getAll: async () => {
     await delay(400);
-    return [
-      { id: 'mat-1', nom: 'Tentes familiales', categorie: 'TENTE', unite: 'unité' },
-      { id: 'mat-2', nom: 'Couvertures thermiques', categorie: 'EQUIPEMENT', unite: 'unité' },
-      { id: 'mat-3', nom: 'Kits alimentaires', categorie: 'NOURRITURE', unite: 'kit' },
-      { id: 'mat-4', nom: 'Eau potable', categorie: 'EAU', unite: 'litre' },
-      { id: 'mat-5', nom: 'Kits médicaux', categorie: 'MEDICAMENT', unite: 'kit' },
-      { id: 'mat-6', nom: 'Kits d\'hygiène', categorie: 'MEDICAMENT', unite: 'kit' },
-    ];
+    return [..._materiels];
+  },
+
+  create: async (dto: { nom: string; categorie: string; unite: string }) => {
+    await delay(500);
+    const newMat = { id: `mat-${Date.now()}`, ...dto };
+    _materiels = [..._materiels, newMat];
+    return newMat;
   },
 };
 
