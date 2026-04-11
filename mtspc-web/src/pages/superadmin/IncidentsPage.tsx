@@ -2,7 +2,7 @@
  * PAGE INCIDENTS — Signalement et gestion des événements terrain
  */
 import { useState, useEffect, useCallback } from 'react';
-import { criseApi, evenementApi, getApiErrorMessage } from '../../services/api';
+import { conditionalCriseApi as criseApi, conditionalEvenementApi as evenementApi, getApiErrorMessage } from '../../services/api';
 import type { Crise, Evenement, CreateEvenementDto, EvenementType, EvenementSeverite } from '../../types';
 
 const TYPE_LABELS: Record<EvenementType, string> = {

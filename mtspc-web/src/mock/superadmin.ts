@@ -4,9 +4,9 @@
  * Vue régionale avec entrepôts et audit logs
  */
 
-import type { Entrepot, AuditLog } from '../types';
+import type { Entrepot, AuditLog, AdminEntrepot } from '../types';
 
-// Coordonnées des provinces de Béni Mellal-Khénifra
+// Deux entrepôts dans la région Béni Mellal-Khénifra
 export const MOCK_ENTREPOTS: Entrepot[] = [
   {
     id: 'entrepot-1',
@@ -20,16 +20,6 @@ export const MOCK_ENTREPOTS: Entrepot[] = [
   },
   {
     id: 'entrepot-2',
-    code: 'ENT-FBS-001',
-    nom: 'Entrepôt Fquih Ben Salah',
-    province: 'Fquih Ben Salah',
-    wilaya: 'Béni Mellal-Khénifra',
-    statut: 'actif',
-    latitude: 32.5015,
-    longitude: -6.6915,
-  },
-  {
-    id: 'entrepot-3',
     code: 'ENT-BML-001',
     nom: 'Entrepôt Béni Mellal',
     province: 'Béni Mellal',
@@ -37,36 +27,6 @@ export const MOCK_ENTREPOTS: Entrepot[] = [
     statut: 'surcharge',
     latitude: 32.3361,
     longitude: -6.3498,
-  },
-  {
-    id: 'entrepot-4',
-    code: 'ENT-KHB-001',
-    nom: 'Entrepôt Khouribga',
-    province: 'Khouribga',
-    wilaya: 'Béni Mellal-Khénifra',
-    statut: 'actif',
-    latitude: 32.8815,
-    longitude: -6.9063,
-  },
-  {
-    id: 'entrepot-5',
-    code: 'ENT-KHF-001',
-    nom: 'Entrepôt Khénifra',
-    province: 'Khénifra',
-    wilaya: 'Béni Mellal-Khénifra',
-    statut: 'actif',
-    latitude: 32.9369,
-    longitude: -5.6685,
-  },
-  {
-    id: 'entrepot-6',
-    code: 'ENT-MDK-001',
-    nom: 'Entrepôt Midelt',
-    province: 'Midelt',
-    wilaya: 'Béni Mellal-Khénifra',
-    statut: 'inactif',
-    latitude: 32.6854,
-    longitude: -4.7500,
   },
 ];
 
@@ -191,6 +151,39 @@ export const MOCK_AUDIT_LOGS: AuditLog[] = [
     ipAddress: '192.168.1.25',
     valeursApres: { statut: 'en_cours', etapeActuelle: 1, dateDebut: '2026-04-04T10:15:00Z' },
     createdAt: '2026-04-04T10:20:18Z',
+  },
+];
+
+export const MOCK_USERS: AdminEntrepot[] = [
+  {
+    id: 'user-ae-001',
+    username: 'admin.azilal',
+    email: 'admin.azilal@najda.ma',
+    firstName: 'Hassan',
+    lastName: 'Bouyahya',
+    enabled: true,
+    entrepotId: 'entrepot-1',
+    createdAt: 1709200000000,
+  },
+  {
+    id: 'user-ae-002',
+    username: 'admin.benimellal',
+    email: 'admin.benimellal@najda.ma',
+    firstName: 'Rachid',
+    lastName: 'Moussaoui',
+    enabled: true,
+    entrepotId: 'entrepot-2',
+    createdAt: 1709300000000,
+  },
+  {
+    id: 'user-ae-006',
+    username: 'admin.nouveau',
+    email: 'nouveau@najda.ma',
+    firstName: 'Khalid',
+    lastName: 'Bensouda',
+    enabled: true,
+    entrepotId: null,
+    createdAt: 1712000000000,
   },
 ];
 

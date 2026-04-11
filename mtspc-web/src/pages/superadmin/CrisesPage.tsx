@@ -2,7 +2,7 @@
  * PAGE CRISES — Activation, gestion et suivi des crises
  */
 import { useState, useEffect, useCallback } from 'react';
-import { criseApi, douarApi, getApiErrorMessage } from '../../services/api';
+import { conditionalCriseApi as criseApi, conditionalDouarApi as douarApi, getApiErrorMessage } from '../../services/api';
 import type { Crise, Douar, CreateCriseDto, CriseType, CriseStatut } from '../../types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

@@ -70,14 +70,16 @@ export interface Materiel {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface Douar {
-  id:         string;
-  nom:        string;
-  commune:    string;
-  province:   string;
-  wilaya:     string;
-  latitude:   number;
-  longitude:  number;
-  population: number;
+  id:               string;
+  nom:              string;
+  commune:          string;
+  province:         string;
+  wilaya:           string;
+  latitude:         number;
+  longitude:        number;
+  population:       number;
+  zoneVulnerable?:  boolean;
+  servi?:           boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

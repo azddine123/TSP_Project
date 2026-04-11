@@ -67,7 +67,7 @@ export const MOCK_DISTRIBUTEURS: Distributeur[] = [
     email: 'omar.fassi@najda.ma',
     telephone: '+212 656 789 012',
     statut: 'inactif',
-    entrepotId: 'entrepot-3',
+    entrepotId: 'entrepot-2',
     missionsCompletes: 3,
   },
 ];
