@@ -16,7 +16,8 @@ import {
 } from './entrepotA';
 
 // Tournées mutables pour permettre la création
-let _tournees = [...TOURNEES_ENTREPOT_A];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _tournees: any[] = [...TOURNEES_ENTREPOT_A];
 
 // Simuler un délai réseau
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
