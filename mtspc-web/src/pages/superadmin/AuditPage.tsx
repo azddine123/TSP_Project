@@ -2,7 +2,7 @@
  * PAGE AUDIT GLOBAL — Historique inaltérable de toutes les actions
  */
 import { useEffect, useState, useCallback } from 'react';
-import { auditApi, getApiErrorMessage } from '../../services/api';
+import { conditionalAuditApi as auditApi, getApiErrorMessage } from '../../services/api';
 import type { AuditLog } from '../../types';
 import { formatDateTime } from '../../constants';
 
@@ -66,10 +66,9 @@ export default function AuditPage() {
     setLoading(true); setError(null);
     try {
       const logs = await auditApi.getLogs({
-        page:        page + 1,
-        limit:       PAGE_SIZE,
-        operation:   operationFilter || undefined,
-        entrepotId:  undefined,
+        page:      page + 1,
+        limit:     PAGE_SIZE,
+        operation: operationFilter || undefined,
       });
       setAuditLogs(logs.data);
       setTotal(logs.meta.total);

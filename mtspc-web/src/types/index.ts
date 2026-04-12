@@ -41,14 +41,19 @@ export interface AuditLog {
 }
 
 export interface Entrepot {
-  id:        string;
-  code:      string;
-  nom:       string;
-  wilaya:    string;
-  province:  string;
-  latitude:  number;
-  longitude: number;
-  statut:    EntrepotStatut;
+  id:               string;
+  code:             string;
+  nom:              string;
+  wilaya:           string;
+  province:         string;
+  latitude:         number;
+  longitude:        number;
+  statut:           EntrepotStatut;
+  commune?:         string;
+  cercle?:          string;
+  routeProximite?:  string;
+  extensionLancee?: string;
+  budgetExtension?: string;
 }
 
 export interface Distributeur {
@@ -70,14 +75,16 @@ export interface Materiel {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface Douar {
-  id:         string;
-  nom:        string;
-  commune:    string;
-  province:   string;
-  wilaya:     string;
-  latitude:   number;
-  longitude:  number;
-  population: number;
+  id:               string;
+  nom:              string;
+  commune:          string;
+  province:         string;
+  wilaya:           string;
+  latitude:         number;
+  longitude:        number;
+  population:       number;
+  zoneVulnerable?:  boolean;
+  servi?:           boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

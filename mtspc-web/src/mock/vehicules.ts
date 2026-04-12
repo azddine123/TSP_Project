@@ -57,7 +57,7 @@ export const MOCK_VEHICULES: Vehicule[] = [
     type: '4x4',
     capaciteKg: 850,
     statut: 'maintenance',
-    entrepotId: 'entrepot-3',
+    entrepotId: 'entrepot-1',
   },
   {
     id: 'veh-006',
@@ -65,6 +65,6 @@ export const MOCK_VEHICULES: Vehicule[] = [
     type: 'camionette',
     capaciteKg: 1200,
     statut: 'disponible',
-    entrepotId: 'entrepot-3',
+    entrepotId: 'entrepot-2',
   },
 ];

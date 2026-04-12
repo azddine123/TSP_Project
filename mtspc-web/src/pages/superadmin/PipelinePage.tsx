@@ -2,7 +2,7 @@
  * PAGE PIPELINE ALGORITHMIQUE — AHP → TOPSIS → VRP
  */
 import { useState, useEffect, useCallback } from 'react';
-import { criseApi, algoApi, entrepotApi, getApiErrorMessage } from '../../services/api';
+import { conditionalCriseApi as criseApi, conditionalAlgoApi as algoApi, conditionalEntrepotApi as entrepotApi, getApiErrorMessage } from '../../services/api';
 import type {
   Crise, Entrepot, PipelineResult, RunPipelineDto,
   AhpMatrice, TopsisRanking, VrpTournee,

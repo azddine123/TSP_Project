@@ -348,19 +348,19 @@ export const conditionalDistributeurApi = {
 };
 
 export const conditionalDouarApi = {
-  getAll: (params?: { province?: string }) => 
-    MOCK_ENABLED 
-      ? mockApi.douarApi.getByProvince(params?.province || '') 
+  getAll: (params?: { province?: string }) =>
+    MOCK_ENABLED
+      ? (params?.province ? mockApi.douarApi.getByProvince(params.province) : mockApi.douarApi.getAll())
       : douarApi.getAll(params),
   search: (q: string) => douarApi.search(q),
 };
 
 export const conditionalCriseApi = {
   getAll: () => MOCK_ENABLED ? mockApi.criseApi.getAll() : criseApi.getAll(),
-  getActive: () => criseApi.getActive(),
+  getActive: () => MOCK_ENABLED ? mockApi.criseApi.getActives() : criseApi.getActive(),
   getById: (id: string) => criseApi.getById(id),
-  create: (dto: CreateCriseDto) => criseApi.create(dto),
-  updateStatut: (id: string, statut: 'suspendue' | 'cloturee') => criseApi.updateStatut(id, statut),
+  create: (dto: CreateCriseDto) => MOCK_ENABLED ? mockApi.criseApi.create(dto) : criseApi.create(dto),
+  updateStatut: (id: string, statut: 'suspendue' | 'cloturee') => MOCK_ENABLED ? mockApi.criseApi.updateStatut(id, statut) : criseApi.updateStatut(id, statut),
   updateSeverites: (id: string, severites: CreateCriseDto['severitesParDouar']) => criseApi.updateSeverites(id, severites),
 };
 
@@ -385,10 +385,10 @@ export const conditionalTourneeApi = {
 };
 
 export const conditionalAlgoApi = {
-  runPipeline: (dto: RunPipelineDto) => algoApi.runPipeline(dto),
-  getStatus: (pipelineId: string) => algoApi.getStatus(pipelineId),
-  getHistory: (criseId: string) => algoApi.getHistory(criseId),
-  recalcul: (dto: RunPipelineDto) => algoApi.recalcul(dto),
+  runPipeline: (dto: RunPipelineDto) => MOCK_ENABLED ? mockApi.mockAlgoApi.runPipeline(dto) : algoApi.runPipeline(dto),
+  getStatus: (pipelineId: string) => MOCK_ENABLED ? mockApi.mockAlgoApi.getStatus(pipelineId) : algoApi.getStatus(pipelineId),
+  getHistory: (criseId: string) => MOCK_ENABLED ? mockApi.mockAlgoApi.getHistory(criseId) : algoApi.getHistory(criseId),
+  recalcul: (dto: RunPipelineDto) => MOCK_ENABLED ? mockApi.mockAlgoApi.runPipeline(dto) : algoApi.recalcul(dto),
 };
 
 export const conditionalSupervisionApi = {
@@ -397,20 +397,20 @@ export const conditionalSupervisionApi = {
 };
 
 export const conditionalEvenementApi = {
-  getByCrise: (criseId: string, page = 1, limit = 20) => evenementApi.getByCrise(criseId, page, limit),
-  getById: (id: string) => evenementApi.getById(id),
-  create: (dto: CreateEvenementDto) => evenementApi.create(dto),
-  sendAlert: (dto: SendAlertDto) => evenementApi.sendAlert(dto),
-  updateStatut: (id: string, statut: 'ouvert' | 'en_traitement' | 'resolu') => evenementApi.updateStatut(id, statut),
+  getByCrise: (criseId: string, page = 1, limit = 20) => MOCK_ENABLED ? mockApi.mockEvenementApi.getByCrise(criseId, page, limit) : evenementApi.getByCrise(criseId, page, limit),
+  getById: (id: string) => MOCK_ENABLED ? mockApi.mockEvenementApi.getById(id) : evenementApi.getById(id),
+  create: (dto: CreateEvenementDto) => MOCK_ENABLED ? mockApi.mockEvenementApi.create(dto) : evenementApi.create(dto),
+  sendAlert: (dto: SendAlertDto) => MOCK_ENABLED ? mockApi.mockEvenementApi.sendAlert() : evenementApi.sendAlert(dto),
+  updateStatut: (id: string, statut: 'ouvert' | 'en_traitement' | 'resolu') => MOCK_ENABLED ? mockApi.mockEvenementApi.updateStatut(id, statut) : evenementApi.updateStatut(id, statut),
 };
 
 export const conditionalUsersApi = {
-  getAdmins: () => usersApi.getAdmins(),
+  getAdmins: () => MOCK_ENABLED ? mockApi.mockUsersApi.getAdmins() : usersApi.getAdmins(),
   getById: (id: string) => usersApi.getById(id),
-  create: (dto: CreateAdminEntrepotDto) => usersApi.create(dto),
-  updateStatut: (id: string, dto: UpdateAdminStatutDto) => usersApi.updateStatut(id, dto),
-  delete: (id: string) => usersApi.delete(id),
-  resetPassword: (id: string) => usersApi.resetPassword(id),
+  create: (dto: CreateAdminEntrepotDto) => MOCK_ENABLED ? mockApi.mockUsersApi.create(dto) : usersApi.create(dto),
+  updateStatut: (id: string, dto: UpdateAdminStatutDto) => MOCK_ENABLED ? mockApi.mockUsersApi.updateStatut(id, dto) : usersApi.updateStatut(id, dto),
+  delete: (id: string) => MOCK_ENABLED ? mockApi.mockUsersApi.delete(id) : usersApi.delete(id),
+  resetPassword: (id: string) => MOCK_ENABLED ? mockApi.mockUsersApi.resetPassword(id) : usersApi.resetPassword(id),
 };
 
 // Ré-export des mocks pour utilisation directe
