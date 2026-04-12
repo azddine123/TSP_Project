@@ -14,6 +14,13 @@ export class TourneesController {
     private readonly entrepotsService: EntrepotsService,
   ) {}
 
+  /** GET /tournees — Toutes les tournées (Super Admin uniquement) */
+  @Get()
+  @Roles('SUPER_ADMIN')
+  findAll() {
+    return this.service.findAll();
+  }
+
   /** GET /tournees/crise/:criseId — Super Admin */
   @Get('crise/:criseId')
   @Roles('SUPER_ADMIN', 'ADMIN_ENTREPOT')

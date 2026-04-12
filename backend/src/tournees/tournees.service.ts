@@ -63,6 +63,15 @@ export class TourneesService {
     });
   }
 
+  // ── Lister toutes les tournées (Super Admin) ─────────────────────────────
+
+  findAll(): Promise<Tournee[]> {
+    return this.tourneeRepo.find({
+      relations: { etapes: { douar: true }, entrepot: true, distributeur: true },
+      order:     { createdAt: 'DESC' },
+    });
+  }
+
   // ── Lister les tournées d'une crise ───────────────────────────────────────
 
   findByCrise(criseId: string): Promise<Tournee[]> {

@@ -203,6 +203,10 @@ export const vehiculeApi = {
 };
 
 export const tourneeApi = {
+  /** Toutes les tournées — Super Admin (tous entrepôts, toutes crises) */
+  getAll: () =>
+    api.get<Tournee[]>('/tournees').then((r) => r.data),
+
   /** Toutes les tournées d'une crise (Super Admin) */
   getByCrise: (criseId: string) =>
     api.get<Tournee[]>(`/tournees/crise/${criseId}`).then((r) => r.data),
@@ -221,6 +225,10 @@ export const tourneeApi = {
   /** Réassignation manuelle (ex: panne véhicule) */
   reassigner: (id: string, dto: AssignerTourneeDto) =>
     api.patch<Tournee>(`/tournees/${id}/reassigner`, dto).then((r) => r.data),
+
+  /** Démarrer une tournée (planifiée → en_cours) */
+  demarrer: (id: string) =>
+    api.patch<Tournee>(`/tournees/${id}/demarrer`).then((r) => r.data),
 
   /** Annuler une tournée planifiée */
   annuler: (id: string) =>
@@ -366,11 +374,13 @@ export const conditionalVehiculeApi = {
 };
 
 export const conditionalTourneeApi = {
+  getAll: () => tourneeApi.getAll(),
   getByCrise: (criseId: string) => tourneeApi.getByCrise(criseId),
   getMine: () => tourneeApi.getMine(),
   getById: (id: string) => tourneeApi.getById(id),
   assigner: (id: string, dto: AssignerTourneeDto) => tourneeApi.assigner(id, dto),
   reassigner: (id: string, dto: AssignerTourneeDto) => tourneeApi.reassigner(id, dto),
+  demarrer: (id: string) => tourneeApi.demarrer(id),
   annuler: (id: string) => tourneeApi.annuler(id),
 };
 

@@ -181,6 +181,56 @@ export const mockTourneeApi = {
     return { id, statut: 'annulee' };
   },
 
+  demarrer: async (id: string) => {
+    await delay(400);
+    _tournees = _tournees.map(t => {
+      if (t.id !== id) return t;
+      const etapes = (t.etapes as any[]).map((e: any, i: number) =>
+        i === 0 ? { ...e, statut: 'en_route' } : e
+      );
+      return { ...t, statut: 'en_cours', etapes, demarreeAt: new Date().toISOString() };
+    });
+    return _tournees.find(t => t.id === id);
+  },
+
+  terminer: async (id: string) => {
+    await delay(400);
+    _tournees = _tournees.map(t => {
+      if (t.id !== id) return t;
+      const etapes = (t.etapes as any[]).map((e: any) => ({ ...e, statut: 'livree' }));
+      return { ...t, statut: 'terminee', etapes, termineeAt: new Date().toISOString() };
+    });
+    return _tournees.find(t => t.id === id);
+  },
+
+  assignerDistributeur: async (id: string, dto: { distributeurId: string; vehiculeId?: string }) => {
+    await delay(400);
+    const dist = DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId);
+    _tournees = _tournees.map(t => {
+      if (t.id !== id) return t;
+      return {
+        ...t,
+        distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : t.distributeur,
+        vehiculeId: dto.vehiculeId ?? t.vehiculeId,
+      };
+    });
+    return _tournees.find(t => t.id === id);
+  },
+
+  updateEtapeStatut: async (tourneeId: string, etapeId: string, statut: string) => {
+    await delay(300);
+    _tournees = _tournees.map(t => {
+      if (t.id !== tourneeId) return t;
+      const etapes = (t.etapes as any[]).map((e: any) =>
+        e.id === etapeId ? { ...e, statut, arriveeAt: statut === 'livree' ? new Date().toISOString() : e.arriveeAt } : e
+      );
+      // Si toutes les étapes sont livrées → terminer automatiquement
+      const allDone = etapes.every((e: any) => e.statut === 'livree' || e.statut === 'echec');
+      return { ...t, etapes, statut: allDone ? 'terminee' : t.statut };
+    });
+    return _tournees.find(t => t.id === tourneeId);
+  },
+
   create: async (dto: {
     distributeurId: string;
     vehiculeId: string;

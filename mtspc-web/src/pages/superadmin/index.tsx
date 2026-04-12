@@ -3,14 +3,15 @@
  * Chaque sous-route correspond à un item du sidebar.
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
-import SuperAdminOverview  from './SuperAdminDashboard';
-import CrisesPage          from './CrisesPage';
-import PipelinePage        from './PipelinePage';
-import SupervisionPage     from './SupervisionPage';
-import DispatchPage        from './DispatchPage';
-import IncidentsPage       from './IncidentsPage';
-import UsersPage           from './UsersPage';
-import AuditPage           from './AuditPage';
+import SuperAdminOverview    from './SuperAdminDashboard';
+import CrisesPage            from './CrisesPage';
+import PipelinePage          from './PipelinePage';
+import SupervisionPage       from './SupervisionPage';
+import DispatchPage          from './DispatchPage';
+import MissionsPage          from './MissionsPage';
+import IncidentsPage         from './IncidentsPage';
+import UsersPage             from './UsersPage';
+import AuditPage             from './AuditPage';
 
 export default function SuperAdminDashboard() {
   return (
@@ -19,6 +20,7 @@ export default function SuperAdminDashboard() {
       <Route path="crises"       element={<CrisesPage />} />
       <Route path="pipeline"     element={<PipelinePage />} />
       <Route path="supervision"  element={<SupervisionPage />} />
+      <Route path="missions"     element={<MissionsPage />} />
       <Route path="dispatch"     element={<DispatchPage />} />
       <Route path="incidents"    element={<IncidentsPage />} />
       <Route path="users"        element={<UsersPage />} />
