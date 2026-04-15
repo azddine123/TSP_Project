@@ -10,7 +10,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -22,7 +21,6 @@ import {
 import MissionCard from '../../components/MissionCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { missionService } from '../../services/missionService';
-import { syncService } from '../../services/syncService';
 import { Mission } from '../../types/app';
 
 const MISSIONS_CACHE_KEY = 'missions_cache';
@@ -37,9 +35,6 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [pendingCount, setPendingCount] = useState(0);
-  const [syncing,       setSyncing]       = useState(false);
-  const [filterStatut,  setFilterStatut]  = useState<string>(''); // '' = toutes
 
   // Charger les missions
   const loadMissions = useCallback(async () => {
@@ -58,8 +53,6 @@ export default function HomeScreen() {
         if (cached) setMissions(JSON.parse(cached));
       }
 
-      const count = await syncService.getPendingCount();
-      setPendingCount(count);
     } catch (err: any) {
       console.error('Failed to load missions:', err);
       if (err.message === 'AUTH_REQUIRED' || err.message?.includes('401')) {
@@ -91,43 +84,13 @@ export default function HomeScreen() {
     return unsub;
   }, [loadMissions]);
 
-  // Synchroniser
-  const handleSync = async () => {
-    if (!isOnline) {
-      Alert.alert('Pas de connexion', 'Impossible de synchroniser sans réseau.');
-      return;
-    }
-
-    setSyncing(true);
-    try {
-      const { synced, failed } = await syncService.forceSync();
-      Alert.alert(
-        'Synchronisation',
-        `${synced} mission(s) synchronisée(s).${failed > 0 ? `\n⚠️ ${failed} échec(s)` : ''}`,
-      );
-      await loadMissions();
-    } catch (err: any) {
-      Alert.alert('Erreur', err.message);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // Badge "Délai dépassé" : mission in_progress depuis > 2h
-  const isDelaiDepasse = (mission: Mission): boolean => {
-    if (mission.statut !== 'in_progress') return false;
-    const depuis = Date.now() - new Date(mission.dateCreation ?? 0).getTime();
-    return depuis > 2 * 60 * 60 * 1000; // 2 heures
-  };
-
-  // Filtrer les missions (statut + texte)
+  // Filtrer les missions
   const filteredMissions = missions.filter((mission) => {
-    if (filterStatut && mission.statut !== filterStatut) return false;
     const searchLower = searchQuery.toLowerCase();
     return (
       mission.numeroMission.toLowerCase().includes(searchLower) ||
       mission.destinationNom.toLowerCase().includes(searchLower) ||
-      (mission.entrepotNom ?? '').toLowerCase().includes(searchLower)
+      mission.entrepotNom.toLowerCase().includes(searchLower)
     );
   });
 
@@ -170,26 +133,6 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Filtres rapides */}
-      <View style={styles.filterRow}>
-        {[
-          { label: 'Toutes',    val: '' },
-          { label: 'En attente', val: 'pending' },
-          { label: 'En cours',  val: 'in_progress' },
-          { label: 'Terminées', val: 'completed' },
-        ].map(({ label, val }) => (
-          <TouchableOpacity
-            key={label}
-            style={[styles.filterBtn, filterStatut === val && styles.filterBtnActive]}
-            onPress={() => setFilterStatut(val)}
-          >
-            <Text style={[styles.filterBtnText, filterStatut === val && styles.filterBtnTextActive]}>
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* Stats simples */}
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
@@ -206,22 +149,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Bouton sync si données en attente */}
-      {pendingCount > 0 && (
-        <TouchableOpacity style={styles.syncButton} onPress={handleSync} disabled={syncing || !isOnline}>
-          {syncing ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Ionicons name="sync" size={18} color="#fff" />
-              <Text style={styles.syncButtonText}>
-                Synchroniser ({pendingCount})
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
-
       {/* Erreur */}
       {error && (
         <View style={styles.errorContainer}>
@@ -235,18 +162,10 @@ export default function HomeScreen() {
         data={filteredMissions}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View>
-            {isDelaiDepasse(item) && (
-              <View style={styles.delaiDepasseBadge}>
-                <Ionicons name="warning" size={14} color="#fff" />
-                <Text style={styles.delaiDepasseText}>Délai dépassé</Text>
-              </View>
-            )}
-            <MissionCard
-              mission={item}
-              onPress={() => router.push({ pathname: '/mission-detail', params: { id: item.id } })}
-            />
-          </View>
+          <MissionCard
+            mission={item}
+            onPress={() => router.push({ pathname: '/mission-detail', params: { id: item.id } })}
+          />
         )}
         refreshControl={
           <RefreshControl
@@ -371,23 +290,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  syncButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#D32F2F',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  syncButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -423,54 +325,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9E9E9E',
     marginTop: 4,
-  },
-
-  // Filtres rapides
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  filterBtn: {
-    flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-  },
-  filterBtnActive: {
-    backgroundColor: '#1565C0',
-    borderColor: '#1565C0',
-  },
-  filterBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#757575',
-  },
-  filterBtnTextActive: {
-    color: '#fff',
-  },
-
-  // Badge délai dépassé
-  delaiDepasseBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#D32F2F',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginHorizontal: 16,
-    marginTop: 8,
-    gap: 6,
-    alignSelf: 'flex-start',
-  },
-  delaiDepasseText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
   },
 });

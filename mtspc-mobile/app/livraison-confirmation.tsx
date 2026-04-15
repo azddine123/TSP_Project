@@ -129,12 +129,17 @@ export default function LivraisonConfirmationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
-    tourneeId: string;
-    douarId: string;
-    etapeJson: string;
+    tourneeId:  string;
+    douarId:    string;
+    etapeJson:  string;
+    etapeIndex: string;
+    etapesJson: string;
   }>();
 
-  const etape: EtapeVRP = JSON.parse(params.etapeJson ?? '{}');
+  const etape: EtapeVRP     = JSON.parse(params.etapeJson  ?? '{}');
+  const allEtapes: EtapeVRP[] = JSON.parse(params.etapesJson ?? '[]');
+  const etapeIndex            = parseInt(params.etapeIndex  ?? '0', 10);
+  const nextEtape             = allEtapes[etapeIndex + 1] ?? null;
   
   const [currentStep, setCurrentStep] = useState<Step>('bordereau');
   const currentIndex = STEPS.indexOf(currentStep);
@@ -181,6 +186,28 @@ export default function LivraisonConfirmationScreen() {
     }
   }, []);
 
+  /** Après confirmation, aller au douar suivant ou revenir à la mission si c'était le dernier */
+  const goToNext = (douarNom: string) => {
+    if (nextEtape) {
+      router.replace({
+        pathname: '/livraison-confirmation',
+        params: {
+          tourneeId:   params.tourneeId,
+          douarId:     nextEtape.douarId,
+          etapeJson:   JSON.stringify(nextEtape),
+          etapeIndex:  String(etapeIndex + 1),
+          etapesJson:  params.etapesJson,
+        },
+      });
+    } else {
+      Alert.alert(
+        '🎉 Tournée terminée',
+        'Tous les douars ont été livrés.',
+        [{ text: 'Retour', onPress: () => router.back() }],
+      );
+    }
+  };
+
   const handleSubmit = useCallback(async () => {
     if (!quantitesReelles) {
       Alert.alert('Erreur', 'Renseignez les quantités livrées.');
@@ -212,11 +239,7 @@ export default function LivraisonConfirmationScreen() {
           timestampLocal: livraison.timestampLocal,
           tentativeSync: 0,
         });
-        Alert.alert(
-          '📦 Livraison sauvegardée',
-          'Les données seront synchronisées automatiquement dès que le serveur sera disponible.',
-          [{ text: 'OK', onPress: () => router.back() }],
-        );
+        goToNext(etape.douarNom);
       };
 
       if (isOnline) {
@@ -232,19 +255,13 @@ export default function LivraisonConfirmationScreen() {
           });
 
           if (res.status === 401 || res.status === 403) {
-            // Token expiré ou serveur non configuré → sauvegarde locale
             await saveOffline();
           } else if (!res.ok) {
             throw new Error(`Erreur serveur : ${res.status}`);
           } else {
-            Alert.alert(
-              '✅ Livraison confirmée',
-              `${etape.douarNom} — Données envoyées au serveur avec succès.`,
-              [{ text: 'OK', onPress: () => router.back() }],
-            );
+            goToNext(etape.douarNom);
           }
         } catch (fetchErr: any) {
-          // Réseau présent mais serveur injoignable → sauvegarde locale
           if (fetchErr?.message?.includes('Erreur serveur')) throw fetchErr;
           await saveOffline();
         }
@@ -256,7 +273,7 @@ export default function LivraisonConfirmationScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [quantitesReelles, commentaire, photoUri, etape, params, router]);
+  }, [quantitesReelles, commentaire, photoUri, etape, params, router, nextEtape, etapeIndex, goToNext]);
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -271,7 +288,9 @@ export default function LivraisonConfirmationScreen() {
             <Text style={styles.headerSub}>{etape.douarNom}</Text>
           </View>
           <View style={styles.stepBadge}>
-            <Text style={styles.stepBadgeText}>Étape {currentIndex + 1}/3</Text>
+            <Text style={styles.stepBadgeText}>
+              Douar {etapeIndex + 1}/{allEtapes.length || 1}
+            </Text>
           </View>
         </View>
 
