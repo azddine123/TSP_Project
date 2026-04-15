@@ -522,3 +522,93 @@ export interface UpdateVehiculeStatutDto {
   statut:          VehiculeStatut;
   distributeurId?: string;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODULE PARAMÈTRES SYSTÈME
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Paramètres généraux de l'application */
+export interface ParametresGeneraux {
+  nomApplication:    string;
+  langue:            LangueApp;
+  fuseauHoraire:     string;            // ex: 'Africa/Casablanca'
+  logoUrl:           string | null;
+  contactEmail:      string | null;
+  regionCible:       string;            // ex: 'Béni Mellal-Khénifra'
+}
+
+/** Paramètres des algorithmes (AHP · TOPSIS · VRP) */
+export interface ParametresAlgorithmes {
+  /** Matrice AHP par défaut utilisée si l'opérateur ne la modifie pas */
+  ahpMatriceDefaut: AhpMatrice;
+  /** Coefficients λ par défaut de la fonction objectif VRP */
+  lambdasDefaut: {
+    distance:   number;   // λ1
+    temps:      number;   // λ2
+    couverture: number;   // λ3
+  };
+  /** Seuil de ratio de cohérence AHP au-delà duquel une alerte est levée */
+  seuilRcAlerte:      number;           // default: 0.10
+  /** Nombre max d'itérations pour l'heuristique VRP */
+  vrpMaxIterations:   number;
+  /** Taille de la population pour les algorithmes génétiques VRP */
+  vrpPopulationSize:  number;
+}
+
+/** Paramètres de notification et alertes */
+export interface ParametresNotifications {
+  activerEmailAlertes:    boolean;
+  activerSmsAlertes:      boolean;
+  activerPushMobile:      boolean;
+  /** Délai (minutes) avant rappel automatique sur mission non démarrée */
+  delaiRappelMission:     number;
+  /** Seuil (%) de stock en dessous duquel une alerte de rupture est levée */
+  seuilAlertStock:        number;
+  /** Intervalle (secondes) de rafraîchissement SSE supervision */
+  intervalleSupervision:  number;
+}
+
+/** Paramètres des véhicules et logistique */
+export interface ParametresLogistique {
+  /** Capacité par défaut (kg) d'un véhicule non configuré */
+  capaciteVehiculeDefaut:   number;
+  /** Vitesse moyenne (km/h) utilisée pour les estimations de temps */
+  vitesseMoyenne:           number;
+  /** Rayon (km) max d'une tournée depuis un entrepôt */
+  rayonMaxTournee:          number;
+  /** Nombre max de douars par tournée */
+  maxDouarsParTournee:      number;
+  /** Durée max (heures) d'une tournée */
+  dureeMaxTournee:          number;
+}
+
+/** Paramètres de sécurité et session */
+export interface ParametresSecurite {
+  dureeSessionMinutes:      number;
+  tentativesConnexionMax:   number;
+  dureeVerrouillageMinutes: number;
+  forcerMfaAdmins:          boolean;
+  journaliserActionsAdmin:  boolean;
+}
+
+/** Agrégat de tous les paramètres système */
+export interface ParametresSysteme {
+  generaux:       ParametresGeneraux;
+  algorithmes:    ParametresAlgorithmes;
+  notifications:  ParametresNotifications;
+  logistique:     ParametresLogistique;
+  securite:       ParametresSecurite;
+  updatedAt:      string;
+  updatedById:    string;
+}
+
+/** DTO pour la mise à jour partielle des paramètres */
+export type UpdateParametresDto = Partial<{
+  generaux:      Partial<ParametresGeneraux>;
+  algorithmes:   Partial<ParametresAlgorithmes>;
+  notifications: Partial<ParametresNotifications>;
+  logistique:    Partial<ParametresLogistique>;
+  securite:      Partial<ParametresSecurite>;
+}>;
+
+export type LangueApp = 'fr' | 'ar' | 'en';

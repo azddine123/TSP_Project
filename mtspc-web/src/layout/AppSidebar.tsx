@@ -1,8 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { tourneeApi as realTourneeApi } from '../services/api';
-import { mockTourneeApi } from '../mock/adminApi';
-const _USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
-const _tourneeApi = _USE_MOCK ? mockTourneeApi : realTourneeApi;
 import { Link, useLocation } from 'react-router-dom';
 import { useSidebar } from './SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -108,35 +104,29 @@ const SettingsIcon = () => (
     <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
   </svg>
 );
-const InboxIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
-    <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
-  </svg>
-);
 
 // ── Types nav ────────────────────────────────────────────────────────────────
 
-type NavItem = { name: string; icon: React.ReactNode; path: string; badge?: boolean };
+type NavItem = { name: string; icon: React.ReactNode; path: string };
 
 const adminNavItems: NavItem[] = [
   { name: 'Vue d\'ensemble',  icon: <DashboardIcon />,    path: '/admin' },
   { name: 'Stock & Appro',    icon: <StockIcon />,        path: '/admin/stock' },
   { name: 'Flotte Véhicules', icon: <TruckIcon />,        path: '/admin/vehicules' },
-  { name: 'Ordres Reçus',     icon: <InboxIcon />,        path: '/admin/ordres-recus', badge: true },
   { name: 'Missions',         icon: <MissionIcon />,      path: '/admin/tournees' },
   { name: 'Suivi Terrain',    icon: <MapIcon />,          path: '/admin/suivi' },
   { name: 'Paramètres',       icon: <SettingsIcon />,     path: '/admin/settings' },
 ];
 
 const superAdminNavItems: NavItem[] = [
-  { name: 'Vue globale',    icon: <DashboardIcon />,    path: '/superadmin' },
-  { name: 'Crises',         icon: <CriseIcon />,        path: '/superadmin/crises' },
-  { name: 'Pipeline Algo',  icon: <AlgoIcon />,         path: '/superadmin/pipeline' },
-  { name: 'Supervision',    icon: <SupervisionIcon />,  path: '/superadmin/supervision' },
-  { name: 'Incidents',      icon: <IncidentIcon />,     path: '/superadmin/incidents' },
-  { name: 'Utilisateurs',   icon: <UsersIcon />,        path: '/superadmin/users' },
-  { name: 'Audit Global',   icon: <AuditIcon />,        path: '/superadmin/audit' },
+  { name: 'Vue globale',   icon: <DashboardIcon />,    path: '/superadmin' },
+  { name: 'Crises',        icon: <CriseIcon />,        path: '/superadmin/crises' },
+  { name: 'Pipeline Algo', icon: <AlgoIcon />,         path: '/superadmin/pipeline' },
+  { name: 'Supervision',   icon: <SupervisionIcon />,  path: '/superadmin/supervision' },
+  { name: 'Incidents',     icon: <IncidentIcon />,     path: '/superadmin/incidents' },
+  { name: 'Utilisateurs',  icon: <UsersIcon />,        path: '/superadmin/users' },
+  { name: 'Audit Global',  icon: <AuditIcon />,        path: '/superadmin/audit' },
+  { name: 'Paramètres',    icon: <SettingsIcon />,     path: '/superadmin/parametres' },
 ];
 
 // ── Composant ────────────────────────────────────────────────────────────────
@@ -145,20 +135,8 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const { hasRole } = useAuth();
   const location = useLocation();
-  const [ordresCount, setOrdresCount] = useState(0);
 
   const navItems = hasRole('SUPER_ADMIN') ? superAdminNavItems : adminNavItems;
-
-  // Charge le nombre d'ordres "planifiée" pour le badge sidebar
-  // Se rafraîchit au montage et à chaque changement de route (navigation entre pages)
-  useEffect(() => {
-    if (hasRole('SUPER_ADMIN')) return;
-    _tourneeApi.getMine()
-      .then((t: { statut: string }[]) => setOrdresCount(t.filter(x => x.statut === 'planifiee').length))
-      .catch(() => setOrdresCount(0));
-  // location.pathname → le badge se met à jour quand l'utilisateur navigue
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
 
   const isActive = useCallback(
     (path: string) => {
@@ -216,37 +194,24 @@ const AppSidebar: React.FC = () => {
               {show ? 'Menu' : <DotsIcon />}
             </h2>
             <ul className="flex flex-col gap-1">
-              {navItems.map((item) => {
-                const badgeCount = item.badge ? ordresCount : 0;
-                return (
-                  <li key={item.name}>
-                    <Link
-                      to={item.path}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
-                        ${!show ? 'lg:justify-center' : ''}
-                        ${isActive(item.path)
-                          ? 'bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-400'
-                          : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-                        }`}
-                    >
-                      <span className={`relative shrink-0 ${isActive(item.path) ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700'}`}>
-                        {item.icon}
-                        {badgeCount > 0 && !show && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                            {badgeCount > 9 ? '9+' : badgeCount}
-                          </span>
-                        )}
-                      </span>
-                      {show && <span className="flex-1">{item.name}</span>}
-                      {show && badgeCount > 0 && (
-                        <span className="ml-auto shrink-0 px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full leading-none">
-                          {badgeCount > 9 ? '9+' : badgeCount}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
+              {navItems.map((item) => (
+                <li key={item.name}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                      ${!show ? 'lg:justify-center' : ''}
+                      ${isActive(item.path)
+                        ? 'bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-400'
+                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                      }`}
+                  >
+                    <span className={`shrink-0 ${isActive(item.path) ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700'}`}>
+                      {item.icon}
+                    </span>
+                    {show && <span>{item.name}</span>}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </nav>

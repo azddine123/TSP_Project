@@ -49,6 +49,18 @@ function RootNavigator() {
         name="livraison-confirmation"
         options={{ headerShown: false, presentation: 'card' }}
       />
+      <Stack.Screen
+        name="settings"
+        options={{ headerShown: false, presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="biometric-settings"
+        options={{ headerShown: false, presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="theme-settings"
+        options={{ headerShown: false, presentation: 'card' }}
+      />
     </Stack>
   );
 }
