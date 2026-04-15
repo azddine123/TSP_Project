@@ -55,12 +55,14 @@ export interface Mission {
 /** Payload envoyé au backend lors d'une synchronisation hors-ligne */
 export interface PendingSubmission {
   missionId: string;
+  douarId?: string;         // Optionnel — pour déduplication par douar
   statut: 'completed';
   commentaireTerrain?: string;
   livraisonLat?: number;
   livraisonLng?: number;
   timestampLocal: string;   // ISO — horodatage de validation en mode hors-ligne
   tentativeSync: number;   // Nombre de tentatives de sync (pour debug jury)
+  livraison?: DouarLivraison; // Payload complet — rempli depuis livraison-confirmation
 }
 
 export interface AuthUser {
@@ -78,6 +80,7 @@ export type NiveauPriorite = 'CRITIQUE' | 'HAUTE' | 'MOYENNE' | 'BASSE';
 /** Une étape de l'itinéraire VRP — correspond à un douar à desservir */
 export interface EtapeVRP {
   ordre: number;        // 1, 2, 3...
+  etapeId?: string;     // UUID backend TourneeEtape — présent en mode API réel
   douarId: string;
   douarNom: string;
   lat: number;

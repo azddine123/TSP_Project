@@ -239,28 +239,48 @@ export interface RunPipelineDto {
 // MODULE TOURNÉES (résultats persistés du VRP)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+export interface RessourcesDouar {
+  tentes:      number;
+  couvertures: number;
+  vivres:      number;
+  kits_med:    number;
+  eau_litres:  number;
+}
+
 export interface Tournee {
-  id:              string;
-  criseId:         string;
-  pipelineId:      string;
-  entrepot:        { id: string; nom: string; province: string };
-  distributeur:    { id: string; nom: string; prenom: string } | null;
-  statut:          TourneeStatut;
-  distanceTotale:  number;
-  tempsEstime:     number;
-  etapes:          TourneeEtape[];
-  createdAt:       string;
-  demarreeAt:      string | null;
-  termineeAt:      string | null;
+  id:                string;
+  criseId:           string;
+  pipelineId:        string;
+  entrepot:          { id: string; nom: string; province: string };
+  distributeur:      { id: string; nom: string; prenom: string } | null;
+  statut:            TourneeStatut;
+  distanceTotale:    number;
+  tempsEstime:       number;
+  etapes:            TourneeEtape[];
+  createdAt:         string;
+  demarreeAt:        string | null;
+  termineeAt:        string | null;
+  /** Ressources totales calculées (somme de toutes les étapes) */
+  ressourcesTotales: RessourcesDouar | null;
 }
 
 export interface TourneeEtape {
-  id:        string;
-  tourneeId: string;
-  douar:     Douar;
-  ordre:     number;
-  statut:    EtapeStatut;
-  arriveeAt: string | null;
+  id:           string;
+  tourneeId:    string;
+  douar:        Douar;
+  ordre:        number;
+  statut:       EtapeStatut;
+  arriveeAt:    string | null;
+  /** Coordonnées GPS de l'étape */
+  latitude?:    number | null;
+  longitude?:   number | null;
+  /** Données démographiques */
+  population?:  number | null;
+  menages?:     number | null;
+  /** Score TOPSIS de priorité ∈ [0, 1] */
+  scoreTopsis?: number | null;
+  /** Ressources à livrer dans ce douar */
+  ressources?:  RessourcesDouar | null;
 }
 
 export interface AssignerTourneeDto {

@@ -310,22 +310,6 @@ export const TOURNEES_ENTREPOT_A = [
       },
     })),
   },
-  {
-    id: 'tournee-a-004',
-    missionId: 'mission-a-004',
-    missionNumero: 'MS-A-2026-004',
-    entrepotId: 'entrepot-a',
-    entrepot: { id: 'entrepot-a', nom: 'Entrepôt A', province: 'Azilal' },
-    vehiculeId: null,
-    distributeur: null,
-    distanceTotale: 0,
-    tempsEstimeTotalMin: 0,
-    tempsEstime: 0,
-    statut: 'planifiee',
-    criseId: 'crise-2026-001',
-    datePlanification: null,
-    etapes: [],
-  },
 ];
 
 // ============================================================================

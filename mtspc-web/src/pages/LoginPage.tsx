@@ -37,16 +37,16 @@ export default function LoginPage() {
         {/* En-tête avec Logo */}
         <div className="text-center mb-8">
           <div className="relative inline-block mb-4">
-            <div 
+            <div
               className="w-28 h-28 rounded-full overflow-hidden shadow-2xl"
-              style={{ 
+              style={{
                 background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
-                boxShadow: '0 8px 32px rgba(21,101,192,0.5), 0 0 0 4px rgba(255,255,255,0.1)' 
+                boxShadow: '0 8px 32px rgba(21,101,192,0.5), 0 0 0 4px rgba(255,255,255,0.1)'
               }}
             >
-              <img 
-                src="/NAJDA_Logo.png" 
-                alt="NAJDA Logo" 
+              <img
+                src="/NAJDA_Logo.png"
+                alt="NAJDA Logo"
                 className="w-full h-full object-cover"
               />
             </div>

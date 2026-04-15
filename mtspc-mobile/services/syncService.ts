@@ -2,7 +2,7 @@
  * SYNC SERVICE — Synchronisation Hors-Ligne → Backend
  * ====================================================
  *
- * FLUX COMPLET (à expliquer au jury) :
+ * FLUX COMPLET :
  * ─────────────────────────────────────
  * [Montagne — Pas de réseau]
  *   Distributeur valide livraison
@@ -10,9 +10,15 @@
  *
  * [Retour en zone réseau]
  *   NetInfo détecte la reconnexion
- *   → bouton rouge "Synchroniser (N)" apparaît dans HomeScreen
- *   → forceSync() → POST /sync (batch) → backend enregistre + audit_logs
- *   → clearSynced() → supprime les entrées envoyées de AsyncStorage
+ *   → bouton "Synchroniser (N)" dans HomeScreen
+ *   → forceSync() → POST /sync (BATCH) → backend enregistre + audit_logs
+ *   → clearSynced() → supprime les entrées envoyées
+ *
+ * Amélioration : batch unique + retry exponentiel par soumission
+ *   - tentativeSync = 0 → délai 1s
+ *   - tentativeSync = 1 → délai 2s
+ *   - tentativeSync = n → délai 2^n s (max 3600s)
+ *   - tentativeSync > 3 → marqué "failed" pour affichage dans profile.tsx
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
@@ -21,7 +27,20 @@ import { PendingSubmission } from '../types/app';
 import { API_BASE_URL } from '../config/keycloakConfig';
 
 const PENDING_KEY = 'pending_submissions';
-const TOKEN_KEY = 'reliefchain_access_token';
+const TOKEN_KEY   = 'reliefchain_access_token';
+
+/** Délai avant prochain essai selon le nombre de tentatives (max 3600s) */
+export function retryDelayMs(tentativeSync: number): number {
+  return Math.min(Math.pow(2, tentativeSync) * 1000, 3_600_000);
+}
+
+/** Statut d'une submission pour affichage UI */
+export type SubmissionDisplayStatus = 'pending' | 'failed' | 'synced';
+
+export function getDisplayStatus(s: PendingSubmission): SubmissionDisplayStatus {
+  if (s.tentativeSync > 3) return 'failed';
+  return 'pending';
+}
 
 export const syncService = {
 
@@ -33,22 +52,23 @@ export const syncService = {
 
   /**
    * Sauvegarder une livraison validée hors-ligne.
-   * Appelée depuis MissionDetailScreen quand NetInfo.isConnected = false.
+   * Appelée depuis livraison-confirmation.tsx quand NetInfo.isConnected = false.
    */
   async savePendingSubmission(submission: PendingSubmission): Promise<void> {
     const raw = await AsyncStorage.getItem(PENDING_KEY);
     const pending: PendingSubmission[] = raw ? JSON.parse(raw) : [];
 
-    // Éviter les doublons si l'utilisateur valide plusieurs fois
-    const exists = pending.some((p) => p.missionId === submission.missionId);
+    // Éviter les doublons (même missionId + douarId)
+    const key = `${submission.missionId}-${submission.douarId ?? ''}`;
+    const exists = pending.some(p => `${p.missionId}-${p.douarId ?? ''}` === key);
     if (!exists) {
       pending.push({ ...submission, tentativeSync: 0 });
       await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-      console.log(`[Sync] Mission ${submission.missionId} sauvegardée hors-ligne`);
+      console.log(`[Sync] Livraison sauvegardée hors-ligne : ${submission.missionId}`);
     }
   },
 
-  /** Lire le nombre de soumissions en attente (pour le badge du bouton Sync) */
+  /** Lire le nombre de soumissions en attente (badge du bouton Sync) */
   async getPendingCount(): Promise<number> {
     const raw = await AsyncStorage.getItem(PENDING_KEY);
     if (!raw) return 0;
@@ -63,9 +83,11 @@ export const syncService = {
 
   /**
    * Forcer la synchronisation immédiate.
-   * Envoie toutes les soumissions en attente en un seul appel batch
-   * vers POST /sync du backend NestJS.
-   * L'Audit Log Interceptor les enregistre automatiquement dans audit_logs.
+   * Envoie TOUTES les soumissions en UN SEUL appel batch
+   * → POST /sync { submissions: PendingSubmission[] }
+   *
+   * Si le batch échoue, incrémente tentativeSync sur chaque item.
+   * Les items avec tentativeSync > 3 sont marqués "failed" dans l'UI.
    */
   async forceSync(): Promise<{ synced: number; failed: number }> {
     const online = await this.checkConnectivity();
@@ -74,51 +96,48 @@ export const syncService = {
     const pending = await this.getPendingSubmissions();
     if (pending.length === 0) return { synced: 0, failed: 0 };
 
-    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    const token = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
 
-    let synced = 0;
-    let failed = 0;
-    const failedItems: PendingSubmission[] = [];
+    try {
+      const res = await fetch(`${API_BASE_URL}/sync`, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({ submissions: pending }),
+      });
 
-    for (const submission of pending) {
-      try {
-        const res = await fetch(`${API_BASE_URL}/sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
-          },
-          body: JSON.stringify(submission),
-        });
-
-        if (res.ok) {
-          synced++;
-          console.log(`[Sync] ✅ Mission ${submission.missionId} synchronisée`);
-        } else {
-          // Conserver pour réessayer plus tard
-          failedItems.push({
-            ...submission,
-            tentativeSync: submission.tentativeSync + 1,
-          });
-          failed++;
-          console.warn(`[Sync] ❌ Échec mission ${submission.missionId} : ${res.status}`);
-        }
-      } catch {
-        failedItems.push({
-          ...submission,
-          tentativeSync: submission.tentativeSync + 1,
-        });
-        failed++;
+      if (res.ok) {
+        // Tout synchronisé — vider la file
+        await AsyncStorage.removeItem(PENDING_KEY);
+        console.log(`[Sync] ✅ ${pending.length} livraison(s) synchronisée(s) en batch`);
+        return { synced: pending.length, failed: 0 };
       }
-    }
 
-    // Conserver uniquement les échecs dans AsyncStorage
-    if (failedItems.length > 0) {
-      await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(failedItems));
-    } else {
-      await AsyncStorage.removeItem(PENDING_KEY);
-    }
+      // Échec batch → incrémenter tentativeSync sur tous les items
+      const incremented: PendingSubmission[] = pending.map(p => ({
+        ...p,
+        tentativeSync: p.tentativeSync + 1,
+      }));
+      await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(incremented));
+      console.warn(`[Sync] ❌ Batch échoué (${res.status}) — ${pending.length} en attente`);
+      return { synced: 0, failed: pending.length };
 
-    return { synced, failed };
+    } catch (err) {
+      // Erreur réseau → incrémenter aussi
+      const incremented: PendingSubmission[] = pending.map(p => ({
+        ...p,
+        tentativeSync: p.tentativeSync + 1,
+      }));
+      await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(incremented));
+      console.warn('[Sync] ❌ Erreur réseau batch:', err);
+      return { synced: 0, failed: pending.length };
+    }
+  },
+
+  /** Effacer toutes les soumissions (après confirmation utilisateur) */
+  async clearAll(): Promise<void> {
+    await AsyncStorage.removeItem(PENDING_KEY);
   },
 };

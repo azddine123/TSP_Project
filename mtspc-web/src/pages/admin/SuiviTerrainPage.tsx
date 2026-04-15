@@ -708,6 +708,60 @@ export default function SuiviTerrainPage() {
                 </div>
               )}
 
+              {/* ── Incidents actifs ── */}
+              {(() => {
+                const incidentTypes: TerrainActionType[] = ['ROUTE_BLOQUEE', 'VEHICULE_PANNE'];
+                const incidents = terrainActions.filter(a => incidentTypes.includes(a.type));
+                if (incidents.length === 0) return null;
+                return (
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-red-200 dark:border-red-900/40 shadow-theme-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-red-100 dark:border-red-900/30 flex items-center gap-2 bg-red-50 dark:bg-red-950/20">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-red-500 text-white shrink-0">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                      </span>
+                      <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 flex-1">
+                        Incidents actifs
+                      </h2>
+                      <span className="px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full font-bold animate-pulse">
+                        {incidents.length}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {incidents.map(inc => {
+                        const cfg = ACTION_CONFIG[inc.type];
+                        return (
+                          <div key={inc.id} className="px-4 py-3 flex items-start gap-3">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold ${cfg.bg} ${cfg.color}`}>
+                              {cfg.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
+                              <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{inc.acteur}</p>
+                              <p className="text-xs text-gray-400 truncate">{inc.localisation}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {new Date(inc.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() =>
+                                setTerrainActions(prev => prev.filter(a => a.id !== inc.id))
+                              }
+                              className="text-xs font-semibold px-2 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors shrink-0"
+                              title="Marquer résolu"
+                            >
+                              ✓ Résolu
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* ── Journal d'activité ── */}
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden flex-1 flex flex-col">
                 <div

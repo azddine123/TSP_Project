@@ -6,6 +6,13 @@ import { AssignerTourneeDto }       from './dto/assigner-tournee.dto';
 import { UpdateEtapeStatutDto }     from './dto/update-etape-statut.dto';
 import { Roles, CurrentUser, AuthUser } from '../auth/decorators/roles.decorator';
 import { EntrepotsService }         from '../entrepots/entrepots.service';
+import { IsOptional, IsString }     from 'class-validator';
+
+class RouteBloqueeDto {
+  @IsOptional()
+  @IsString()
+  commentaire?: string;
+}
 
 @Controller('tournees')
 export class TourneesController {
@@ -39,6 +46,17 @@ export class TourneesController {
     const entrepot = await this.entrepotsService.findByAdmin(user.userId);
     if (!entrepot) throw new NotFoundException('Aucun entrepôt associé à votre compte.');
     return this.service.findByEntrepot(entrepot.id);
+  }
+
+  /**
+   * GET /tournees/distributeur/mine — Distributeur
+   * Retourne les tournées assignées au distributeur connecté (hors annulées).
+   * Déclaré avant :id pour éviter le conflit de route.
+   */
+  @Get('distributeur/mine')
+  @Roles('DISTRIBUTEUR')
+  findMineAsDistributeur(@CurrentUser() user: AuthUser) {
+    return this.service.findForDistributeur(user.userId);
   }
 
   /** GET /tournees/:id */
@@ -91,5 +109,27 @@ export class TourneesController {
     @Body() dto: UpdateEtapeStatutDto,
   ) {
     return this.service.updateEtapeStatut(tourneeId, etapeId, dto);
+  }
+
+  /**
+   * PATCH /tournees/:id/etapes/:etapeId/route-bloquee
+   * Le distributeur signale que la route vers ce douar est bloquée.
+   * → Étape marquée 'echec' + événement ROUTE_BLOQUEE créé pour le Super Admin.
+   */
+  @Patch(':id/etapes/:etapeId/route-bloquee')
+  @Roles('DISTRIBUTEUR', 'ADMIN_ENTREPOT', 'SUPER_ADMIN')
+  signalerRouteBloquee(
+    @Param('id')      tourneeId: string,
+    @Param('etapeId') etapeId:   string,
+    @Body() dto: RouteBloqueeDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.signalerRouteBloquee(
+      tourneeId,
+      etapeId,
+      dto.commentaire ?? '',
+      user?.userId ?? null,
+      user?.username ?? null,
+    );
   }
 }

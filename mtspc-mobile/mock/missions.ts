@@ -3,6 +3,18 @@
  * ===================================================
  * Données fictives basées sur les données HCP (Haut Commissariat au Plan)
  * des douars de la région Béni Mellal-Khénifra 2024.
+ *
+ * CORRESPONDANCE WEB ↔ MOBILE :
+ * ─────────────────────────────────────────────────────────────────────────────
+ * mission-001 (pending)     ↔  tournee-a-002 (planifiee)  — Youssef Alaoui  — Azilal
+ * mission-002 (in_progress) ↔  tournee-a-001 (en_cours)   — Ahmed Benali    — Azilal   (dist-a-001)
+ * mission-003 (completed)   ↔  tournee-a-003 (terminee)   — Karim Oulhaj    — Béni Mellal
+ * mission-004 (pending)     ↔  tournee-a-004 (planifiee)  — non assigné     — Khouribga
+ * mission-005 (pending)     ↔  (hors entrepôt A)          — non assigné     — Khénifra
+ * mission-006 (annulee)     ↔  (annulée — pas de tournée) — —               — Azilal
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Douars de référence : mtspc-web/src/mock/douars.ts  (16 douars réels)
+ * Entrepôt principal : mtspc-web/src/mock/entrepotA.ts (TOURNEES_ENTREPOT_A)
  */
 import { Mission } from '../types/app';
 
@@ -128,11 +140,11 @@ function calculerQuantite(douar: DouarInfo, typeAideIndex: number): number {
 }
 
 // Obtenir les coordonnées avec un petit offset pour varier
-function getCoords(province: string, index: number): { lat: number; lng: number } {
+function getCoords(province: string, index: number): { destinationLat: number; destinationLng: number } {
   const base = PROVINCE_COORDS[province] || { lat: 31.5, lng: -7.5 };
   return {
-    lat: base.lat + (index * 0.02),
-    lng: base.lng - (index * 0.015),
+    destinationLat: base.lat + (index * 0.02),
+    destinationLng: base.lng - (index * 0.015),
   };
 }
 
@@ -158,15 +170,16 @@ export const MOCK_MISSIONS: MissionMock[] = [
   },
   {
     id: 'mission-002',
-    numeroMission: 'MS-2026-002',
+    // ↑ Correspond à tournee-a-001 (web) — Ahmed Benali (dist-a-001) — Entrepôt A — Azilal
+    numeroMission: 'MS-A-2026-001',  // Aligné avec missionNumero web
     statut: 'in_progress',
     priorite: 'critique',
-    dateCreation: '2026-04-02T10:30:00Z',
+    dateCreation: '2026-04-04T08:00:00Z',
     dateEcheance: '2026-04-05T12:00:00Z',
-    dateAffectation: '2026-04-02T14:00:00Z',
-    ...getCoords('Fquih Ben Salah', 0),
-    destinationNom: DOUARS_DATA[1].douar,
-    entrepotNom: 'Entrepôt B',
+    dateAffectation: '2026-04-04T08:00:00Z',
+    destinationLat: 31.9, destinationLng: -6.57,  // Province Azilal (cohérent avec entrepotA.ts)
+    destinationNom: 'Aska',  // Premier douar de tournee-a-001
+    entrepotNom: 'Entrepôt A',
     description: `Urgence médicale - Livraison de kits d'hygiène pour ${DOUARS_DATA[1].population} habitants du douar ${DOUARS_DATA[1].douar}, province ${DOUARS_DATA[1].province}.`,
     douarInfo: DOUARS_DATA[1],
     typeAide: TYPES_AIDE[3].type,

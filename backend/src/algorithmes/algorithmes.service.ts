@@ -8,6 +8,7 @@ import { VrpService }    from './vrp.service';
 import { RunPipelineDto } from './dto/run-pipeline.dto';
 import { CrisesService }  from '../crises/crises.service';
 import { EntrepotsService } from '../entrepots/entrepots.service';
+import { TourneesService } from '../tournees/tournees.service';
 
 @Injectable()
 export class AlgorithmesService {
@@ -16,11 +17,12 @@ export class AlgorithmesService {
   constructor(
     @InjectRepository(PipelineResultEntity)
     private readonly pipelineRepo: Repository<PipelineResultEntity>,
-    private readonly ahpService:     AhpService,
-    private readonly topsisService:  TopsisService,
-    private readonly vrpService:     VrpService,
-    private readonly crisesService:  CrisesService,
+    private readonly ahpService:      AhpService,
+    private readonly topsisService:   TopsisService,
+    private readonly vrpService:      VrpService,
+    private readonly crisesService:   CrisesService,
     private readonly entrepotsService: EntrepotsService,
+    private readonly tourneesService:  TourneesService,
   ) {}
 
   // ── Lancer le pipeline AHP → TOPSIS → VRP ────────────────────────────────
@@ -94,7 +96,7 @@ export class AlgorithmesService {
         douarsMap,
       );
 
-      // ── Persister les résultats ───────────────────────────────────────────
+      // ── Persister les résultats du pipeline ──────────────────────────────
       const executionMs = Date.now() - start;
       record.statut      = 'completed';
       record.ahpResult   = ahpResult   as unknown as Record<string, unknown>;
@@ -104,7 +106,19 @@ export class AlgorithmesService {
       record.completedAt = new Date();
       await this.pipelineRepo.save(record);
 
-      this.logger.log(`[Pipeline ${record.id}] Terminé en ${executionMs}ms`);
+      // ── Créer les tournées + étapes avec ressources calculées ────────────
+      const entrepotsMap = new Map(entrepots.map((e) => [e.id, e]));
+      const topsisScores = new Map(
+        topsisResult.classement.map((r) => [r.douarId, r.score]),
+      );
+      await this.tourneesService.persistFromPipeline(
+        record,
+        vrpTournees,
+        entrepotsMap,
+        topsisScores,
+      );
+
+      this.logger.log(`[Pipeline ${record.id}] Terminé en ${executionMs}ms — tournées créées`);
       return record;
 
     } catch (err: unknown) {

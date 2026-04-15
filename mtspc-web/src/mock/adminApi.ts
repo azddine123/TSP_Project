@@ -11,13 +11,10 @@ import {
   ENTREPOT_A,
   STOCK_ENTREPOT_A,
   VEHICULES_ENTREPOT_A,
-  TOURNEES_ENTREPOT_A,
   DISTRIBUTEURS_ENTREPOT_A,
 } from './entrepotA';
-
-// Tournées mutables pour permettre la création
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _tournees: any[] = [...TOURNEES_ENTREPOT_A];
+// Tournées partagées avec le pipeline SuperAdmin
+import { tourneesStore } from './store';
 
 // Simuler un délai réseau
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -150,85 +147,78 @@ export const mockVehiculeApi = {
 export const mockTourneeApi = {
   getMine: async () => {
     await delay(500);
-    return [..._tournees];
+    return [...tourneesStore.getAll()];
   },
-  
-  getByCrise: async () => {
+
+  getByCrise: async (criseId?: string) => {
     await delay(500);
-    return [...TOURNEES_ENTREPOT_A];
+    const all = tourneesStore.getAll();
+    return criseId ? all.filter((t: any) => t.criseId === criseId) : [...all];
   },
-  
+
   getById: async (id: string) => {
     await delay(400);
-    const tournee = TOURNEES_ENTREPOT_A.find(t => t.id === id);
+    const tournee = tourneesStore.getById(id);
     if (!tournee) throw new Error('Tournée non trouvée');
     return tournee;
   },
-  
+
   assigner: async (id: string, dto: { distributeurId: string }) => {
     await delay(400);
     return { id, ...dto };
   },
-  
+
   reassigner: async (id: string, dto: { distributeurId: string }) => {
     await delay(400);
     return { id, ...dto };
   },
-  
+
   annuler: async (id: string) => {
     await delay(400);
-    _tournees = _tournees.map(t => t.id === id ? { ...t, statut: 'annulee' } : t);
+    tourneesStore.update(id, { statut: 'annulee' });
     return { id, statut: 'annulee' };
   },
 
   demarrer: async (id: string) => {
     await delay(400);
-    _tournees = _tournees.map(t => {
-      if (t.id !== id) return t;
-      const etapes = (t.etapes as any[]).map((e: any, i: number) =>
-        i === 0 ? { ...e, statut: 'en_route' } : e
-      );
-      return { ...t, statut: 'en_cours', etapes, demarreeAt: new Date().toISOString() };
-    });
-    return _tournees.find(t => t.id === id);
+    const current = tourneesStore.getById(id);
+    if (!current) throw new Error('Tournée non trouvée');
+    const etapes = (current.etapes as any[]).map((e: any, i: number) =>
+      i === 0 ? { ...e, statut: 'en_route' } : e
+    );
+    tourneesStore.update(id, { statut: 'en_cours', etapes, demarreeAt: new Date().toISOString() });
+    return tourneesStore.getById(id);
   },
 
   terminer: async (id: string) => {
     await delay(400);
-    _tournees = _tournees.map(t => {
-      if (t.id !== id) return t;
-      const etapes = (t.etapes as any[]).map((e: any) => ({ ...e, statut: 'livree' }));
-      return { ...t, statut: 'terminee', etapes, termineeAt: new Date().toISOString() };
-    });
-    return _tournees.find(t => t.id === id);
+    const current = tourneesStore.getById(id);
+    if (!current) throw new Error('Tournée non trouvée');
+    const etapes = (current.etapes as any[]).map((e: any) => ({ ...e, statut: 'livree' }));
+    tourneesStore.update(id, { statut: 'terminee', etapes, termineeAt: new Date().toISOString() });
+    return tourneesStore.getById(id);
   },
 
   assignerDistributeur: async (id: string, dto: { distributeurId: string; vehiculeId?: string }) => {
     await delay(400);
     const dist = DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId);
-    _tournees = _tournees.map(t => {
-      if (t.id !== id) return t;
-      return {
-        ...t,
-        distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : t.distributeur,
-        vehiculeId: dto.vehiculeId ?? t.vehiculeId,
-      };
+    tourneesStore.update(id, {
+      distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : undefined,
+      vehiculeId: dto.vehiculeId,
     });
-    return _tournees.find(t => t.id === id);
+    return tourneesStore.getById(id);
   },
 
   updateEtapeStatut: async (tourneeId: string, etapeId: string, statut: string) => {
     await delay(300);
-    _tournees = _tournees.map(t => {
-      if (t.id !== tourneeId) return t;
-      const etapes = (t.etapes as any[]).map((e: any) =>
-        e.id === etapeId ? { ...e, statut, arriveeAt: statut === 'livree' ? new Date().toISOString() : e.arriveeAt } : e
-      );
-      // Si toutes les étapes sont livrées → terminer automatiquement
-      const allDone = etapes.every((e: any) => e.statut === 'livree' || e.statut === 'echec');
-      return { ...t, etapes, statut: allDone ? 'terminee' : t.statut };
-    });
-    return _tournees.find(t => t.id === tourneeId);
+    const current = tourneesStore.getById(tourneeId);
+    if (!current) throw new Error('Tournée non trouvée');
+    const etapes = (current.etapes as any[]).map((e: any) =>
+      e.id === etapeId ? { ...e, statut, arriveeAt: statut === 'livree' ? new Date().toISOString() : e.arriveeAt } : e
+    );
+    const allDone = etapes.every((e: any) => e.statut === 'livree' || e.statut === 'echec');
+    tourneesStore.update(tourneeId, { etapes, statut: allDone ? 'terminee' : current.statut });
+    return tourneesStore.getById(tourneeId);
   },
 
   create: async (dto: {
@@ -241,7 +231,7 @@ export const mockTourneeApi = {
     await delay(700);
     const dist = DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId);
     const newId = `tournee-${Date.now()}`;
-    const missionNum = `MS-A-2026-${String(_tournees.length + 1).padStart(3, '0')}`;
+    const missionNum = `MS-A-2026-${String(tourneesStore.getAll().length + 1).padStart(3, '0')}`;
     const etapes = dto.douarIds.map((douarId, i) => {
       const douar = MOCK_DOUBLES.find(d => d.id === douarId);
       return {
@@ -250,19 +240,19 @@ export const mockTourneeApi = {
         douarId,
         douar: douar ? { nom: douar.nom, commune: douar.commune, province: douar.province } : { nom: douarId, commune: '', province: '' },
         douarNom: douar?.nom ?? douarId,
-        lat: douar?.coordonnees.lat ?? 31.96,
-        lng: douar?.coordonnees.lng ?? -6.57,
+        lat: douar?.latitude ?? 31.96,
+        lng: douar?.longitude ?? -6.57,
         distanceKm: parseFloat((10 + Math.random() * 15).toFixed(1)),
         tempsEstimeMin: Math.floor(20 + Math.random() * 25),
         priorite: i === 0 ? 'CRITIQUE' : i < 2 ? 'HAUTE' : 'MOYENNE',
         scoreTopsis: parseFloat((0.9 - i * 0.1).toFixed(3)),
         population: douar?.population ?? 200,
-        menages: douar?.nbMenages ?? 40,
+        menages: Math.ceil((douar?.population ?? 200) / 5.5),
         statut: 'en_attente',
         ressources: {
-          tentes: Math.floor((douar?.nbMenages ?? 40) * 0.6),
-          vivres: (douar?.nbMenages ?? 40) * 2,
-          kits_med: Math.floor((douar?.nbMenages ?? 40) * 0.3),
+          tentes: Math.floor(Math.ceil((douar?.population ?? 200) / 5.5) * 0.6),
+          vivres: Math.ceil((douar?.population ?? 200) / 5.5) * 2,
+          kits_med: Math.floor(Math.ceil((douar?.population ?? 200) / 5.5) * 0.3),
           eau_litres: (douar?.population ?? 200) * 5,
         },
       };
@@ -279,12 +269,12 @@ export const mockTourneeApi = {
       tempsEstime: etapes.reduce((sum, e) => sum + e.tempsEstimeMin, 0),
       tempsEstimeTotalMin: etapes.reduce((sum, e) => sum + e.tempsEstimeMin, 0),
       statut: 'planifiee' as const,
-      criseId: 'crise-2026-001',
+      criseId: 'crise-001',
       description: dto.description ?? null,
       datePlanification: dto.dateDepart,
       etapes,
     };
-    _tournees = [..._tournees, newTournee];
+    tourneesStore.add(newTournee);
     return newTournee;
   },
 };
@@ -372,7 +362,7 @@ export const mockMissionApi = {
 export const mockSupervisionApi = {
   getSnapshot: async () => {
     await delay(500);
-    const tourneesEnCours = TOURNEES_ENTREPOT_A.filter(t => t.statut === 'en_cours');
+    const tourneesEnCours = tourneesStore.getAll().filter((t: any) => t.statut === 'en_cours');
     
     return {
       tourneesActives: tourneesEnCours.length,

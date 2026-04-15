@@ -1,7 +1,11 @@
 /**
  * PAGE INCIDENTS — Signalement et gestion des événements terrain
+ * Améliorations :
+ *  - Lien "Voir tournée" pour chaque incident lié à une tournée
+ *  - Bouton "Déclencher recalcul VRP" pour incidents ROUTE_BLOQUEE / RECALCUL_DEMANDE
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { conditionalCriseApi as criseApi, conditionalEvenementApi as evenementApi, getApiErrorMessage } from '../../services/api';
 import type { Crise, Evenement, CreateEvenementDto, EvenementType, EvenementSeverite } from '../../types';
 
@@ -116,6 +120,7 @@ function CreateEvenementModal({
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function IncidentsPage() {
+  const navigate = useNavigate();
   const [crises,      setCrises]      = useState<Crise[]>([]);
   const [criseId,     setCriseId]     = useState('');
   const [evenements,  setEvenements]  = useState<Evenement[]>([]);
@@ -255,27 +260,53 @@ export default function IncidentsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {updating === ev.id ? (
-                        <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
-                      ) : ev.statut === 'ouvert' ? (
-                        <div className="flex gap-1.5">
-                          <button onClick={() => handleUpdateStatut(ev.id, 'en_traitement')}
-                            className="px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
-                            Traiter
-                          </button>
+                      <div className="flex flex-wrap gap-1.5">
+                        {updating === ev.id ? (
+                          <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+                        ) : ev.statut === 'ouvert' ? (
+                          <>
+                            <button onClick={() => handleUpdateStatut(ev.id, 'en_traitement')}
+                              className="px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
+                              Traiter
+                            </button>
+                            <button onClick={() => handleUpdateStatut(ev.id, 'resolu')}
+                              className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                              Résoudre
+                            </button>
+                          </>
+                        ) : ev.statut === 'en_traitement' ? (
                           <button onClick={() => handleUpdateStatut(ev.id, 'resolu')}
                             className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
                             Résoudre
                           </button>
-                        </div>
-                      ) : ev.statut === 'en_traitement' ? (
-                        <button onClick={() => handleUpdateStatut(ev.id, 'resolu')}
-                          className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
-                          Résoudre
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+
+                        {/* Lien "Voir tournée" si tourneeId présent */}
+                        {ev.tourneeId && (
+                          <button
+                            onClick={() => navigate(`/superadmin/missions?tourneeId=${ev.tourneeId}`)}
+                            className="px-2 py-1 text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
+                          >
+                            Voir tournée
+                          </button>
+                        )}
+
+                        {/* Bouton recalcul VRP pour ROUTE_BLOQUEE ou RECALCUL_DEMANDE */}
+                        {(ev.type === 'ROUTE_BLOQUEE' || ev.type === 'RECALCUL_DEMANDE') && ev.douarId && (
+                          <button
+                            onClick={() =>
+                              navigate('/superadmin/pipeline', {
+                                state: { routeBloqueeDouarId: ev.douarId },
+                              })
+                            }
+                            className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                          >
+                            Recalculer VRP
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

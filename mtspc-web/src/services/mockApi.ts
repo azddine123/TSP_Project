@@ -14,15 +14,17 @@ import {
   MOCK_AUDIT_LOGS,
   MOCK_VEHICULES,
   MOCK_DISTRIBUTEURS,
-  MOCK_CRISES,
   MOCK_DOUBLES,
   MOCK_USERS,
 } from '../mock';
+import { tourneesStore, crisesStore, vrpTourneeToAdminTournee } from '../mock/store';
 
 import type { Mission, CreateCriseDto, Crise, DouarSeverite, AdminEntrepot, SupervisionSnapshot, CreateAdminEntrepotDto, UpdateAdminStatutDto, PipelineResult, RunPipelineDto, AhpResult, TopsisRanking, VrpTournee, VrpEtape, Evenement, CreateEvenementDto, EvenementsResponse } from '../types';
 
 // Flag pour activer/désactiver les mocks
-export const USE_MOCK_DATA = true;
+// true par défaut → aucun backend requis en dev
+// Mettre VITE_USE_MOCK=false dans .env pour utiliser le vrai backend
+export const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK !== 'false';
 
 // Simulation de délai réseau
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -253,19 +255,20 @@ export const distributeurApi = {
 export const criseApi = {
   getAll: async (): Promise<Crise[]> => {
     await delay(600);
-    return Promise.resolve([...MOCK_CRISES]);
+    return [...crisesStore.getAll()];
   },
 
   getActives: async (): Promise<Crise[]> => {
     await delay(400);
-    return Promise.resolve(MOCK_CRISES.filter(c => c.statut === 'active'));
+    return [...crisesStore.getActive()];
   },
 
   create: async (dto: CreateCriseDto): Promise<Crise> => {
     await delay(700);
+    const id = `crise-${Date.now()}`;
     const newCrise: Crise = {
-      id: `crise-${Date.now()}`,
-      reference: `CRISE-2026-${String(MOCK_CRISES.length + 1).padStart(3, '0')}`,
+      id,
+      reference: `CRISE-2026-${String(crisesStore.getAll().length + 1).padStart(3, '0')}`,
       type: dto.type,
       zone: dto.zone,
       description: dto.description ?? null,
@@ -277,8 +280,8 @@ export const criseApi = {
       severitesParDouar: dto.severitesParDouar.map((s): DouarSeverite => {
         const douar = MOCK_DOUBLES.find(d => d.id === s.douarId)!;
         return {
-          id: `sev-${Date.now()}-${s.douarId}`,
-          criseId: `crise-${Date.now()}`,
+          id: `sev-${id}-${s.douarId}`,
+          criseId: id,
           douar,
           severite: s.severite,
           vulnerabilite: s.vulnerabilite,
@@ -287,17 +290,16 @@ export const criseApi = {
         };
       }),
     };
-    MOCK_CRISES.push(newCrise);
-    return Promise.resolve(newCrise);
+    crisesStore.add(newCrise);
+    return newCrise;
   },
 
   updateStatut: async (id: string, statut: Crise['statut']): Promise<Crise> => {
     await delay(400);
-    const crise = MOCK_CRISES.find(c => c.id === id);
-    if (!crise) throw new Error(`Crise ${id} non trouvée`);
-    crise.statut = statut;
-    if (statut === 'cloturee') crise.clotureeAt = new Date().toISOString();
-    return Promise.resolve({ ...crise });
+    crisesStore.updateStatut(id, statut);
+    const updated = crisesStore.getAll().find(c => c.id === id);
+    if (!updated) throw new Error(`Crise ${id} non trouvée`);
+    return { ...updated };
   },
 };
 
@@ -561,7 +563,8 @@ export const mockAlgoApi = {
     await delay(1200);
 
     const ahp = computeAhp(dto.ahpMatrice.comparaisons);
-    const crise = MOCK_CRISES.find(c => c.id === dto.criseId);
+    // Utiliser crisesStore (pas MOCK_CRISES) pour inclure les crises créées dynamiquement
+    const crise = crisesStore.getAll().find(c => c.id === dto.criseId);
 
     // TOPSIS: score each douar from severitesParDouar
     const sevDouars = crise?.severitesParDouar ?? [];
@@ -631,6 +634,16 @@ export const mockAlgoApi = {
       erreur:       null,
     };
     pipelineHistory.unshift(result);
+
+    // ── Pont SuperAdmin → Admin Entrepôt ─────────────────────────────────────
+    // Convertir les tournées VRP au format attendu par l'Admin Entrepôt
+    // et les ajouter au store partagé (adminApi.ts lit dedans via tourneesStore)
+    // On ne garde que les tournées avec au moins une étape (évite les entrées vides)
+    const adminTournees = tournees
+      .filter(vrp => (vrp.etapes ?? []).length > 0)
+      .map((vrp, i) => vrpTourneeToAdminTournee(vrp, dto.criseId, i));
+    if (adminTournees.length > 0) tourneesStore.addMany(adminTournees);
+
     return result;
   },
 

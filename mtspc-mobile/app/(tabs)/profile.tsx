@@ -19,7 +19,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { syncService } from '../../services/syncService';
+import { syncService, getDisplayStatus } from '../../services/syncService';
+import type { PendingSubmission } from '../../types/app';
 
 export default function ProfileScreen() {
   const { logout, user, isBiometricEnabled, setBiometricEnabled } = useAuth();
@@ -28,6 +29,7 @@ export default function ProfileScreen() {
   const [biometricSupported, setBiometricSupported] = useState(true);
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [syncStats, setSyncStats] = useState({ pending: 0, synced: 0, failed: 0 });
+  const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -36,11 +38,15 @@ export default function ProfileScreen() {
 
   const loadProfileData = async () => {
     try {
-      const pending = await syncService.getPendingCount();
+      const [pending, submissions] = await Promise.all([
+        syncService.getPendingCount(),
+        syncService.getPendingSubmissions(),
+      ]);
       const syncedRaw = await AsyncStorage.getItem('sync_stats');
       const synced = syncedRaw ? JSON.parse(syncedRaw).synced : 0;
-      const failed = syncedRaw ? JSON.parse(syncedRaw).failed : 0;
+      const failed = submissions.filter(s => s.tentativeSync > 3).length;
       setSyncStats({ pending, synced, failed });
+      setPendingSubmissions(submissions);
     } catch (err) {
       console.error('Failed to load profile data:', err);
     } finally {
@@ -125,6 +131,50 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
+
+      {/* Soumissions en attente */}
+      {pendingSubmissions.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Soumissions en attente ({pendingSubmissions.length})</Text>
+          {pendingSubmissions.map((sub, idx) => {
+            const displayStatus = getDisplayStatus(sub);
+            return (
+              <View key={`${sub.missionId}-${sub.douarId ?? idx}`} style={styles.submissionRow}>
+                {/* Icône statut */}
+                {displayStatus === 'failed' ? (
+                  <Ionicons name="close-circle" size={20} color="#D32F2F" />
+                ) : (
+                  <Ionicons name="time" size={20} color="#F57C00" />
+                )}
+                <View style={styles.submissionInfo}>
+                  <Text style={styles.submissionMission} numberOfLines={1}>
+                    Mission : {sub.missionId}
+                  </Text>
+                  {sub.douarId && (
+                    <Text style={styles.submissionDouar} numberOfLines={1}>
+                      Douar : {sub.livraison?.douarNom ?? sub.douarId}
+                    </Text>
+                  )}
+                  <Text style={styles.submissionTime}>
+                    {new Date(sub.timestampLocal).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                  </Text>
+                </View>
+                <View style={[
+                  styles.submissionBadge,
+                  displayStatus === 'failed' ? styles.submissionBadgeFailed : styles.submissionBadgePending,
+                ]}>
+                  <Text style={[
+                    styles.submissionBadgeText,
+                    displayStatus === 'failed' ? styles.submissionBadgeTextFailed : styles.submissionBadgeTextPending,
+                  ]}>
+                    {displayStatus === 'failed' ? `Échec (${sub.tentativeSync})` : `Tentative ${sub.tentativeSync}`}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Paramètres */}
       <View style={styles.section}>
@@ -365,5 +415,59 @@ const styles = StyleSheet.create({
     color: '#9E9E9E',
     marginTop: 16,
     marginBottom: 32,
+  },
+
+  // Soumissions en attente
+  submissionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    gap: 10,
+  },
+  submissionInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  submissionMission: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#212121',
+  },
+  submissionDouar: {
+    fontSize: 12,
+    color: '#616161',
+    marginTop: 2,
+  },
+  submissionTime: {
+    fontSize: 11,
+    color: '#9E9E9E',
+    marginTop: 2,
+  },
+  submissionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  submissionBadgePending: {
+    backgroundColor: '#FFF3E0',
+  },
+  submissionBadgeFailed: {
+    backgroundColor: '#FFEBEE',
+  },
+  submissionBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  submissionBadgeTextPending: {
+    color: '#E65100',
+  },
+  submissionBadgeTextFailed: {
+    color: '#B71C1C',
   },
 });

@@ -123,7 +123,6 @@ const superAdminNavItems: NavItem[] = [
   { name: 'Crises',         icon: <CriseIcon />,        path: '/superadmin/crises' },
   { name: 'Pipeline Algo',  icon: <AlgoIcon />,         path: '/superadmin/pipeline' },
   { name: 'Supervision',    icon: <SupervisionIcon />,  path: '/superadmin/supervision' },
-  { name: 'Missions',       icon: <MissionIcon />,      path: '/superadmin/missions' },
   { name: 'Incidents',      icon: <IncidentIcon />,     path: '/superadmin/incidents' },
   { name: 'Utilisateurs',   icon: <UsersIcon />,        path: '/superadmin/users' },
   { name: 'Audit Global',   icon: <AuditIcon />,        path: '/superadmin/audit' },

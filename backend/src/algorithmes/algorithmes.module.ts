@@ -8,12 +8,14 @@ import { AlgorithmesService }    from './algorithmes.service';
 import { AlgorithmesController } from './algorithmes.controller';
 import { CrisesModule }          from '../crises/crises.module';
 import { EntrepotsModule }       from '../entrepots/entrepots.module';
+import { TourneesModule }        from '../tournees/tournees.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PipelineResultEntity]),
     CrisesModule,
     EntrepotsModule,
+    TourneesModule,
   ],
   providers:   [AhpService, TopsisService, VrpService, AlgorithmesService],
   controllers: [AlgorithmesController],

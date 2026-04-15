@@ -300,9 +300,32 @@ export default function AdminOverview() {
 
   const alertes        = stocks.filter((s) => s.quantite <= s.seuilAlerte).length;
   const enMission      = vehicules.filter((v) => v.statut === 'en_mission').length;
+  const vehiculesDispo = vehicules.filter((v) => v.statut === 'disponible').length;
   const enAttente      = tournees.filter((t) => t.statut === 'planifiee').length;
   const enCours        = tournees.filter((t) => t.statut === 'en_cours').length;
   const recentMouvs    = stocks.slice(0, 5);
+
+  // Livraisons du jour : étapes avec arriveeAt dans les dernières 24 h
+  const livraisonsJour = tournees.reduce((acc, t) => {
+    const etapes = (t.etapes ?? []) as EtapeExtended[];
+    return acc + etapes.filter(e => {
+      const arrivee = (e as unknown as { arriveeAt?: string }).arriveeAt;
+      if (!arrivee) return false;
+      return (Date.now() - new Date(arrivee).getTime()) < 24 * 60 * 60 * 1000;
+    }).length;
+  }, 0);
+
+  // Prochaines tournées planifiées ET assignées (distributeur présent)
+  const prochainesTournees = tournees.filter(
+    (t) => t.statut === 'planifiee' && t.distributeur != null,
+  ).slice(0, 5);
+
+  // Tendance stock 7 jours : variation ±20 % autour du total actuel (données simulées)
+  const stockTotal = stocks.reduce((sum, s) => sum + s.quantite, 0);
+  const stockTrend = [0.82, 0.88, 0.79, 0.93, 0.85, 0.91, 1.00].map(
+    (f) => Math.round(stockTotal * f),
+  );
+  const trendMax = Math.max(...stockTrend, 1);
 
   // ── Contenu des slide-overs ─────────────────────────────────────────────────
   const CATEGORIE_COLOR: Record<string, string> = {
@@ -473,6 +496,28 @@ export default function AdminOverview() {
       {/* Bannière alertes */}
       <AlertBanner count={alertes} entrepot={entrepot} />
 
+      {/* Bannière nouvelles tournées VRP depuis le pipeline */}
+      {(() => {
+        const vrpCount = tournees.filter((t: any) => t._fromPipeline && t.statut === 'planifiee').length;
+        if (vrpCount === 0) return null;
+        return (
+          <div className="flex items-center gap-3 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-xl px-5 py-3.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-purple-800 dark:text-purple-300">
+                {vrpCount} nouvelle{vrpCount > 1 ? 's' : ''} tournée{vrpCount > 1 ? 's' : ''} générée{vrpCount > 1 ? 's' : ''} par le pipeline algorithmique (AHP/TOPSIS/VRP)
+              </p>
+              <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                Rendez-vous dans <strong>Missions</strong> pour assigner les distributeurs et démarrer.
+              </p>
+            </div>
+            <a href="/admin/tournees" className="px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shrink-0">
+              Voir →
+            </a>
+          </div>
+        );
+      })()}
+
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
@@ -482,29 +527,38 @@ export default function AdminOverview() {
           {/* KPIs */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard
-              to="/admin/stock" label="Articles en stock" value={stocks.length}
-              sub={`${alertes > 0 ? alertes + ' alerte(s)' : 'Aucune alerte'}`}
-              color="text-blue-600" bg="bg-blue-50"
+              to="/admin/stock"
+              label="Articles en alerte"
+              value={alertes}
+              sub={`${stocks.length} article(s) au total`}
+              color={alertes > 0 ? 'text-red-600' : 'text-blue-600'}
+              bg={alertes > 0 ? 'bg-red-50' : 'bg-blue-50'}
               onClick={() => setSlideOver('stock')}
-              icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>}
+              icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
             />
             <KpiCard
-              to="/admin/vehicules" label="Véhicules actifs" value={enMission}
-              sub={`${vehicules.length} au total`}
+              to="/admin/vehicules"
+              label="Véhicules disponibles"
+              value={vehiculesDispo}
+              sub={`${enMission} en mission`}
               color="text-orange-600" bg="bg-orange-50"
               onClick={() => setSlideOver('vehicules')}
               icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8l5 2v7h-5V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>}
             />
             <KpiCard
-              to="/admin/tournees" label="Missions en attente" value={enAttente}
-              sub={`${enCours} en cours`}
+              to="/admin/tournees"
+              label="Tournées actives"
+              value={enCours}
+              sub={`${enAttente} en attente`}
               color="text-purple-600" bg="bg-purple-50"
               onClick={() => setSlideOver('missions')}
               icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>}
             />
             <KpiCard
-              to="/admin/suivi" label="Dist. en terrain" value={enMission}
-              sub="GPS temps réel"
+              to="/admin/suivi"
+              label="Livraisons du jour"
+              value={livraisonsJour}
+              sub={`${enMission} dist. en terrain`}
               color="text-green-600" bg="bg-green-50"
               onClick={() => setSlideOver('terrain')}
               icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>}
@@ -535,6 +589,87 @@ export default function AdminOverview() {
                     />
                   ))
                 }
+              </div>
+            </div>
+          )}
+
+          {/* ── Tendance stock 7 jours ── */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Tendance stock — 7 derniers jours</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Évolution du total des quantités en stock (simulation ±20 %)</p>
+              </div>
+              <span className="text-xs text-gray-400 tabular-nums">{stockTotal.toLocaleString('fr-FR')} unités aujourd'hui</span>
+            </div>
+            <div className="px-5 py-4">
+              {/* Labels jours */}
+              {(() => {
+                const days = ['J-6','J-5','J-4','J-3','J-2','J-1','Auj.'];
+                return (
+                  <div className="flex items-end gap-2 h-24">
+                    {stockTrend.map((val, i) => {
+                      const barH = Math.round((val / trendMax) * 80);
+                      const isToday = i === stockTrend.length - 1;
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-xs text-gray-400 tabular-nums">{val > 999 ? `${(val/1000).toFixed(1)}k` : val}</span>
+                          <div
+                            className={`w-full rounded-t transition-all ${isToday ? 'bg-brand-500' : 'bg-brand-200 dark:bg-brand-800'}`}
+                            style={{ height: `${barH}px` }}
+                          />
+                          <span className={`text-xs ${isToday ? 'font-bold text-brand-600' : 'text-gray-400'}`}>{days[i]}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* ── Prochaines tournées planifiées et assignées ── */}
+          {prochainesTournees.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Prochaines tournées</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Tournées planifiées avec distributeur assigné — prêtes à démarrer</p>
+                </div>
+                <Link to="/admin/tournees" className="text-xs text-brand-500 hover:underline">Gérer →</Link>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {prochainesTournees.map((t) => {
+                  const nbDouars = t.etapes?.length ?? 0;
+                  const dist = t.distributeur;
+                  const departEstime = (t as unknown as { departPrevu?: string }).departPrevu;
+                  return (
+                    <div key={t.id} className="px-5 py-3 flex items-center gap-4">
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold font-mono text-gray-900 dark:text-white">
+                            {(t as unknown as { missionNumero?: string }).missionNumero ?? t.id}
+                          </span>
+                          {departEstime && (
+                            <span className="text-xs text-gray-400">· Départ {formatDateTime(departEstime)}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {nbDouars} douar{nbDouars > 1 ? 's' : ''}
+                          {t.distanceTotale > 0 && ` · ${t.distanceTotale} km`}
+                          {dist && ` · ${dist.prenom} ${dist.nom}`}
+                        </p>
+                      </div>
+                      <Link
+                        to="/admin/tournees"
+                        className="text-xs font-medium text-brand-600 hover:text-brand-700 px-2.5 py-1 rounded-lg border border-brand-200 hover:bg-brand-50 transition-colors shrink-0"
+                      >
+                        Démarrer
+                      </Link>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

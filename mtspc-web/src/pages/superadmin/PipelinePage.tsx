@@ -1,11 +1,19 @@
 /**
  * PAGE PIPELINE ALGORITHMIQUE — AHP → TOPSIS → VRP
+ * Améliorations :
+ *  - RC bannière warning/succès selon cohérence AHP
+ *  - TOPSIS table : barre score rouge/orange/vert, colonnes D+/D-, tri cliquable
+ *  - Modal "Recalcul avec routes bloquées"
+ *  - Carte Leaflet récapitulative avec polylines par tournée
  */
 import { useState, useEffect, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { conditionalCriseApi as criseApi, conditionalAlgoApi as algoApi, conditionalEntrepotApi as entrepotApi, getApiErrorMessage } from '../../services/api';
 import type {
   Crise, Entrepot, PipelineResult, RunPipelineDto,
-  AhpMatrice, TopsisRanking, VrpTournee,
+  AhpMatrice, TopsisRanking, VrpTournee, VrpEtape,
 } from '../../types';
 
 // ── Valeurs AHP par défaut (RC cohérent) ──────────────────────────────────────
@@ -18,9 +26,41 @@ const DEFAULT_AHP: AhpMatrice['comparaisons'] = {
   acc_vs_soins:  3,
 };
 
+// ── Couleurs tournées VRP (une par entrepôt) ──────────────────────────────────
+const TOURNEE_COLORS = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ec4899', '#14b8a6'];
+
+// ── Icônes SVG inline (pas de dépendance externe) ─────────────────────────────
+function makeSvgIcon(fillColor: string, size = 25) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 41" width="${size}" height="${size * 1.64}">
+    <path fill="${fillColor}" stroke="#fff" stroke-width="1.5" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 9.4 12.5 28.5 12.5 28.5S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0z"/>
+    <circle fill="white" cx="12.5" cy="12.5" r="4.5"/>
+  </svg>`;
+  return new L.Icon({
+    iconUrl: `data:image/svg+xml;base64,${btoa(svg)}`,
+    iconSize:    [size, size * 1.64],
+    iconAnchor:  [size / 2, size * 1.64],
+    popupAnchor: [0, -(size * 1.64)],
+  });
+}
+
+const ICON_ENTREPOT = makeSvgIcon('#3b82f6', 28);
+const ICON_TOP25    = makeSvgIcon('#ef4444', 20);
+const ICON_TOP50    = makeSvgIcon('#f97316', 20);
+const ICON_OTHER    = makeSvgIcon('#6b7280', 18);
+
+// ── Composant de recentrage carte ─────────────────────────────────────────────
+function MapFit({ bounds }: { bounds: L.LatLngBoundsExpression }) {
+  const map = useMap();
+  useEffect(() => {
+    map.fitBounds(bounds, { padding: [30, 30] });
+  }, [map, bounds]);
+  return null;
+}
+
+// ── Barre de score TOPSIS ──────────────────────────────────────────────────────
 function ScoreBar({ score }: { score: number }) {
-  const pct = Math.round(score * 100);
-  const color = pct > 70 ? 'bg-red-500' : pct > 40 ? 'bg-orange-400' : 'bg-yellow-400';
+  const pct   = Math.round(score * 100);
+  const color = score >= 0.75 ? 'bg-red-500' : score >= 0.50 ? 'bg-orange-400' : 'bg-green-400';
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-2">
@@ -52,6 +92,203 @@ const AHP_FIELDS: { key: keyof AhpMatrice['comparaisons']; label: string }[] = [
   { key: 'acc_vs_soins',  label: 'Accessibilité vs Accès Soins' },
 ];
 
+// ── Carte Leaflet des résultats VRP ───────────────────────────────────────────
+
+function VrpResultMap({
+  tournees,
+  classement,
+  entrepots,
+}: {
+  tournees:   VrpTournee[];
+  classement: TopsisRanking[];
+  entrepots:  Entrepot[];
+}) {
+  // Calcul des bounds
+  const allPoints: [number, number][] = [];
+  tournees.forEach(t => t.etapes.forEach(e => {
+    if (e.latitude && e.longitude) allPoints.push([e.latitude, e.longitude]);
+  }));
+  entrepots.forEach(e => {
+    if (e.latitude && e.longitude) allPoints.push([e.latitude, e.longitude]);
+  });
+
+  if (allPoints.length === 0) return null;
+
+  const bounds: L.LatLngBoundsExpression = allPoints;
+
+  // Index score par douarId
+  const scoreIdx = new Map<string, number>();
+  classement.forEach((r, i) => scoreIdx.set(r.douarId, i));
+  const total = classement.length;
+
+  // Entrepôts utilisés (dédupliqués)
+  const entrepotUsed = new Set(tournees.map(t => t.entrepotId));
+
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Carte des Tournées VRP</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{tournees.length} tournée(s) · rouge = priorité TOPSIS élevée</p>
+        </div>
+        {/* Légende */}
+        <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+          {tournees.map((t, i) => (
+            <span key={t.entrepotId + i} className="flex items-center gap-1">
+              <span className="inline-block w-5 h-1.5 rounded-full" style={{ backgroundColor: TOURNEE_COLORS[i % TOURNEE_COLORS.length] }} />
+              {t.entrepotNom.replace('Entrepôt Régional ', '')}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div style={{ height: 400 }}>
+        <MapContainer
+          center={allPoints[0]}
+          zoom={9}
+          style={{ width: '100%', height: '100%' }}
+          scrollWheelZoom={false}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; OpenStreetMap'
+          />
+          <MapFit bounds={bounds} />
+
+          {/* Markers entrepôts */}
+          {entrepots
+            .filter(e => entrepotUsed.has(e.id) && e.latitude && e.longitude)
+            .map(e => (
+              <Marker key={e.id} position={[e.latitude, e.longitude]} icon={ICON_ENTREPOT}>
+                <Popup>
+                  <strong>{e.nom}</strong><br />
+                  {e.province} · Entrepôt de départ
+                </Popup>
+              </Marker>
+            ))
+          }
+
+          {/* Polylines + markers douars par tournée */}
+          {tournees.map((t, ti) => {
+            const color = TOURNEE_COLORS[ti % TOURNEE_COLORS.length];
+
+            // Trouver l'entrepôt pour cette tournée
+            const ent = entrepots.find(e => e.id === t.entrepotId);
+            const polyPoints: [number, number][] = [];
+            if (ent?.latitude && ent?.longitude) polyPoints.push([ent.latitude, ent.longitude]);
+
+            const etapesSorted = [...t.etapes].sort((a, b) => a.ordre - b.ordre);
+            etapesSorted.forEach(e => {
+              if (e.latitude && e.longitude) polyPoints.push([e.latitude, e.longitude]);
+            });
+            if (ent?.latitude && ent?.longitude) polyPoints.push([ent.latitude, ent.longitude]); // retour
+
+            return (
+              <span key={`t-${ti}`}>
+                {polyPoints.length > 1 && (
+                  <Polyline positions={polyPoints} pathOptions={{ color, weight: 2.5, opacity: 0.8 }} />
+                )}
+                {etapesSorted.map((e: VrpEtape) => {
+                  if (!e.latitude || !e.longitude) return null;
+                  const rank = scoreIdx.get(e.douarId) ?? total;
+                  const icon = rank < total * 0.25 ? ICON_TOP25 : rank < total * 0.50 ? ICON_TOP50 : ICON_OTHER;
+                  return (
+                    <Marker key={e.douarId} position={[e.latitude, e.longitude]} icon={icon}>
+                      <Popup>
+                        <strong>{e.douarNom}</strong><br />
+                        Ordre : {e.ordre} · Pop. {e.population?.toLocaleString('fr-FR') ?? '—'}<br />
+                        Rang TOPSIS : {(rank + 1)}/{total}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </span>
+            );
+          })}
+        </MapContainer>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal "Recalcul avec routes bloquées" ─────────────────────────────────────
+
+function RoutesBloqueeModal({
+  tournees,
+  onClose,
+  onConfirm,
+}: {
+  tournees:  VrpTournee[];
+  onClose:   () => void;
+  onConfirm: (douarIds: string[]) => void;
+}) {
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+
+  // Collecter tous les douars uniques de toutes les tournées
+  const allDouars = Array.from(
+    new Map(
+      tournees.flatMap(t => t.etapes.map(e => [e.douarId, { id: e.douarId, nom: e.douarNom }]))
+    ).values()
+  );
+
+  function toggle(id: string) {
+    setChecked(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">Routes bloquées</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div className="px-6 py-4">
+          <p className="text-sm text-gray-500 mb-4">
+            Cochez les douars dont la route d'accès est bloquée. Le pipeline sera relancé en les excluant.
+          </p>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {allDouars.map(d => (
+              <label key={d.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checked.has(d.id)}
+                  onChange={() => toggle(d.id)}
+                  className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-400"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">{d.nom}</span>
+              </label>
+            ))}
+          </div>
+          {checked.size > 0 && (
+            <p className="mt-3 text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 rounded-lg px-3 py-2">
+              {checked.size} douar(s) sélectionné(s) → seront exclus du prochain calcul VRP
+            </p>
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+          <button onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            Annuler
+          </button>
+          <button
+            onClick={() => onConfirm(Array.from(checked))}
+            disabled={checked.size === 0}
+            className="px-4 py-2 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg disabled:opacity-50 transition-colors">
+            Recalculer ({checked.size})
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function PipelinePage() {
@@ -70,6 +307,13 @@ export default function PipelinePage() {
   const [result,    setResult]    = useState<PipelineResult | null>(null);
   const [history,   setHistory]   = useState<PipelineResult[]>([]);
   const [running,   setRunning]   = useState(false);
+
+  // TOPSIS tri
+  const [sortCol,   setSortCol]   = useState<'rang' | 'score'>('rang');
+  const [sortAsc,   setSortAsc]   = useState(true);
+
+  // Modal routes bloquées
+  const [showModal, setShowModal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,7 +338,7 @@ export default function PipelinePage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleRun() {
+  async function handleRun(routesBloquees?: string[]) {
     if (!criseId) { setError('Sélectionnez une crise active.'); return; }
     const usedVehicules = vehicules.filter((v) => entrepots.find((e) => e.id === v.entrepotId));
     if (usedVehicules.length === 0) { setError('Configurez au moins un entrepôt.'); return; }
@@ -106,6 +350,7 @@ export default function PipelinePage() {
         ahpMatrice: { comparaisons: ahp },
         lambdas,
         contraintesVehicules: usedVehicules,
+        ...(routesBloquees && routesBloquees.length > 0 ? { douarsExclus: routesBloquees } : {}),
       };
       const r = await algoApi.runPipeline(dto);
       setResult(r);
@@ -115,6 +360,32 @@ export default function PipelinePage() {
     } finally {
       setRunning(false);
     }
+  }
+
+  function handleRecalcul(douarIds: string[]) {
+    setShowModal(false);
+    handleRun(douarIds);
+  }
+
+  // Tri TOPSIS
+  const sortedClassement = result?.topsis?.classement
+    ? [...result.topsis.classement].sort((a: TopsisRanking, b: TopsisRanking) => {
+        const va = sortCol === 'rang' ? a.rang : a.score;
+        const vb = sortCol === 'rang' ? b.rang : b.score;
+        return sortAsc ? va - vb : vb - va;
+      })
+    : [];
+
+  function toggleSort(col: 'rang' | 'score') {
+    if (sortCol === col) setSortAsc(a => !a);
+    else { setSortCol(col); setSortAsc(true); }
+  }
+
+  function SortIcon({ col }: { col: 'rang' | 'score' }) {
+    if (sortCol !== col) return <svg className="w-3 h-3 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>;
+    return sortAsc
+      ? <svg className="w-3 h-3 text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 7l5 5 5-5"/></svg>
+      : <svg className="w-3 h-3 text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 17l-5-5-5 5"/></svg>;
   }
 
   if (loading) return (
@@ -218,7 +489,7 @@ export default function PipelinePage() {
             </div>
           </div>
 
-          <button onClick={handleRun} disabled={running || !criseId}
+          <button onClick={() => handleRun()} disabled={running || !criseId}
             className="w-full py-3 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
             {running ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Exécution en cours…</>
@@ -226,6 +497,20 @@ export default function PipelinePage() {
               <><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Lancer le Pipeline</>
             )}
           </button>
+
+          {/* Bouton recalcul routes bloquées */}
+          {result?.tournees && result.tournees.length > 0 && (
+            <button
+              onClick={() => setShowModal(true)}
+              disabled={running}
+              className="w-full py-2.5 text-sm font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              </svg>
+              Recalculer avec blocages
+            </button>
+          )}
         </div>
 
         {/* ── Résultats ── */}
@@ -233,7 +518,7 @@ export default function PipelinePage() {
 
           {result ? (
             <>
-              {/* Header résultat */}
+              {/* Header résultat + RC Banner */}
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div>
@@ -242,8 +527,10 @@ export default function PipelinePage() {
                   </div>
                   <StatuBadge statut={result.statut} />
                 </div>
+
+                {/* Poids AHP */}
                 {result.ahp && (
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-4 gap-3 mb-4">
                     {(Object.entries(result.ahp.poids) as [string, number][]).map(([k, v]) => (
                       <div key={k} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
                         <p className="text-lg font-bold text-brand-600">{(v * 100).toFixed(1)}%</p>
@@ -252,33 +539,58 @@ export default function PipelinePage() {
                     ))}
                   </div>
                 )}
+
+                {/* RC Banner */}
                 {result.ahp && (
-                  <p className={`text-xs mt-3 font-medium ${result.ahp.coherent ? 'text-green-600' : 'text-red-600'}`}>
-                    {result.ahp.coherent ? '✓' : '⚠'} RC = {result.ahp.rc.toFixed(4)} {result.ahp.coherent ? '— Matrice cohérente' : '— Incohérence (RC ≥ 0.10)'}
-                  </p>
+                  result.ahp.coherent ? (
+                    <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-4 py-2.5 text-sm text-green-700 dark:text-green-400">
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      <span>Matrice cohérente — RC = <strong>{result.ahp.rc.toFixed(4)}</strong> (seuil &lt; 0.10)</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl px-4 py-2.5 text-sm text-orange-700 dark:text-orange-400">
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                      </svg>
+                      <span>Matrice incohérente — RC = <strong>{result.ahp.rc.toFixed(4)}</strong> (≥ 0.10). Résultats AHP non fiables. Ajustez les comparaisons.</span>
+                    </div>
+                  )
                 )}
               </div>
 
               {/* Classement TOPSIS */}
-              {result.topsis?.classement && result.topsis.classement.length > 0 && (
+              {sortedClassement.length > 0 && (
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                  <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Classement TOPSIS — Priorités d'Intervention</h3>
+                    <span className="text-xs text-gray-400">{sortedClassement.length} douars</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-gray-50 dark:bg-gray-800/60 text-gray-500 text-xs font-semibold uppercase tracking-wider text-left">
-                          <th className="px-4 py-3">Rang</th>
+                          <th
+                            className="px-4 py-3 cursor-pointer hover:text-brand-500 select-none"
+                            onClick={() => toggleSort('rang')}
+                          >
+                            <span className="flex items-center gap-1">Rang <SortIcon col="rang" /></span>
+                          </th>
                           <th className="px-4 py-3">Douar</th>
-                          <th className="px-4 py-3">Commune</th>
-                          <th className="px-4 py-3 w-40">Score C_i</th>
+                          <th className="px-4 py-3">Province</th>
+                          <th
+                            className="px-4 py-3 w-44 cursor-pointer hover:text-brand-500 select-none"
+                            onClick={() => toggleSort('score')}
+                          >
+                            <span className="flex items-center gap-1">Score C_i <SortIcon col="score" /></span>
+                          </th>
                           <th className="px-4 py-3">D+</th>
                           <th className="px-4 py-3">D-</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                        {(result.topsis.classement as TopsisRanking[]).map((r) => (
+                        {(sortedClassement as TopsisRanking[]).map((r) => (
                           <tr key={r.douarId} className={r.rang <= 3 ? 'bg-red-50/50 dark:bg-red-950/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}>
                             <td className="px-4 py-3">
                               <span className={`w-7 h-7 rounded-full inline-flex items-center justify-center text-xs font-bold
@@ -288,7 +600,7 @@ export default function PipelinePage() {
                             </td>
                             <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{r.douarNom}</td>
                             <td className="px-4 py-3 text-gray-500">{r.commune}</td>
-                            <td className="px-4 py-3 w-40"><ScoreBar score={r.score} /></td>
+                            <td className="px-4 py-3 w-44"><ScoreBar score={r.score} /></td>
                             <td className="px-4 py-3 font-mono text-xs text-gray-400">{r.distances.dPlus.toFixed(4)}</td>
                             <td className="px-4 py-3 font-mono text-xs text-gray-400">{r.distances.dMinus.toFixed(4)}</td>
                           </tr>
@@ -310,9 +622,12 @@ export default function PipelinePage() {
                     {(result.tournees as VrpTournee[]).map((t, i) => (
                       <div key={i} className="px-5 py-4">
                         <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.entrepotNom}</p>
-                            <p className="text-xs text-gray-400">{t.etapes.length} étape(s) · {t.distanceTotale} km · {t.tempsEstime} min</p>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: TOURNEE_COLORS[i % TOURNEE_COLORS.length] }} />
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.entrepotNom}</p>
+                              <p className="text-xs text-gray-400">{t.etapes.length} étape(s) · {t.distanceTotale} km · {t.tempsEstime} min</p>
+                            </div>
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-gray-500">Z = <span className="font-mono font-bold text-brand-600">{t.scoreZ.toFixed(3)}</span></p>
@@ -331,6 +646,15 @@ export default function PipelinePage() {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Carte Leaflet VRP */}
+              {result.tournees && result.tournees.length > 0 && result.topsis?.classement && (
+                <VrpResultMap
+                  tournees={result.tournees as VrpTournee[]}
+                  classement={result.topsis.classement as TopsisRanking[]}
+                  entrepots={entrepots}
+                />
               )}
             </>
           ) : (
@@ -358,6 +682,11 @@ export default function PipelinePage() {
                       <p className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString('fr-FR')}</p>
                     </div>
                     <div className="flex items-center gap-3">
+                      {h.ahp && (
+                        <span className={`text-xs font-mono font-bold ${h.ahp.coherent ? 'text-green-600' : 'text-orange-500'}`}>
+                          RC={h.ahp.rc.toFixed(3)}
+                        </span>
+                      )}
                       {h.executionMs && <span className="text-xs text-gray-400">{h.executionMs}ms</span>}
                       <StatuBadge statut={h.statut} />
                     </div>
@@ -368,6 +697,15 @@ export default function PipelinePage() {
           )}
         </div>
       </div>
+
+      {/* Modal routes bloquées */}
+      {showModal && result?.tournees && (
+        <RoutesBloqueeModal
+          tournees={result.tournees as VrpTournee[]}
+          onClose={() => setShowModal(false)}
+          onConfirm={handleRecalcul}
+        />
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useGpsTracking } from './hooks/useGpsTracking';
 import * as ImagePicker from 'expo-image-picker';
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -137,6 +138,9 @@ export default function LivraisonConfirmationScreen() {
 
   const etape: EtapeVRP = JSON.parse(params.etapeJson ?? '{}');
   
+  // Lire la position GPS courante (tracking déjà démarré depuis mission-detail)
+  const { currentPosition } = useGpsTracking({ enabled: false });
+
   const [currentStep, setCurrentStep] = useState<Step>('bordereau');
   const currentIndex = STEPS.indexOf(currentStep);
   const [quantitesReelles, setQuantitesReelles] = useState<QuantitesReelles | null>(null);
@@ -188,9 +192,44 @@ export default function LivraisonConfirmationScreen() {
       Alert.alert('Erreur', 'Renseignez les quantités livrées.');
       return;
     }
+
+    // Vérifier que toutes les quantités sont >= 0
+    const hasNegative = Object.values(quantitesReelles).some(v => v < 0);
+    if (hasNegative) {
+      Alert.alert('Erreur', 'Toutes les quantités doivent être positives ou nulles.');
+      return;
+    }
+
     if (!signatureBase64) {
       Alert.alert('Signature manquante', 'La signature du responsable local est obligatoire.');
       return;
+    }
+
+    // Vérifier livraison < 50 % pour certains items
+    const LABEL_MAP: Record<string, string> = {
+      tentes: 'Tentes', couvertures: 'Couvertures', vivres: 'Vivres alimentaires',
+      kits_med: 'Kits médicaux', eau_litres: 'Eau (litres)',
+    };
+    const prevues = etape.ressources ?? {};
+    const lowItems: string[] = Object.entries(quantitesReelles)
+      .filter(([key, val]) => {
+        const prevue = (prevues as Record<string, number>)[key] ?? 0;
+        return prevue > 0 && val < prevue * 0.5;
+      })
+      .map(([key]) => LABEL_MAP[key] ?? key);
+
+    if (lowItems.length > 0) {
+      const confirmed = await new Promise<boolean>(resolve => {
+        Alert.alert(
+          'Livraison partielle',
+          `Vous délivrez moins de 50 % :\n${lowItems.join(', ')}.\nConfirmer ?`,
+          [
+            { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Confirmer', onPress: () => resolve(true) },
+          ],
+        );
+      });
+      if (!confirmed) return;
     }
 
     setIsSubmitting(true);
@@ -204,6 +243,8 @@ export default function LivraisonConfirmationScreen() {
       photoUri: photoUri || undefined,
       signatureBase64,
       timestampLocal: new Date().toISOString(),
+      lat: currentPosition?.lat ?? undefined,
+      lng: currentPosition?.lng ?? undefined,
       tentativeSync: 0,
     };
 
@@ -219,7 +260,7 @@ export default function LivraisonConfirmationScreen() {
             'Content-Type': 'application/json',
             'Authorization': token ? `Bearer ${token}` : '',
           },
-          body: JSON.stringify(livraison),
+          body: JSON.stringify({ submissions: [{ missionId: params.tourneeId, douarId: params.douarId, livraison, statut: 'completed', timestampLocal: livraison.timestampLocal, tentativeSync: 0 }] }),
         });
 
         if (!res.ok) throw new Error(`Erreur serveur : ${res.status}`);
@@ -232,10 +273,14 @@ export default function LivraisonConfirmationScreen() {
       } else {
         await syncService.savePendingSubmission({
           missionId: params.tourneeId,
+          douarId: params.douarId,
           statut: 'completed',
           commentaireTerrain: commentaire || undefined,
+          livraisonLat: livraison.lat,
+          livraisonLng: livraison.lng,
           timestampLocal: livraison.timestampLocal,
           tentativeSync: 0,
+          livraison,
         });
 
         Alert.alert(
@@ -249,7 +294,7 @@ export default function LivraisonConfirmationScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [quantitesReelles, signatureBase64, commentaire, photoUri, etape, params, router]);
+  }, [quantitesReelles, signatureBase64, commentaire, photoUri, etape, params, router, currentPosition]);
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

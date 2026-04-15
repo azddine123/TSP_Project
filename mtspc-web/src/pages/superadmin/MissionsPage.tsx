@@ -344,20 +344,102 @@ function MissionCard({
             {etapes.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                  Séquence de livraison
+                  Séquence de livraison · {etapes.length} douars
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-2">
                   {etapes.map((etape: TourneeEtape) => {
                     const es = ETAPE_STATUT[etape.statut] ?? ETAPE_STATUT.en_attente;
                     return (
-                      <div key={etape.id} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${es.cls}`}>
-                        <span className="font-bold">{etape.ordre}.</span>
-                        <span>{etape.douar.nom}</span>
-                        <span className="text-gray-400 text-[10px]">({etape.douar.commune})</span>
+                      <div key={etape.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 flex flex-wrap items-start gap-3">
+                        {/* Numéro + nom */}
+                        <div className="flex items-center gap-2 min-w-[160px]">
+                          <span className="w-6 h-6 rounded-full bg-brand-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                            {etape.ordre}
+                          </span>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{etape.douar.nom}</p>
+                            <p className="text-[10px] text-gray-400">{etape.douar.commune}</p>
+                          </div>
+                        </div>
+
+                        {/* Population + priorité */}
+                        {etape.population != null && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-semibold text-gray-700 dark:text-gray-300">{etape.population.toLocaleString()}</span> hab
+                            {etape.menages != null && <span> · {etape.menages} ménages</span>}
+                            {etape.scoreTopsis != null && (
+                              <span className="ml-1.5 font-semibold text-brand-600 dark:text-brand-400">
+                                TOPSIS: {(etape.scoreTopsis * 100).toFixed(0)}%
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Ressources */}
+                        {etape.ressources && (
+                          <div className="flex flex-wrap gap-1.5 text-[10px] font-medium">
+                            {etape.ressources.tentes > 0 && (
+                              <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                {etape.ressources.tentes} tentes
+                              </span>
+                            )}
+                            {etape.ressources.couvertures > 0 && (
+                              <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2 py-0.5 rounded-full">
+                                {etape.ressources.couvertures} couv.
+                              </span>
+                            )}
+                            {etape.ressources.vivres > 0 && (
+                              <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 px-2 py-0.5 rounded-full">
+                                {etape.ressources.vivres} kits vivres
+                              </span>
+                            )}
+                            {etape.ressources.kits_med > 0 && (
+                              <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 px-2 py-0.5 rounded-full">
+                                {etape.ressources.kits_med} kits méd.
+                              </span>
+                            )}
+                            {etape.ressources.eau_litres > 0 && (
+                              <span className="bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300 px-2 py-0.5 rounded-full">
+                                {etape.ressources.eau_litres.toLocaleString()} L eau
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Statut badge */}
+                        <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${es.cls}`}>
+                          {es.label}
+                        </span>
                       </div>
                     );
                   })}
                 </div>
+
+                {/* Ressources totales */}
+                {tournee.ressourcesTotales && (
+                  <div className="mt-3 bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 rounded-xl p-3">
+                    <p className="text-xs font-bold text-brand-700 dark:text-brand-400 mb-2">
+                      Total mission
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                      <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-2.5 py-1 rounded-lg">
+                        {tournee.ressourcesTotales.tentes} tentes
+                      </span>
+                      <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2.5 py-1 rounded-lg">
+                        {tournee.ressourcesTotales.couvertures} couvertures
+                      </span>
+                      <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 px-2.5 py-1 rounded-lg">
+                        {tournee.ressourcesTotales.vivres} kits vivres
+                      </span>
+                      <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 px-2.5 py-1 rounded-lg">
+                        {tournee.ressourcesTotales.kits_med} kits méd.
+                      </span>
+                      <span className="bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300 px-2.5 py-1 rounded-lg">
+                        {tournee.ressourcesTotales.eau_litres.toLocaleString()} L eau
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -489,6 +571,18 @@ export default function SuperAdminMissionsPage() {
     });
   }, [tournees, filterStatut, filterCrise, search, criseMap]);
 
+  // Routes bloquées : étapes avec statut 'echec' toutes tournées confondues
+  const routesBloquees = useMemo(() => {
+    const results: Array<{ tournee: Tournee; etape: TourneeEtape }> = [];
+    tournees.forEach((tournee) => {
+      if (tournee.statut === 'annulee') return;
+      tournee.etapes.forEach((etape) => {
+        if (etape.statut === 'echec') results.push({ tournee, etape });
+      });
+    });
+    return results;
+  }, [tournees]);
+
   // Stats globales
   const stats = useMemo(() => ({
     total:     tournees.length,
@@ -543,6 +637,46 @@ export default function SuperAdminMissionsPage() {
           </svg>
           <span>{error}</span>
           <button onClick={() => setError(null)} className="ml-auto p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30">✕</button>
+        </div>
+      )}
+
+      {/* ── Alertes routes bloquées ── */}
+      {routesBloquees.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+            <h3 className="text-sm font-bold text-red-700 dark:text-red-400">
+              {routesBloquees.length} route{routesBloquees.length > 1 ? 's' : ''} bloquée{routesBloquees.length > 1 ? 's' : ''} signalée{routesBloquees.length > 1 ? 's' : ''} — Recalcul VRP requis
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {routesBloquees.map(({ tournee, etape }) => (
+              <div
+                key={`${etape.id}`}
+                className="flex items-center justify-between gap-3 bg-white dark:bg-gray-900 rounded-xl px-4 py-2.5 border border-red-100 dark:border-red-900"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {etape.douar.nom}
+                    <span className="text-gray-400 font-normal"> · {tournee.entrepot.nom}</span>
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {criseMap.get(tournee.criseId)?.reference ?? tournee.criseId.slice(0, 8)}
+                    {' '}· Étape {etape.ordre}
+                  </p>
+                </div>
+                <Link
+                  to={`/superadmin/pipeline?criseId=${tournee.criseId}&routeBloquee=${etape.douar.id}`}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                  </svg>
+                  Recalculer VRP
+                </Link>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

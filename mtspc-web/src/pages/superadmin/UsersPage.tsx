@@ -313,15 +313,19 @@ function EntrepotGroup({
 // ── Page principale ────────────────────────────────────────────────────────────
 
 export default function UsersPage() {
-  const [users,      setUsers]      = useState<AdminEntrepot[]>([]);
-  const [entrepots,  setEntrepots]  = useState<Entrepot[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [confirm,    setConfirm]    = useState<{ message: string; action: () => void; danger?: boolean } | null>(null);
-  const [actionId,   setActionId]   = useState<string | null>(null);
-  const [toast,      setToast]      = useState<string | null>(null);
-  const [openIds,    setOpenIds]    = useState<Set<string>>(new Set());
+  const [users,         setUsers]         = useState<AdminEntrepot[]>([]);
+  const [entrepots,     setEntrepots]     = useState<Entrepot[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState<string | null>(null);
+  const [showCreate,    setShowCreate]    = useState(false);
+  const [confirm,       setConfirm]       = useState<{ message: string; action: () => void; danger?: boolean } | null>(null);
+  const [actionId,      setActionId]      = useState<string | null>(null);
+  const [toast,         setToast]         = useState<string | null>(null);
+  const [openIds,       setOpenIds]       = useState<Set<string>>(new Set());
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [filterEntrepot,setFilterEntrepot]= useState('');
+  const [filterStatut,  setFilterStatut]  = useState('');
+  const [filterRole,    setFilterRole]    = useState('');
 
   const distributeurs: DistributeurRow[] = MOCK_DISTRIBUTEURS as DistributeurRow[];
 
@@ -380,16 +384,51 @@ export default function UsersPage() {
   const enabled  = users.filter(u => u.enabled).length;
   const disabled = users.filter(u => !u.enabled).length;
 
+  // Filtrage utilisateurs
+  const filteredUsers = users.filter(u => {
+    if (filterEntrepot && u.entrepotId !== filterEntrepot) return false;
+    if (filterStatut === 'actif'    && !u.enabled)  return false;
+    if (filterStatut === 'suspendu' &&  u.enabled)  return false;
+    if (filterRole === 'distributeur') return false; // admins seulement
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        (u.email ?? '').toLowerCase().includes(q) ||
+        (u.username ?? '').toLowerCase().includes(q) ||
+        `${u.firstName ?? ''} ${u.lastName ?? ''}`.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  const filteredDistributeurs = distributeurs.filter(d => {
+    if (filterEntrepot && d.entrepotId !== filterEntrepot) return false;
+    if (filterStatut === 'actif'    && d.statut !== 'disponible' && d.statut !== 'en_mission') return false;
+    if (filterStatut === 'suspendu' && d.statut !== 'inactif')  return false;
+    if (filterRole === 'admin') return false; // admins seulement
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        (d.email ?? '').toLowerCase().includes(q) ||
+        `${d.prenom ?? ''} ${d.nom ?? ''}`.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  const displayedCount = filteredUsers.length + filteredDistributeurs.length;
+  const hasFilters = !!(searchQuery || filterEntrepot || filterStatut || filterRole);
+
   // Groupes : un par entrepôt + un "non assigné"
   const groups = [
     ...entrepots.map(e => ({
       entrepot: e,
-      admins: users.filter(u => u.entrepotId === e.id),
-      distributeurs: distributeurs.filter(d => d.entrepotId === e.id),
+      admins: filteredUsers.filter(u => u.entrepotId === e.id),
+      distributeurs: filteredDistributeurs.filter(d => d.entrepotId === e.id),
     })),
     {
       entrepot: null,
-      admins: users.filter(u => !u.entrepotId),
+      admins: filteredUsers.filter(u => !u.entrepotId),
       distributeurs: [] as DistributeurRow[],
     },
   ];
@@ -427,6 +466,67 @@ export default function UsersPage() {
             <p className="text-sm text-gray-600">{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Filtres ──────────────────────────────────────────────────────── */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm p-4">
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* Recherche */}
+          <div className="relative flex-1 min-w-[200px]">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Rechercher un utilisateur…"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none"
+            />
+          </div>
+          {/* Filtre entrepôt */}
+          <select
+            value={filterEntrepot}
+            onChange={e => setFilterEntrepot(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none"
+          >
+            <option value="">Tous les entrepôts</option>
+            {entrepots.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
+          </select>
+          {/* Filtre statut */}
+          <select
+            value={filterStatut}
+            onChange={e => setFilterStatut(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none"
+          >
+            <option value="">Tous statuts</option>
+            <option value="actif">Actif</option>
+            <option value="suspendu">Suspendu</option>
+          </select>
+          {/* Filtre rôle */}
+          <select
+            value={filterRole}
+            onChange={e => setFilterRole(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none"
+          >
+            <option value="">Tous rôles</option>
+            <option value="admin">Admin Entrepôt</option>
+            <option value="distributeur">Distributeur</option>
+          </select>
+          {/* Compteur + reset */}
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs text-gray-500">
+              <strong className="text-gray-900 dark:text-white">{displayedCount}</strong> utilisateur{displayedCount !== 1 ? 's' : ''}
+            </span>
+            {hasFilters && (
+              <button
+                onClick={() => { setSearchQuery(''); setFilterEntrepot(''); setFilterStatut(''); setFilterRole(''); }}
+                className="text-xs text-brand-600 hover:underline font-medium"
+              >
+                Réinitialiser
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Accordéon groupé */}

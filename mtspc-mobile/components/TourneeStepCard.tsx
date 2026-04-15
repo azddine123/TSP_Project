@@ -10,7 +10,7 @@ import Animated, {
 import { EtapeVRP, NiveauPriorite } from '../types/app';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme';
 
-type StatutEtape = 'a_faire' | 'en_cours' | 'livree';
+type StatutEtape = 'a_faire' | 'en_cours' | 'livree' | 'echec';
 
 interface TourneeStepCardProps {
   etape: EtapeVRP;
@@ -72,11 +72,17 @@ const STATUT_CONFIG: Record<StatutEtape, {
     label: 'En cours',
     pulse: true,
   },
-  livree: { 
-    icon: 'checkmark-circle', 
-    color: COLORS.success.dark, 
+  livree: {
+    icon: 'checkmark-circle',
+    color: COLORS.success.dark,
     bg: COLORS.success[50],
     label: 'Livré',
+  },
+  echec: {
+    icon: 'warning',
+    color: COLORS.error.main,
+    bg: COLORS.error[50] ?? '#FFEBEE',
+    label: 'Bloqué',
   },
 };
 

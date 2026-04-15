@@ -1,12 +1,13 @@
 /**
  * PAGE AUDIT GLOBAL — Historique inaltérable de toutes les actions
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { conditionalAuditApi as auditApi, getApiErrorMessage } from '../../services/api';
 import type { AuditLog } from '../../types';
 import { formatDateTime } from '../../constants';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE    = 50;
+const POLL_INTERVAL = 15_000; // 15 secondes
 
 const OPERATION_BADGE: Record<string, string> = {
   INSERT: 'bg-green-100 text-green-700',
@@ -61,9 +62,15 @@ export default function AuditPage() {
   const [search,          setSearch]          = useState('');
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState<string | null>(null);
+  const [polling,         setPolling]         = useState(true);
+  const [lastUpdate,      setLastUpdate]      = useState<Date | null>(null);
+  const [secsAgo,         setSecsAgo]         = useState(0);
+  const [highlighted,     setHighlighted]     = useState<Set<number>>(new Set());
+  const lastSeenIds = useRef<Set<number>>(new Set());
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError(null);
     try {
       const logs = await auditApi.getLogs({
         page:      page + 1,
@@ -72,14 +79,42 @@ export default function AuditPage() {
       });
       setAuditLogs(logs.data);
       setTotal(logs.meta.total);
+      setLastUpdate(new Date());
+      setSecsAgo(0);
+
+      // Détecter les nouvelles entrées
+      const newIds = logs.data
+        .map((l: AuditLog) => l.id)
+        .filter((id: number) => !lastSeenIds.current.has(id));
+      if (newIds.length > 0 && lastSeenIds.current.size > 0) {
+        setHighlighted(new Set(newIds));
+        setTimeout(() => setHighlighted(new Set()), 3000);
+      }
+      lastSeenIds.current = new Set(logs.data.map((l: AuditLog) => l.id));
     } catch (e) {
       setError(getApiErrorMessage(e));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [page, operationFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Polling automatique toutes les 15s
+  useEffect(() => {
+    if (!polling) return;
+    const id = setInterval(() => load(true), POLL_INTERVAL);
+    return () => clearInterval(id);
+  }, [polling, load]);
+
+  // Compteur "mis à jour il y a N s"
+  useEffect(() => {
+    if (!lastUpdate) return;
+    const id = setInterval(() => {
+      setSecsAgo(Math.floor((Date.now() - lastUpdate.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lastUpdate]);
 
   // Filtre table + recherche acteur côté client (sur la page courante)
   const filtered = auditLogs.filter((log) => {
@@ -100,9 +135,34 @@ export default function AuditPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Audit Global</h1>
           <p className="text-sm text-gray-500 mt-0.5">Journal inaltérable de toutes les actions sur le système</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="px-2.5 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">LECTURE SEULE</span>
-          <button onClick={load} disabled={loading}
+
+          {/* Badge Live */}
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${polling ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            {polling && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+            {polling ? 'Live' : 'Pause'}
+          </div>
+
+          {/* Mis à jour il y a N s */}
+          {lastUpdate && (
+            <span className="text-xs text-gray-400">
+              {secsAgo < 5 ? 'À l\'instant' : `Il y a ${secsAgo}s`}
+            </span>
+          )}
+
+          {/* Bouton Pause/Reprendre */}
+          <button
+            onClick={() => setPolling(p => !p)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            {polling
+              ? <><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>Pause</>
+              : <><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Reprendre</>
+            }
+          </button>
+
+          <button onClick={() => load()} disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
             <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
@@ -188,9 +248,13 @@ export default function AuditPage() {
                     const jsonFull = log.valeursApres ? JSON.stringify(log.valeursApres, null, 2) : null;
                     return (
                       <tr key={log.id}
-                        className={log.operation === 'DELETE'
-                          ? 'bg-red-50/50 dark:bg-red-950/10'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}>
+                        className={
+                          highlighted.has(log.id)
+                            ? 'bg-blue-50 dark:bg-blue-950/20 transition-colors'
+                            : log.operation === 'DELETE'
+                              ? 'bg-red-50/50 dark:bg-red-950/10'
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'
+                        }>
                         <td className="px-4 py-3 font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap">
                           {formatDateTime(log.createdAt)}
                         </td>

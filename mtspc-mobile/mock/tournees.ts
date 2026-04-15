@@ -91,13 +91,14 @@ export const MOCK_TOURNEES: Record<string, Tournee> = {
     criseId: 'crise-2026-001',
   },
   'mission-002': {
-    id: 'tournee-002',
+    // Aligne avec tournee-a-001 (web entrepotA.ts) — Ahmed Benali (dist-a-001)
+    id: 'tournee-a-001',   // ID cohérent avec le web mock
     missionId: 'mission-002',
-    entrepotId: 'entrepot-b',
-    vehiculeId: 'vehicule-002',
-    distanceTotaleKm: 182.3,
-    tempsEstimeTotalMin: 310,
-    etapes: generateEtapesVRP('Fquih Ben Salah', 2),
+    entrepotId: 'entrepot-a',   // Entrepôt A (cohérent avec web mock)
+    vehiculeId: 'veh-a-001',    // Véhicule A1 (cohérent avec web mock)
+    distanceTotaleKm: 145.5,    // Identique à tournee-a-001 (web)
+    tempsEstimeTotalMin: 240,   // Identique à tournee-a-001 (web)
+    etapes: generateEtapesVRP('Azilal', 2),   // Province Azilal (cohérent avec web)
     statut: 'en_cours',
     criseId: 'crise-2026-001',
   },

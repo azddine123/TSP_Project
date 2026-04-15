@@ -233,6 +233,10 @@ export const tourneeApi = {
   /** Annuler une tournée planifiée */
   annuler: (id: string) =>
     api.patch<Tournee>(`/tournees/${id}/annuler`).then((r) => r.data),
+
+  /** Distributeur signale une route bloquée vers un douar */
+  signalerRouteBloquee: (tourneeId: string, etapeId: string, commentaire?: string) =>
+    api.patch(`/tournees/${tourneeId}/etapes/${etapeId}/route-bloquee`, { commentaire }).then((r) => r.data),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

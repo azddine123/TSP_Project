@@ -8,14 +8,14 @@
  * 2. Bouton "Commencer la mission" → ouvre carte plein écran avec itinéraire
  * 3. Tracking GPS au démarrage de la tournée
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Platform, Modal, Dimensions,
 } from 'react-native';
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from '../components/MapViewWrapper';
 import NetInfo from '@react-native-community/netinfo';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { missionService } from '../services/missionService';
@@ -50,6 +50,12 @@ export default function MissionDetailScreen() {
   const [isOnline, setIsOnline] = useState(true);
   const [etapeActiveIdx, setEtapeActiveIdx] = useState<number>(0);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [blockedEtapes,  setBlockedEtapes]  = useState<Set<string>>(new Set());
+  const [livreedEtapes,  setLivreedEtapes]  = useState<Set<string>>(new Set());
+  const [signalingBloquee, setSignalingBloquee] = useState(false);
+
+  // Ref vers la MapView plein écran pour centerOnEtape
+  const mapRef = useRef<typeof MapView | null>(null);
 
   const { startTracking, stopTracking, currentPosition, isTracking } = useGpsTracking();
 
@@ -99,16 +105,105 @@ export default function MissionDetailScreen() {
     }
   };
 
-  const handleLivraison = (etape: EtapeVRP, index: number) => {
+  const handleLivraison = async (etape: EtapeVRP, index: number) => {
     if (!tournee) return;
+    // Signaler au backend que le distributeur est "en route" vers ce douar
+    const etapeId = etape.etapeId ?? etape.douarId;
+    await missionService.updateEtapeStatut(tournee.id, etapeId, 'en_route').catch(console.warn);
+    // Mettre à jour l'index actif
+    setEtapeActiveIdx(index);
     router.push({
       pathname: '/livraison-confirmation',
       params: {
         tourneeId: tournee.id,
         douarId: etape.douarId,
+        etapeId,
         etapeJson: JSON.stringify(etape),
       },
     });
+  };
+
+  // Quand le distributeur revient de livraison-confirmation, avancer l'étape active
+  useFocusEffect(useCallback(() => {
+    if (!tournee) return;
+    // Calculer le prochain index non livré et non bloqué
+    const nextIdx = tournee.etapes.findIndex((e, i) =>
+      i >= etapeActiveIdx && !livreedEtapes.has(e.douarId) && !blockedEtapes.has(e.douarId)
+    );
+    if (nextIdx >= 0 && nextIdx !== etapeActiveIdx) {
+      setEtapeActiveIdx(nextIdx);
+    }
+  }, [tournee, livreedEtapes, blockedEtapes]));
+
+  // Centrer la carte plein écran sur une étape donnée
+  const handleCenterOnEtape = useCallback((etape: EtapeVRP) => {
+    if (!mapRef.current) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mapRef.current as any).animateToRegion(
+      { latitude: etape.lat, longitude: etape.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+      500,
+    );
+  }, []);
+
+  // Appelée après confirmation réussie d'une livraison
+  const markEtapeLivree = useCallback((douarId: string, etapeId: string) => {
+    if (!tournee) return;
+    missionService.updateEtapeStatut(tournee.id, etapeId, 'livree').catch(console.warn);
+    setLivreedEtapes(prev => new Set([...prev, douarId]));
+    // Avancer à la prochaine étape non livrée
+    setEtapeActiveIdx(prev => {
+      let next = prev + 1;
+      while (next < (tournee.etapes.length) &&
+        (livreedEtapes.has(tournee.etapes[next].douarId) || blockedEtapes.has(tournee.etapes[next].douarId))) {
+        next++;
+      }
+      return Math.min(next, tournee.etapes.length);
+    });
+  }, [tournee, livreedEtapes, blockedEtapes]);
+
+  const handleRouteBloquee = (etape: EtapeVRP) => {
+    if (!tournee) return;
+
+    Alert.alert(
+      '⚠️ Route bloquée',
+      `Confirmer que la route vers "${etape.douarNom}" est bloquée et inaccessible ?\n\nCette alerte sera transmise au Super Admin pour recalcul de l'itinéraire.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Confirmer signalement',
+          style: 'destructive',
+          onPress: async () => {
+            setSignalingBloquee(true);
+            try {
+              const etapeId = etape.etapeId ?? etape.douarId;
+              await missionService.signalerRouteBloquee(
+                tournee.id,
+                etapeId,
+                `Route vers ${etape.douarNom} signalée bloquée par le distributeur.`,
+              );
+
+              // Marquer localement comme bloquée
+              setBlockedEtapes((prev) => new Set(prev).add(etape.douarId));
+
+              // Passer à l'étape suivante si c'est l'étape active
+              if (etapeActiveIdx < (tournee?.etapes.length ?? 0) - 1) {
+                setEtapeActiveIdx((idx) => idx + 1);
+              }
+
+              Alert.alert(
+                '✅ Signalement envoyé',
+                'Le Super Admin a été alerté. Un nouvel itinéraire sera calculé si nécessaire.',
+                [{ text: 'OK' }],
+              );
+            } catch (err) {
+              Alert.alert('Erreur', 'Impossible d\'envoyer le signalement. Vérifiez votre connexion.');
+            } finally {
+              setSignalingBloquee(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleMissionFinish = async () => {
@@ -265,18 +360,42 @@ export default function MissionDetailScreen() {
             )}
 
             {tournee.etapes.map((etape, index) => {
-              const isLivree = index < etapeActiveIdx;
-              const isActive = index === etapeActiveIdx && isTracking;
-              const statut = isLivree ? 'livree' : (isActive ? 'en_cours' : 'a_faire');
+              const isBloquee = blockedEtapes.has(etape.douarId);
+              const isLivree  = livreedEtapes.has(etape.douarId) || (index < etapeActiveIdx && !isBloquee);
+              const isActive  = index === etapeActiveIdx && isTracking;
+              const statut    = isBloquee ? 'echec' : (isLivree ? 'livree' : (isActive ? 'en_cours' : 'a_faire'));
 
               return (
-                <TourneeStepCard
-                  key={etape.douarId}
-                  etape={etape}
-                  statut={statut}
-                  isActive={isActive}
-                  onStartPress={() => handleLivraison(etape, index)}
-                />
+                <View key={etape.douarId}>
+                  <TourneeStepCard
+                    etape={etape}
+                    statut={statut}
+                    isActive={isActive}
+                    onStartPress={() => handleLivraison(etape, index)}
+                  />
+                  {/* Bouton "Route bloquée" visible uniquement sur l'étape active non-livrée */}
+                  {isActive && !isBloquee && (
+                    <TouchableOpacity
+                      style={styles.routeBloqueeBtn}
+                      onPress={() => handleRouteBloquee(etape)}
+                      disabled={signalingBloquee}
+                    >
+                      <Ionicons name="warning" size={18} color="#fff" />
+                      <Text style={styles.routeBloqueeBtnText}>
+                        {signalingBloquee ? 'Envoi en cours…' : 'Route bloquée'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {/* Badge affiché une fois la route signalée */}
+                  {isBloquee && (
+                    <View style={styles.routeBloqueeBadge}>
+                      <Ionicons name="warning" size={14} color="#B71C1C" />
+                      <Text style={styles.routeBloqueeBadgeText}>
+                        Route signalée bloquée — Super Admin alerté
+                      </Text>
+                    </View>
+                  )}
+                </View>
               );
             })}
 
@@ -331,6 +450,8 @@ export default function MissionDetailScreen() {
           {/* Carte Plein Écran */}
           {waypoints.length > 0 && tournee && (
             <MapView
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ref={mapRef as any}
               provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
               style={styles.fullMap}
               initialRegion={getMapRegion() || undefined}
@@ -456,9 +577,7 @@ export default function MissionDetailScreen() {
                     index === etapeActiveIdx && styles.modalStepItemActive,
                     index < etapeActiveIdx && styles.modalStepItemDone,
                   ]}
-                  onPress={() => {
-                    // Centrer la carte sur cette étape
-                  }}
+                  onPress={() => handleCenterOnEtape(etape)}
                 >
                   <View style={[
                     styles.modalStepNumber,
@@ -582,6 +701,25 @@ const styles = StyleSheet.create({
     paddingVertical: 16, borderRadius: 12, gap: 8, elevation: 4,
   },
   finishMissionText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+
+  // Bouton Route bloquée
+  routeBloqueeBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#C62828', marginHorizontal: 16, marginTop: 4, marginBottom: 8,
+    paddingVertical: 10, borderRadius: 8, gap: 6, elevation: 3,
+    shadowColor: '#C62828', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4, shadowRadius: 4,
+  },
+  routeBloqueeBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // Badge route signalée
+  routeBloqueeBadge: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#FFCDD2',
+    marginHorizontal: 16, marginTop: 4, marginBottom: 8,
+    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, gap: 6,
+  },
+  routeBloqueeBadgeText: { color: '#B71C1C', fontSize: 12, fontWeight: '600', flex: 1 },
 
   // Fallback
   noTourneeBox: { marginHorizontal: 16 },

@@ -2,6 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, ManyToOne, OneToMany, JoinColumn,
 } from 'typeorm';
+import { RessourcesDouar } from './tournee-etape.entity';
 import { Crise }            from '../../crises/entities/crise.entity';
 import { Entrepot }         from '../../entrepots/entities/entrepot.entity';
 import { Distributeur }     from '../../distributeurs/entities/distributeur.entity';
@@ -72,4 +73,8 @@ export class Tournee {
 
   @Column({ name: 'terminee_at', type: 'timestamptz', nullable: true })
   termineeAt: Date | null;
+
+  /** Ressources totales de toute la tournée (somme des étapes) */
+  @Column({ name: 'ressources_totales', type: 'jsonb', nullable: true })
+  ressourcesTotales: RessourcesDouar | null;
 }

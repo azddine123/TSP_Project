@@ -38,7 +38,8 @@ export default function HomeScreen() {
   const [isOnline, setIsOnline] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingCount, setPendingCount] = useState(0);
-  const [syncing, setSyncing] = useState(false);
+  const [syncing,       setSyncing]       = useState(false);
+  const [filterStatut,  setFilterStatut]  = useState<string>(''); // '' = toutes
 
   // Charger les missions
   const loadMissions = useCallback(async () => {
@@ -112,13 +113,21 @@ export default function HomeScreen() {
     }
   };
 
-  // Filtrer les missions
+  // Badge "Délai dépassé" : mission in_progress depuis > 2h
+  const isDelaiDepasse = (mission: Mission): boolean => {
+    if (mission.statut !== 'in_progress') return false;
+    const depuis = Date.now() - new Date(mission.dateCreation ?? 0).getTime();
+    return depuis > 2 * 60 * 60 * 1000; // 2 heures
+  };
+
+  // Filtrer les missions (statut + texte)
   const filteredMissions = missions.filter((mission) => {
+    if (filterStatut && mission.statut !== filterStatut) return false;
     const searchLower = searchQuery.toLowerCase();
     return (
       mission.numeroMission.toLowerCase().includes(searchLower) ||
       mission.destinationNom.toLowerCase().includes(searchLower) ||
-      mission.entrepotNom.toLowerCase().includes(searchLower)
+      (mission.entrepotNom ?? '').toLowerCase().includes(searchLower)
     );
   });
 
@@ -159,6 +168,26 @@ export default function HomeScreen() {
             <Ionicons name="close-circle" size={20} color="#757575" />
           </TouchableOpacity>
         )}
+      </View>
+
+      {/* Filtres rapides */}
+      <View style={styles.filterRow}>
+        {[
+          { label: 'Toutes',    val: '' },
+          { label: 'En attente', val: 'pending' },
+          { label: 'En cours',  val: 'in_progress' },
+          { label: 'Terminées', val: 'completed' },
+        ].map(({ label, val }) => (
+          <TouchableOpacity
+            key={label}
+            style={[styles.filterBtn, filterStatut === val && styles.filterBtnActive]}
+            onPress={() => setFilterStatut(val)}
+          >
+            <Text style={[styles.filterBtnText, filterStatut === val && styles.filterBtnTextActive]}>
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Stats simples */}
@@ -206,10 +235,18 @@ export default function HomeScreen() {
         data={filteredMissions}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <MissionCard
-            mission={item}
-            onPress={() => router.push({ pathname: '/mission-detail', params: { id: item.id } })}
-          />
+          <View>
+            {isDelaiDepasse(item) && (
+              <View style={styles.delaiDepasseBadge}>
+                <Ionicons name="warning" size={14} color="#fff" />
+                <Text style={styles.delaiDepasseText}>Délai dépassé</Text>
+              </View>
+            )}
+            <MissionCard
+              mission={item}
+              onPress={() => router.push({ pathname: '/mission-detail', params: { id: item.id } })}
+            />
+          </View>
         )}
         refreshControl={
           <RefreshControl
@@ -386,5 +423,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9E9E9E',
     marginTop: 4,
+  },
+
+  // Filtres rapides
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  filterBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  filterBtnActive: {
+    backgroundColor: '#1565C0',
+    borderColor: '#1565C0',
+  },
+  filterBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#757575',
+  },
+  filterBtnTextActive: {
+    color: '#fff',
+  },
+
+  // Badge délai dépassé
+  delaiDepasseBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D32F2F',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginHorizontal: 16,
+    marginTop: 8,
+    gap: 6,
+    alignSelf: 'flex-start',
+  },
+  delaiDepasseText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
