@@ -23,15 +23,15 @@ const getHostUri = (): string => {
     if (Platform.OS === 'android') {
       // Émulateur Android → passerelle vers la machine hôte
       if (!Constants.isDevice) return '10.0.2.2';
-      // Appareil réel Android → IP manuelle (configurer dans .env)
-      return '192.168.1.1';
+      // Appareil réel Android → utiliser l'IP Wi-Fi du PC (configurer dans .env)
+      return '192.168.1.6';
     }
 
     if (Platform.OS === 'ios') {
       // Simulateur iOS → localhost
       if (!Constants.isDevice) return 'localhost';
-      // Appareil réel iOS → IP manuelle (configurer dans .env)
-      return '192.168.1.1';
+      // Appareil réel iOS → utiliser l'IP Wi-Fi du PC (configurer dans .env)
+      return '192.168.1.6';
     }
   }
 
