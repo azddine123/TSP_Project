@@ -8,14 +8,14 @@
  * 2. Bouton "Commencer la mission" → ouvre carte plein écran avec itinéraire
  * 3. Tracking GPS au démarrage de la tournée
  */
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, Platform, Modal, Dimensions,
 } from 'react-native';
 import { MapView, Marker, Polyline, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from '../components/MapViewWrapper';
 import NetInfo from '@react-native-community/netinfo';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { missionService } from '../services/missionService';
@@ -50,12 +50,9 @@ export default function MissionDetailScreen() {
   const [isOnline, setIsOnline] = useState(true);
   const [etapeActiveIdx, setEtapeActiveIdx] = useState<number>(0);
   const [showMapModal, setShowMapModal] = useState(false);
-  const [blockedEtapes,  setBlockedEtapes]  = useState<Set<string>>(new Set());
-  const [livreedEtapes,  setLivreedEtapes]  = useState<Set<string>>(new Set());
-  const [signalingBloquee, setSignalingBloquee] = useState(false);
-
-  // Ref vers la MapView plein écran pour centerOnEtape
-  const mapRef = useRef<typeof MapView | null>(null);
+  /** Coordonnées réelles par segment (une entrée par tronçon entre 2 douars) */
+  const [segmentCoords, setSegmentCoords] = useState<{ latitude: number; longitude: number }[][]>([]);
+  const [routeLoading, setRouteLoading] = useState(false);
 
   const { startTracking, stopTracking, currentPosition, isTracking } = useGpsTracking();
 
@@ -75,6 +72,10 @@ export default function MissionDetailScreen() {
         setMission(m);
         setTournee(t);
         setEtapeActiveIdx(0);
+        if (t?.etapes?.length >= 2) {
+          const wps = t.etapes.map((e: EtapeVRP) => ({ latitude: e.lat, longitude: e.lng }));
+          fetchOsrmRoute(wps);
+        }
       } catch (err) {
         Alert.alert('Erreur', 'Impossible de charger la mission.');
         router.back();
@@ -105,105 +106,18 @@ export default function MissionDetailScreen() {
     }
   };
 
-  const handleLivraison = async (etape: EtapeVRP, index: number) => {
+  const handleLivraison = (etape: EtapeVRP, index: number) => {
     if (!tournee) return;
-    // Signaler au backend que le distributeur est "en route" vers ce douar
-    const etapeId = etape.etapeId ?? etape.douarId;
-    await missionService.updateEtapeStatut(tournee.id, etapeId, 'en_route').catch(console.warn);
-    // Mettre à jour l'index actif
-    setEtapeActiveIdx(index);
     router.push({
       pathname: '/livraison-confirmation',
       params: {
-        tourneeId: tournee.id,
-        douarId: etape.douarId,
-        etapeId,
-        etapeJson: JSON.stringify(etape),
+        tourneeId:   tournee.id,
+        douarId:     etape.douarId,
+        etapeJson:   JSON.stringify(etape),
+        etapeIndex:  String(index),
+        etapesJson:  JSON.stringify(tournee.etapes),
       },
     });
-  };
-
-  // Quand le distributeur revient de livraison-confirmation, avancer l'étape active
-  useFocusEffect(useCallback(() => {
-    if (!tournee) return;
-    // Calculer le prochain index non livré et non bloqué
-    const nextIdx = tournee.etapes.findIndex((e, i) =>
-      i >= etapeActiveIdx && !livreedEtapes.has(e.douarId) && !blockedEtapes.has(e.douarId)
-    );
-    if (nextIdx >= 0 && nextIdx !== etapeActiveIdx) {
-      setEtapeActiveIdx(nextIdx);
-    }
-  }, [tournee, livreedEtapes, blockedEtapes]));
-
-  // Centrer la carte plein écran sur une étape donnée
-  const handleCenterOnEtape = useCallback((etape: EtapeVRP) => {
-    if (!mapRef.current) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (mapRef.current as any).animateToRegion(
-      { latitude: etape.lat, longitude: etape.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
-      500,
-    );
-  }, []);
-
-  // Appelée après confirmation réussie d'une livraison
-  const markEtapeLivree = useCallback((douarId: string, etapeId: string) => {
-    if (!tournee) return;
-    missionService.updateEtapeStatut(tournee.id, etapeId, 'livree').catch(console.warn);
-    setLivreedEtapes(prev => new Set([...prev, douarId]));
-    // Avancer à la prochaine étape non livrée
-    setEtapeActiveIdx(prev => {
-      let next = prev + 1;
-      while (next < (tournee.etapes.length) &&
-        (livreedEtapes.has(tournee.etapes[next].douarId) || blockedEtapes.has(tournee.etapes[next].douarId))) {
-        next++;
-      }
-      return Math.min(next, tournee.etapes.length);
-    });
-  }, [tournee, livreedEtapes, blockedEtapes]);
-
-  const handleRouteBloquee = (etape: EtapeVRP) => {
-    if (!tournee) return;
-
-    Alert.alert(
-      '⚠️ Route bloquée',
-      `Confirmer que la route vers "${etape.douarNom}" est bloquée et inaccessible ?\n\nCette alerte sera transmise au Super Admin pour recalcul de l'itinéraire.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Confirmer signalement',
-          style: 'destructive',
-          onPress: async () => {
-            setSignalingBloquee(true);
-            try {
-              const etapeId = etape.etapeId ?? etape.douarId;
-              await missionService.signalerRouteBloquee(
-                tournee.id,
-                etapeId,
-                `Route vers ${etape.douarNom} signalée bloquée par le distributeur.`,
-              );
-
-              // Marquer localement comme bloquée
-              setBlockedEtapes((prev) => new Set(prev).add(etape.douarId));
-
-              // Passer à l'étape suivante si c'est l'étape active
-              if (etapeActiveIdx < (tournee?.etapes.length ?? 0) - 1) {
-                setEtapeActiveIdx((idx) => idx + 1);
-              }
-
-              Alert.alert(
-                '✅ Signalement envoyé',
-                'Le Super Admin a été alerté. Un nouvel itinéraire sera calculé si nécessaire.',
-                [{ text: 'OK' }],
-              );
-            } catch (err) {
-              Alert.alert('Erreur', 'Impossible d\'envoyer le signalement. Vérifiez votre connexion.');
-            } finally {
-              setSignalingBloquee(false);
-            }
-          },
-        },
-      ],
-    );
   };
 
   const handleMissionFinish = async () => {
@@ -223,6 +137,55 @@ export default function MissionDetailScreen() {
       Alert.alert('💾 Mission terminée (Hors-ligne)', 'Les données seront synchronisées au retour du réseau.', [
         { text: 'OK', onPress: () => router.back() }
       ]);
+    }
+  };
+
+  /**
+   * Récupère l'itinéraire réel via OSRM (Open Source Routing Machine, gratuit).
+   * Retourne les coordonnées routières par segment (leg) : un leg = entre 2 douars.
+   * Fallback silencieux vers les coordonnées brutes si le réseau est indisponible.
+   */
+  const fetchOsrmRoute = async (wps: { latitude: number; longitude: number }[]) => {
+    if (wps.length < 2) return;
+    setRouteLoading(true);
+
+    // AbortController pour timeout (AbortSignal.timeout non supporté dans Hermes)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12_000);
+
+    try {
+      const coordsStr = wps.map(w => `${w.longitude},${w.latitude}`).join(';');
+      const url =
+        `https://router.project-osrm.org/route/v1/driving/${coordsStr}` +
+        `?overview=false&steps=true&geometries=geojson`;
+
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.code !== 'Ok' || !data.routes?.[0]) throw new Error('OSRM no route');
+
+      const segments: { latitude: number; longitude: number }[][] = data.routes[0].legs.map(
+        (leg: any) => {
+          const legCoords: { latitude: number; longitude: number }[] = [];
+          for (const step of leg.steps) {
+            for (const [lon, lat] of step.geometry.coordinates) {
+              legCoords.push({ latitude: lat, longitude: lon });
+            }
+          }
+          return legCoords;
+        },
+      );
+      setSegmentCoords(segments);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.warn('[OSRM] Route fetch failed, fallback to straight lines:', err);
+      // Fallback : lignes droites entre les waypoints
+      const fallback = wps.slice(0, -1).map((wp, i) => [wp, wps[i + 1]]);
+      setSegmentCoords(fallback);
+    } finally {
+      setRouteLoading(false);
     }
   };
 
@@ -325,11 +288,24 @@ export default function MissionDetailScreen() {
                   pinColor={index === 0 ? '#4CAF50' : '#1565C0'}
                 />
               ))}
-              <Polyline
-                coordinates={waypoints}
-                strokeColor="#1565C0"
-                strokeWidth={3}
-              />
+              {/* Itinéraire réel OSRM — ou ligne droite en fallback */}
+              {segmentCoords.length > 0
+                ? segmentCoords.map((seg, i) => (
+                    <Polyline
+                      key={`mini-seg-${i}`}
+                      coordinates={seg}
+                      strokeColor="#1565C0"
+                      strokeWidth={3}
+                    />
+                  ))
+                : (
+                  <Polyline
+                    coordinates={waypoints}
+                    strokeColor="#1565C0"
+                    strokeWidth={3}
+                  />
+                )
+              }
             </MapView>
             <View style={styles.mapOverlay}>
               <Ionicons name="expand" size={24} color="#fff" />
@@ -360,42 +336,18 @@ export default function MissionDetailScreen() {
             )}
 
             {tournee.etapes.map((etape, index) => {
-              const isBloquee = blockedEtapes.has(etape.douarId);
-              const isLivree  = livreedEtapes.has(etape.douarId) || (index < etapeActiveIdx && !isBloquee);
-              const isActive  = index === etapeActiveIdx && isTracking;
-              const statut    = isBloquee ? 'echec' : (isLivree ? 'livree' : (isActive ? 'en_cours' : 'a_faire'));
+              const isLivree = index < etapeActiveIdx;
+              const isActive = index === etapeActiveIdx && isTracking;
+              const statut = isLivree ? 'livree' : (isActive ? 'en_cours' : 'a_faire');
 
               return (
-                <View key={etape.douarId}>
-                  <TourneeStepCard
-                    etape={etape}
-                    statut={statut}
-                    isActive={isActive}
-                    onStartPress={() => handleLivraison(etape, index)}
-                  />
-                  {/* Bouton "Route bloquée" visible uniquement sur l'étape active non-livrée */}
-                  {isActive && !isBloquee && (
-                    <TouchableOpacity
-                      style={styles.routeBloqueeBtn}
-                      onPress={() => handleRouteBloquee(etape)}
-                      disabled={signalingBloquee}
-                    >
-                      <Ionicons name="warning" size={18} color="#fff" />
-                      <Text style={styles.routeBloqueeBtnText}>
-                        {signalingBloquee ? 'Envoi en cours…' : 'Route bloquée'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  {/* Badge affiché une fois la route signalée */}
-                  {isBloquee && (
-                    <View style={styles.routeBloqueeBadge}>
-                      <Ionicons name="warning" size={14} color="#B71C1C" />
-                      <Text style={styles.routeBloqueeBadgeText}>
-                        Route signalée bloquée — Super Admin alerté
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                <TourneeStepCard
+                  key={etape.douarId}
+                  etape={etape}
+                  statut={statut}
+                  isActive={isActive}
+                  onStartPress={() => handleLivraison(etape, index)}
+                />
               );
             })}
 
@@ -450,8 +402,6 @@ export default function MissionDetailScreen() {
           {/* Carte Plein Écran */}
           {waypoints.length > 0 && tournee && (
             <MapView
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ref={mapRef as any}
               provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
               style={styles.fullMap}
               initialRegion={getMapRegion() || undefined}
@@ -467,48 +417,39 @@ export default function MissionDetailScreen() {
                 />
               )}
 
-              {/* Chemin parcouru (vert) */}
-              {etapeActiveIdx > 0 && (
-                <Polyline
-                  coordinates={waypoints.slice(0, etapeActiveIdx + 1)}
-                  strokeColor="#4CAF50"
-                  strokeWidth={5}
-                  lineCap="round"
-                  lineJoin="round"
-                />
-              )}
-
-              {/* Chemin restant (bleu avec flèches) */}
-              {etapeActiveIdx < waypoints.length - 1 && (
-                <Polyline
-                  coordinates={waypoints.slice(etapeActiveIdx)}
-                  strokeColor="#1565C0"
-                  strokeWidth={5}
-                  lineCap="round"
-                  lineJoin="round"
-                />
-              )}
-
-              {/* Segments entre chaque douar avec couleur selon statut */}
-              {tournee.etapes.map((e, index) => {
-                if (index === 0) return null;
-                const prev = tournee.etapes[index - 1];
-                const isParcouru = index <= etapeActiveIdx;
-                return (
-                  <Polyline
-                    key={`segment-${e.douarId}`}
-                    coordinates={[
-                      { latitude: prev.lat, longitude: prev.lng },
-                      { latitude: e.lat, longitude: e.lng }
-                    ]}
-                    strokeColor={isParcouru ? '#4CAF50' : '#1565C0'}
-                    strokeWidth={isParcouru ? 6 : 4}
-                    lineDashPattern={isParcouru ? [] : [10, 5]}
-                    lineCap="round"
-                    lineJoin="round"
-                  />
-                );
-              })}
+              {/* Itinéraire réel OSRM par segment, coloré selon avancement */}
+              {segmentCoords.length > 0
+                ? segmentCoords.map((seg, i) => {
+                    const isParcouru = i < etapeActiveIdx;
+                    const isActif = i === etapeActiveIdx;
+                    return (
+                      <Polyline
+                        key={`route-seg-${i}`}
+                        coordinates={seg}
+                        strokeColor={isParcouru ? '#4CAF50' : '#1565C0'}
+                        strokeWidth={isParcouru ? 6 : isActif ? 5 : 4}
+                        lineDashPattern={(!isParcouru && !isActif) ? [10, 5] : []}
+                        lineCap="round"
+                        lineJoin="round"
+                      />
+                    );
+                  })
+                : /* Fallback lignes droites */
+                  waypoints.slice(0, -1).map((wp, i) => {
+                    const isParcouru = i < etapeActiveIdx;
+                    return (
+                      <Polyline
+                        key={`fallback-seg-${i}`}
+                        coordinates={[wp, waypoints[i + 1]]}
+                        strokeColor={isParcouru ? '#4CAF50' : '#1565C0'}
+                        strokeWidth={isParcouru ? 6 : 4}
+                        lineDashPattern={isParcouru ? [] : [10, 5]}
+                        lineCap="round"
+                        lineJoin="round"
+                      />
+                    );
+                  })
+              }
 
               {/* Marqueurs des douars avec numéros */}
               {tournee.etapes.map((e, index) => {
@@ -550,6 +491,14 @@ export default function MissionDetailScreen() {
             </MapView>
           )}
 
+          {/* Indicateur pendant le chargement OSRM */}
+          {routeLoading && (
+            <View style={styles.routeLoadingBadge}>
+              <ActivityIndicator size="small" color="#1565C0" />
+              <Text style={styles.routeLoadingText}>Calcul de l'itinéraire…</Text>
+            </View>
+          )}
+
           {/* Légende du chemin */}
           <View style={styles.legendeContainer}>
             <View style={styles.legendeItem}>
@@ -577,7 +526,9 @@ export default function MissionDetailScreen() {
                     index === etapeActiveIdx && styles.modalStepItemActive,
                     index < etapeActiveIdx && styles.modalStepItemDone,
                   ]}
-                  onPress={() => handleCenterOnEtape(etape)}
+                  onPress={() => {
+                    // Centrer la carte sur cette étape
+                  }}
                 >
                   <View style={[
                     styles.modalStepNumber,
@@ -702,25 +653,6 @@ const styles = StyleSheet.create({
   },
   finishMissionText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 
-  // Bouton Route bloquée
-  routeBloqueeBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#C62828', marginHorizontal: 16, marginTop: 4, marginBottom: 8,
-    paddingVertical: 10, borderRadius: 8, gap: 6, elevation: 3,
-    shadowColor: '#C62828', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4, shadowRadius: 4,
-  },
-  routeBloqueeBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-
-  // Badge route signalée
-  routeBloqueeBadge: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#FFCDD2',
-    marginHorizontal: 16, marginTop: 4, marginBottom: 8,
-    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, gap: 6,
-  },
-  routeBloqueeBadgeText: { color: '#B71C1C', fontSize: 12, fontWeight: '600', flex: 1 },
-
   // Fallback
   noTourneeBox: { marginHorizontal: 16 },
   fallbackItem: {
@@ -760,6 +692,30 @@ const styles = StyleSheet.create({
   modalStepNumberTextActive: { color: '#fff' },
   modalStepName: { fontSize: 12, fontWeight: '600', color: '#333', maxWidth: 80 },
   modalStepDistance: { fontSize: 10, color: '#888' },
+
+  // Badge chargement route
+  routeLoadingBadge: {
+    position: 'absolute',
+    top: 110,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 6,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  routeLoadingText: {
+    fontSize: 12,
+    color: '#1565C0',
+    fontWeight: '600',
+  },
 
   // Légende
   legendeContainer: {

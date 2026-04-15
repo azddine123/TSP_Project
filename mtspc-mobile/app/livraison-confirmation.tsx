@@ -2,7 +2,7 @@
  * LIVRAISON CONFIRMATION SCREEN v2.0
  * ==================================
  * Écran de confirmation avec design premium et navigation
- * fluide en 4 étapes : Bordereau → Photo → Signature → Récap
+ * fluide en 3 étapes : Bordereau → Photo → Récap
  */
 import React, { useState, useCallback } from 'react';
 import {
@@ -11,15 +11,13 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useGpsTracking } from './hooks/useGpsTracking';
 import * as ImagePicker from 'expo-image-picker';
 import NetInfo from '@react-native-community/netinfo';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInUp, FadeInRight, Layout } from 'react-native-reanimated';
+import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 
 import BordereauDouar from '../components/BordereauDouar';
-import SignatureCanvas from '../components/SignatureCanvas';
 import { syncService } from '../services/syncService';
 import { EtapeVRP, DouarLivraison } from '../types/app';
 import { API_BASE_URL } from '../config/keycloakConfig';
@@ -36,11 +34,11 @@ interface QuantitesReelles {
   eau_litres: number;
 }
 
-type Step = 'bordereau' | 'photo' | 'signature' | 'recap';
+type Step = 'bordereau' | 'photo' | 'recap';
 
-const STEPS: Step[] = ['bordereau', 'photo', 'signature', 'recap'];
-const stepLabels = ['Bordereau', 'Photo', 'Signature', 'Récap'];
-const stepIcons = ['document-text', 'camera', 'create', 'checkmark-circle'];
+const STEPS: Step[] = ['bordereau', 'photo', 'recap'];
+const stepLabels = ['Bordereau', 'Photo', 'Récap'];
+const stepIcons = ['document-text', 'camera', 'checkmark-circle'];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SOUS-COMPOSANTS
@@ -138,14 +136,10 @@ export default function LivraisonConfirmationScreen() {
 
   const etape: EtapeVRP = JSON.parse(params.etapeJson ?? '{}');
   
-  // Lire la position GPS courante (tracking déjà démarré depuis mission-detail)
-  const { currentPosition } = useGpsTracking({ enabled: false });
-
   const [currentStep, setCurrentStep] = useState<Step>('bordereau');
   const currentIndex = STEPS.indexOf(currentStep);
   const [quantitesReelles, setQuantitesReelles] = useState<QuantitesReelles | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [signatureBase64, setSignatureBase64] = useState<string | null>(null);
   const [commentaire, setCommentaire] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -193,45 +187,6 @@ export default function LivraisonConfirmationScreen() {
       return;
     }
 
-    // Vérifier que toutes les quantités sont >= 0
-    const hasNegative = Object.values(quantitesReelles).some(v => v < 0);
-    if (hasNegative) {
-      Alert.alert('Erreur', 'Toutes les quantités doivent être positives ou nulles.');
-      return;
-    }
-
-    if (!signatureBase64) {
-      Alert.alert('Signature manquante', 'La signature du responsable local est obligatoire.');
-      return;
-    }
-
-    // Vérifier livraison < 50 % pour certains items
-    const LABEL_MAP: Record<string, string> = {
-      tentes: 'Tentes', couvertures: 'Couvertures', vivres: 'Vivres alimentaires',
-      kits_med: 'Kits médicaux', eau_litres: 'Eau (litres)',
-    };
-    const prevues = etape.ressources ?? {};
-    const lowItems: string[] = Object.entries(quantitesReelles)
-      .filter(([key, val]) => {
-        const prevue = (prevues as Record<string, number>)[key] ?? 0;
-        return prevue > 0 && val < prevue * 0.5;
-      })
-      .map(([key]) => LABEL_MAP[key] ?? key);
-
-    if (lowItems.length > 0) {
-      const confirmed = await new Promise<boolean>(resolve => {
-        Alert.alert(
-          'Livraison partielle',
-          `Vous délivrez moins de 50 % :\n${lowItems.join(', ')}.\nConfirmer ?`,
-          [
-            { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Confirmer', onPress: () => resolve(true) },
-          ],
-        );
-      });
-      if (!confirmed) return;
-    }
-
     setIsSubmitting(true);
 
     const livraison: DouarLivraison = {
@@ -241,10 +196,7 @@ export default function LivraisonConfirmationScreen() {
       quantitesReelles,
       commentaire: commentaire || undefined,
       photoUri: photoUri || undefined,
-      signatureBase64,
       timestampLocal: new Date().toISOString(),
-      lat: currentPosition?.lat ?? undefined,
-      lng: currentPosition?.lng ?? undefined,
       tentativeSync: 0,
     };
 
@@ -252,49 +204,59 @@ export default function LivraisonConfirmationScreen() {
       const netState = await NetInfo.fetch();
       const isOnline = !!(netState.isConnected && netState.isInternetReachable);
 
-      if (isOnline) {
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
-        const res = await fetch(`${API_BASE_URL}/sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
-          },
-          body: JSON.stringify({ submissions: [{ missionId: params.tourneeId, douarId: params.douarId, livraison, statut: 'completed', timestampLocal: livraison.timestampLocal, tentativeSync: 0 }] }),
-        });
-
-        if (!res.ok) throw new Error(`Erreur serveur : ${res.status}`);
-
-        Alert.alert(
-          '✅ Livraison confirmée',
-          `${etape.douarNom} — Données envoyées au serveur avec succès.`,
-          [{ text: 'OK', onPress: () => router.back() }],
-        );
-      } else {
+      const saveOffline = async () => {
         await syncService.savePendingSubmission({
           missionId: params.tourneeId,
-          douarId: params.douarId,
           statut: 'completed',
           commentaireTerrain: commentaire || undefined,
-          livraisonLat: livraison.lat,
-          livraisonLng: livraison.lng,
           timestampLocal: livraison.timestampLocal,
           tentativeSync: 0,
-          livraison,
         });
-
         Alert.alert(
-          '📦 Livraison sauvegardée hors-ligne',
-          'Les données seront envoyées automatiquement dès le retour du réseau.',
+          '📦 Livraison sauvegardée',
+          'Les données seront synchronisées automatiquement dès que le serveur sera disponible.',
           [{ text: 'OK', onPress: () => router.back() }],
         );
+      };
+
+      if (isOnline) {
+        const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        try {
+          const res = await fetch(`${API_BASE_URL}/sync`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : '',
+            },
+            body: JSON.stringify(livraison),
+          });
+
+          if (res.status === 401 || res.status === 403) {
+            // Token expiré ou serveur non configuré → sauvegarde locale
+            await saveOffline();
+          } else if (!res.ok) {
+            throw new Error(`Erreur serveur : ${res.status}`);
+          } else {
+            Alert.alert(
+              '✅ Livraison confirmée',
+              `${etape.douarNom} — Données envoyées au serveur avec succès.`,
+              [{ text: 'OK', onPress: () => router.back() }],
+            );
+          }
+        } catch (fetchErr: any) {
+          // Réseau présent mais serveur injoignable → sauvegarde locale
+          if (fetchErr?.message?.includes('Erreur serveur')) throw fetchErr;
+          await saveOffline();
+        }
+      } else {
+        await saveOffline();
       }
     } catch (err: any) {
       Alert.alert('Erreur', err.message || 'Impossible de confirmer la livraison.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [quantitesReelles, signatureBase64, commentaire, photoUri, etape, params, router, currentPosition]);
+  }, [quantitesReelles, commentaire, photoUri, etape, params, router]);
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -309,7 +271,7 @@ export default function LivraisonConfirmationScreen() {
             <Text style={styles.headerSub}>{etape.douarNom}</Text>
           </View>
           <View style={styles.stepBadge}>
-            <Text style={styles.stepBadgeText}>Étape {currentIndex + 1}/4</Text>
+            <Text style={styles.stepBadgeText}>Étape {currentIndex + 1}/3</Text>
           </View>
         </View>
 
@@ -391,38 +353,7 @@ export default function LivraisonConfirmationScreen() {
             </Animated.View>
           )}
 
-          {/* ÉTAPE 3: SIGNATURE */}
-          {currentStep === 'signature' && (
-            <Animated.View entering={FadeInRight.duration(300)} style={styles.signatureSection}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionIconContainer}>
-                  <Ionicons name="create" size={20} color={COLORS.primary[800]} />
-                </View>
-                <View>
-                  <Text style={styles.sectionTitle}>Signature obligatoire</Text>
-                  <Text style={styles.sectionSubtitle}>Du responsable ou mukhtâr local</Text>
-                </View>
-              </View>
-
-              <View style={styles.signatureWrapper}>
-                <SignatureCanvas
-                  width={340}
-                  height={200}
-                  onSigned={setSignatureBase64}
-                  onCleared={() => setSignatureBase64(null)}
-                />
-              </View>
-              
-              {signatureBase64 && (
-                <Animated.View entering={FadeInUp.duration(300)} style={styles.signatureSuccess}>
-                  <Ionicons name="checkmark-circle" size={20} color={COLORS.success.main} />
-                  <Text style={styles.signatureSuccessText}>Signature enregistrée</Text>
-                </Animated.View>
-              )}
-            </Animated.View>
-          )}
-
-          {/* ÉTAPE 4: RÉCAP */}
+          {/* ÉTAPE 3: RÉCAP */}
           {currentStep === 'recap' && (
             <Animated.View entering={FadeInRight.duration(300)} style={styles.recapSection}>
               <View style={styles.sectionHeader}>
@@ -438,7 +369,6 @@ export default function LivraisonConfirmationScreen() {
               <View style={styles.recapCard}>
                 <RecapItem icon="document-text-outline" label="Bordereau complété" ok={!!quantitesReelles} />
                 <RecapItem icon="camera-outline" label="Photo de preuve" ok={!!photoUri} optional />
-                <RecapItem icon="create-outline" label="Signature responsable" ok={!!signatureBase64} />
               </View>
 
               <Text style={styles.commentLabel}>Commentaire terrain (optionnel)</Text>
@@ -724,31 +654,6 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.warning.dark,
     fontWeight: '500',
-  },
-
-  // Signature
-  signatureSection: { 
-    paddingTop: SPACING.sm 
-  },
-  signatureWrapper: { 
-    alignItems: 'center', 
-    marginTop: SPACING.md 
-  },
-  signatureSuccess: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.md,
-    padding: SPACING.md,
-    backgroundColor: COLORS.success[50],
-    borderRadius: BORDER_RADIUS.lg,
-    marginHorizontal: SPACING.lg,
-  },
-  signatureSuccessText: {
-    fontSize: TYPOGRAPHY.size.base,
-    fontWeight: '700',
-    color: COLORS.success.dark,
   },
 
   // Récap
