@@ -9,6 +9,7 @@ import TourneesPage     from './TourneesPage';
 import SuiviTerrainPage from './SuiviTerrainPage';
 import SettingsPage        from './SettingsPage';
 import CreateMissionPage   from './CreateMissionPage';
+import OrdresRecusPage     from './OrdresRecusPage';
 
 export default function AdminDashboard() {
   return (
@@ -16,6 +17,7 @@ export default function AdminDashboard() {
       <Route index                      element={<AdminOverview />} />
       <Route path="stock"               element={<StockPage />} />
       <Route path="vehicules"           element={<VehiculesPage />} />
+      <Route path="ordres-recus"        element={<OrdresRecusPage />} />
       <Route path="tournees"            element={<TourneesPage />} />
       <Route path="tournees/create"     element={<CreateMissionPage />} />
       <Route path="suivi"               element={<SuiviTerrainPage />} />

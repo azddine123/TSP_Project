@@ -25,6 +25,7 @@
       "edgeToEdgeEnabled": true,
       "package": "com.yourcompany.reliefchain",
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "usesCleartextTraffic": true,
       "config": {
         "googleMaps": {
           "apiKey": "YOUR_ANDROID_API_KEY_HERE"

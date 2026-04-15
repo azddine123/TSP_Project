@@ -72,10 +72,6 @@ function CreateCriseModal({
     });
   }
 
-  function updateRow(douarId: string, field: keyof Omit<SeveriteRow, 'douarId'>, value: number) {
-    setSelected((prev) => prev.map((r) => r.douarId === douarId ? { ...r, [field]: value } : r));
-  }
-
   async function handleSubmit() {
     if (!zone.trim()) { setError('La zone est obligatoire.'); return; }
     if (selected.length === 0) { setError('Sélectionnez au moins un douar affecté.'); return; }
@@ -170,45 +166,6 @@ function CreateCriseModal({
             </div>
           </div>
 
-          {/* Scores par douar */}
-          {selected.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Scores de sévérité par douar</p>
-              <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-800/60 text-gray-500 text-left">
-                      <th className="px-3 py-2 font-semibold">Douar</th>
-                      <th className="px-3 py-2 font-semibold">Sévérité (0–10)</th>
-                      <th className="px-3 py-2 font-semibold">Vulnérabilité (0–1)</th>
-                      <th className="px-3 py-2 font-semibold">Accessibilité (0–1)</th>
-                      <th className="px-3 py-2 font-semibold">Accès soins (0–1)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {selected.map((row) => {
-                      const d = douars.find((x) => x.id === row.douarId);
-                      return (
-                        <tr key={row.douarId}>
-                          <td className="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">{d?.nom ?? row.douarId.slice(0, 8)}</td>
-                          {(['severite', 'vulnerabilite', 'accessibilite', 'accesSoins'] as const).map((field) => (
-                            <td key={field} className="px-3 py-1.5">
-                              <input type="number" value={row[field]}
-                                min={field === 'severite' ? 0 : 0}
-                                max={field === 'severite' ? 10 : 1}
-                                step={field === 'severite' ? 1 : 0.1}
-                                onChange={(e) => updateRow(row.douarId, field, parseFloat(e.target.value) || 0)}
-                                className="w-20 px-2 py-1 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none text-center" />
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Footer */}

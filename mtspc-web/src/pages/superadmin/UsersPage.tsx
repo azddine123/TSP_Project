@@ -1,7 +1,7 @@
 /**
  * PAGE UTILISATEURS — Groupement par Entrepôt → Rôle
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { conditionalUsersApi as usersApi, conditionalEntrepotApi as entrepotApi, getApiErrorMessage } from '../../services/api';
 import { MOCK_DISTRIBUTEURS } from '../../mock';
 import type { AdminEntrepot, CreateAdminEntrepotDto, Entrepot } from '../../types';
@@ -328,23 +328,60 @@ export default function UsersPage() {
   const [filterRole,    setFilterRole]    = useState('');
 
   const distributeurs: DistributeurRow[] = MOCK_DISTRIBUTEURS as DistributeurRow[];
+  const [liveIndicator, setLiveIndicator] = useState(false);
+  const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevCount  = useRef(0);   // ref → pas de re-render, utilisé pour détecter les nouveaux comptes
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) { setLoading(true); setError(null); }
     try {
       const [u, e] = await Promise.all([usersApi.getAdmins(), entrepotApi.getAll()]);
+      // Détecter un nouvel utilisateur ajouté depuis un autre onglet ou poll
+      if (prevCount.current > 0 && u.length > prevCount.current) {
+        const diff = u.length - prevCount.current;
+        setToast(`Nouvel utilisateur ajouté (${diff} nouveau${diff > 1 ? 'x' : ''})`);
+        setLiveIndicator(true);
+        setTimeout(() => setLiveIndicator(false), 3000);
+      }
+      prevCount.current = u.length;
       setUsers(u);
       setEntrepots(e);
-      // Ouvrir tous les groupes par défaut
-      setOpenIds(new Set(['__unassigned__', ...e.map(ent => ent.id)]));
+      if (!silent) {
+        // Ouvrir tous les groupes par défaut
+        setOpenIds(new Set(['__unassigned__', ...e.map(ent => ent.id)]));
+      }
     } catch (e) {
-      setError(getApiErrorMessage(e));
+      if (!silent) setError(getApiErrorMessage(e));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    // Polling toutes les 8 secondes
+    pollRef.current = setInterval(() => load(true), 8000);
+    // BroadcastChannel : mise à jour instantanée si un autre onglet modifie les utilisateurs
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      bc = new BroadcastChannel('najda_users');
+      bc.onmessage = () => load(true);
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      bc?.close();
+    };
+  }, [load]);
+
+  // Recharger après création d'un utilisateur
+  const handleUserCreated = useCallback((u: AdminEntrepot) => {
+    setUsers(p => [u, ...p]);
+    setShowCreate(false);
+    setToast(`Compte "${u.username}" créé avec succès dans Keycloak`);
+    prevCount.current += 1;
+    setLiveIndicator(true);
+    setTimeout(() => setLiveIndicator(false), 3000);
+  }, []);
 
   function toggleGroup(id: string) {
     setOpenIds(prev => {
@@ -438,8 +475,15 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestion des Utilisateurs</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Par entrepôt · Admin Entrepôt & Distributeurs</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestion des Utilisateurs</h1>
+            {/* Indicateur temps-réel */}
+            <span className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 border border-green-200 rounded-full text-xs text-green-700 font-medium">
+              <span className={`w-1.5 h-1.5 rounded-full ${liveIndicator ? 'bg-green-400 animate-ping' : 'bg-green-400'}`} />
+              En direct
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 mt-0.5">Par entrepôt · Admin Entrepôt & Distributeurs · Actualisation auto toutes les 8 s</p>
         </div>
         <button onClick={() => setShowCreate(true)}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors">
@@ -455,11 +499,12 @@ export default function UsersPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Total admins', count: users.length, color: 'text-brand-600', bg: 'bg-brand-50' },
-          { label: 'Actifs',       count: enabled,      color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Suspendus',    count: disabled,     color: 'text-red-600',   bg: 'bg-red-50' },
+          { label: 'Admins Entrepôt', count: users.length,               color: 'text-brand-600',  bg: 'bg-brand-50' },
+          { label: 'Distributeurs',   count: distributeurs.length,        color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Comptes actifs',  count: enabled,                     color: 'text-green-600',  bg: 'bg-green-50' },
+          { label: 'Suspendus',       count: disabled,                    color: 'text-red-600',    bg: 'bg-red-50' },
         ].map(({ label, count, color, bg }) => (
           <div key={label} className={`${bg} rounded-2xl p-5 flex items-center gap-3`}>
             <p className={`text-3xl font-bold ${color}`}>{count}</p>
@@ -559,7 +604,7 @@ export default function UsersPage() {
         <CreateUserModal
           entrepots={entrepots}
           onClose={() => setShowCreate(false)}
-          onCreated={u => { setUsers(p => [u, ...p]); setShowCreate(false); }}
+          onCreated={handleUserCreated}
         />
       )}
 

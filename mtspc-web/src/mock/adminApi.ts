@@ -98,15 +98,21 @@ export const mockEntrepotApi = {
 // ============================================================================
 // VEHICULE API - Entrepôt A uniquement
 // ============================================================================
+// Normalise les données véhicule : capaciteKg → capacite (attendu par TourneesPage)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeVehicule(v: any) {
+  return { ...v, capacite: v.capacite ?? v.capaciteKg ?? 0 };
+}
+
 export const mockVehiculeApi = {
   getMine: async () => {
     await delay(400);
-    return [...VEHICULES_ENTREPOT_A];
+    return VEHICULES_ENTREPOT_A.map(normalizeVehicule);
   },
-  
+
   getAll: async () => {
     await delay(500);
-    return [...VEHICULES_ENTREPOT_A];
+    return VEHICULES_ENTREPOT_A.map(normalizeVehicule);
   },
   
   create: async (dto: Record<string, unknown>) => {
@@ -144,81 +150,105 @@ export const mockVehiculeApi = {
 // ============================================================================
 // TOURNEE API - Entrepôt A uniquement
 // ============================================================================
+// Patch une tournée par id — mise à jour mémoire + localStorage
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function patchTournee(id: string, patch: any) {
+  tourneesStore.update(id, patch);
+}
+
+// Source de vérité : cache mémoire du store (même onglet), puis localStorage (cross-onglets)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getAllTournees(): any[] {
+  return tourneesStore.getAll();
+}
+
 export const mockTourneeApi = {
   getMine: async () => {
-    await delay(500);
-    return [...tourneesStore.getAll()];
+    await delay(300);
+    return getAllTournees();
   },
 
   getByCrise: async (criseId?: string) => {
-    await delay(500);
-    const all = tourneesStore.getAll();
-    return criseId ? all.filter((t: any) => t.criseId === criseId) : [...all];
+    await delay(300);
+    const all = getAllTournees();
+    return criseId ? all.filter((t: any) => t.criseId === criseId) : all;
   },
 
   getById: async (id: string) => {
-    await delay(400);
-    const tournee = tourneesStore.getById(id);
-    if (!tournee) throw new Error('Tournée non trouvée');
-    return tournee;
+    await delay(300);
+    const t = getAllTournees().find((t: any) => t.id === id);
+    if (!t) throw new Error('Tournée non trouvée');
+    return t;
   },
 
   assigner: async (id: string, dto: { distributeurId: string }) => {
-    await delay(400);
-    return { id, ...dto };
+    await delay(300);
+    const dist = DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId);
+    const patch = {
+      distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : { id: dto.distributeurId, nom: '', prenom: '' },
+    };
+    patchTournee(id, patch);
+    const updated = getAllTournees().find((t: any) => t.id === id);
+    return updated ?? { id, ...patch };
   },
 
   reassigner: async (id: string, dto: { distributeurId: string }) => {
-    await delay(400);
-    return { id, ...dto };
+    await delay(300);
+    const dist = DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId);
+    const patch = {
+      distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : { id: dto.distributeurId, nom: '', prenom: '' },
+    };
+    patchTournee(id, patch);
+    const updated = getAllTournees().find((t: any) => t.id === id);
+    return updated ?? { id, ...patch };
   },
 
   annuler: async (id: string) => {
-    await delay(400);
-    tourneesStore.update(id, { statut: 'annulee' });
+    await delay(300);
+    patchTournee(id, { statut: 'annulee' });
     return { id, statut: 'annulee' };
   },
 
   demarrer: async (id: string) => {
-    await delay(400);
-    const current = tourneesStore.getById(id);
+    await delay(300);
+    const current = getAllTournees().find((t: any) => t.id === id);
     if (!current) throw new Error('Tournée non trouvée');
     const etapes = (current.etapes as any[]).map((e: any, i: number) =>
       i === 0 ? { ...e, statut: 'en_route' } : e
     );
-    tourneesStore.update(id, { statut: 'en_cours', etapes, demarreeAt: new Date().toISOString() });
-    return tourneesStore.getById(id);
+    patchTournee(id, { statut: 'en_cours', etapes, demarreeAt: new Date().toISOString() });
+    return getAllTournees().find((t: any) => t.id === id);
   },
 
   terminer: async (id: string) => {
-    await delay(400);
-    const current = tourneesStore.getById(id);
+    await delay(300);
+    const current = getAllTournees().find((t: any) => t.id === id);
     if (!current) throw new Error('Tournée non trouvée');
     const etapes = (current.etapes as any[]).map((e: any) => ({ ...e, statut: 'livree' }));
-    tourneesStore.update(id, { statut: 'terminee', etapes, termineeAt: new Date().toISOString() });
-    return tourneesStore.getById(id);
+    patchTournee(id, { statut: 'terminee', etapes, termineeAt: new Date().toISOString() });
+    return getAllTournees().find((t: any) => t.id === id);
   },
 
   assignerDistributeur: async (id: string, dto: { distributeurId: string; vehiculeId?: string }) => {
-    await delay(400);
+    await delay(300);
     const dist = DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId);
-    tourneesStore.update(id, {
+    patchTournee(id, {
       distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : undefined,
       vehiculeId: dto.vehiculeId,
     });
-    return tourneesStore.getById(id);
+    return getAllTournees().find((t: any) => t.id === id);
   },
 
   updateEtapeStatut: async (tourneeId: string, etapeId: string, statut: string) => {
     await delay(300);
-    const current = tourneesStore.getById(tourneeId);
+    const current = getAllTournees().find((t: any) => t.id === tourneeId);
     if (!current) throw new Error('Tournée non trouvée');
     const etapes = (current.etapes as any[]).map((e: any) =>
       e.id === etapeId ? { ...e, statut, arriveeAt: statut === 'livree' ? new Date().toISOString() : e.arriveeAt } : e
     );
     const allDone = etapes.every((e: any) => e.statut === 'livree' || e.statut === 'echec');
-    tourneesStore.update(tourneeId, { etapes, statut: allDone ? 'terminee' : current.statut });
-    return tourneesStore.getById(tourneeId);
+    patchTournee(tourneeId, { etapes, statut: allDone ? 'terminee' : current.statut });
+    return getAllTournees().find((t: any) => t.id === tourneeId);
   },
 
   create: async (dto: {

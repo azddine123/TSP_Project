@@ -309,7 +309,8 @@ export default function SuperAdminOverview() {
               const color = TOURNEE_COLORS[ti % TOURNEE_COLORS.length];
               const positions: [number, number][] = [
                 [ENTREPOT_A.latitude, ENTREPOT_A.longitude],
-                ...tournee.etapes.map(e => [e.lat, e.lng] as [number, number]),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ...tournee.etapes.map((e: any) => [e.lat, e.lng] as [number, number]),
               ];
               return (
                 <Polyline

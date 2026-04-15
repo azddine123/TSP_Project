@@ -8,7 +8,8 @@
  *   3. Confirmer le chargement → sortie de stock
  *   4. Départ autorisé → mission démarre
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -23,9 +24,10 @@ import {
   conditionalDistributeurApi,
   conditionalVehiculeApi,
   conditionalStockApi,
+  conditionalCriseApi,
   getApiErrorMessage,
 } from '../../services/api';
-import type { StockRow } from '../../types';
+import type { StockRow, Crise } from '../../types';
 
 // Bascule mock / vrai backend selon la variable d'environnement VITE_USE_MOCK
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
@@ -107,6 +109,17 @@ function decouper(etapes: TourneeEtape[], capaciteKg: number): TourneeEtape[][] 
   return voyages;
 }
 
+// ── Labels type de crise ─────────────────────────────────────────────────────
+
+const CRISE_TYPE_LABELS: Record<string, { label: string; cls: string }> = {
+  SEISME:    { label: 'Séisme',      cls: 'bg-red-100 text-red-700' },
+  INONDATION:{ label: 'Inondation',  cls: 'bg-blue-100 text-blue-700' },
+  INCENDIE:  { label: 'Incendie',    cls: 'bg-orange-100 text-orange-700' },
+  SECHERESSE:{ label: 'Sécheresse',  cls: 'bg-yellow-100 text-yellow-700' },
+  EPIDEMIE:  { label: 'Épidémie',    cls: 'bg-purple-100 text-purple-700' },
+  AUTRE:     { label: 'Autre',       cls: 'bg-gray-100 text-gray-600' },
+};
+
 // ── Badges ───────────────────────────────────────────────────────────────────
 
 const STATUT_BADGE: Record<string, { label: string; cls: string; dot: string }> = {
@@ -138,15 +151,25 @@ function RessourcesGrid({ res, label }: { res: RessourcesDouar; label?: string }
 // ── Carte principale d'une tournée ───────────────────────────────────────────
 
 function TourneeCard({
-  tournee, distributeurs, vehicules, stock, onUpdate,
+  tournee, crise, distributeurs, vehicules, stock, onUpdate, autoExpand = false,
 }: {
   tournee:       Tournee;
+  crise?:        Crise | null;
   distributeurs: Distributeur[];
   vehicules:     { id: string; immatriculation: string; type: string; capacite: number; statut: string }[];
   stock:         StockRow[];
   onUpdate:      (t: Tournee) => void;
+  autoExpand?:   boolean;
 }) {
-  const [expanded,    setExpanded]    = useState(false);
+  const [expanded,    setExpanded]    = useState(autoExpand);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Scroll + expand automatique si focalisé depuis OrdresRecusPage
+  useEffect(() => {
+    if (autoExpand && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [autoExpand]);
   const [busy,        setBusy]        = useState(false);
   const [error,       setError]       = useState('');
 
@@ -240,7 +263,8 @@ function TourneeCard({
   }
 
   return (
-    <div className={`bg-white dark:bg-gray-900 rounded-2xl border shadow-theme-sm overflow-hidden ${
+    <div ref={cardRef} className={`bg-white dark:bg-gray-900 rounded-2xl border shadow-theme-sm overflow-hidden ${
+      autoExpand ? 'ring-2 ring-brand-400' : ''} ${
       tournee.statut === 'planifiee' ? 'border-yellow-200 dark:border-yellow-900/40' :
       tournee.statut === 'en_cours'  ? 'border-l-4 border-l-blue-400 border-blue-200 dark:border-blue-900/40' :
       tournee.statut === 'terminee'  ? 'border-green-200 dark:border-green-900/40 opacity-80' :
@@ -257,7 +281,7 @@ function TourneeCard({
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="text-sm font-bold text-gray-900 dark:text-white font-mono">
-              MS-{tournee.entrepot.province.slice(0, 1).toUpperCase()}-{new Date((tournee as any).createdAt ?? (tournee as any).datePlanification ?? Date.now()).getFullYear()}-{tournee.id.slice(-3).toUpperCase()}
+              {(tournee as any).missionNumero ?? `MS-${tournee.entrepot.province.slice(0, 1).toUpperCase()}-${new Date((tournee as any).datePlanification ?? Date.now()).getFullYear()}-${tournee.id.slice(-3).toUpperCase()}`}
             </span>
             <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
             {(tournee as any)._fromPipeline && (
@@ -269,6 +293,18 @@ function TourneeCard({
               <span className="text-xs text-blue-600 font-bold">{pct}%</span>
             )}
           </div>
+
+          {/* Bandeau crise liée */}
+          {crise && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CRISE_TYPE_LABELS[crise.type]?.cls ?? 'bg-gray-100 text-gray-600'}`}>
+                {CRISE_TYPE_LABELS[crise.type]?.label ?? crise.type}
+              </span>
+              <span className="text-xs text-gray-400 font-mono">{crise.reference}</span>
+              <span className="text-xs text-gray-500 truncate max-w-xs">— {crise.zone}</span>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
             <span>{etapes.length} douar{etapes.length !== 1 ? 's' : ''}</span>
             <span>·</span>
@@ -625,7 +661,12 @@ interface VehiculeSimple {
 }
 
 export default function TourneesPage() {
+  const location = useLocation();
+  // focusTourneeId : transmis par OrdresRecusPage via navigate state
+  const focusTourneeId: string | undefined = (location.state as { focusTourneeId?: string } | null)?.focusTourneeId;
+
   const [tournees,      setTournees]      = useState<Tournee[]>([]);
+  const [crises,        setCrises]        = useState<Crise[]>([]);
   const [distributeurs, setDistributeurs] = useState<Distributeur[]>([]);
   const [vehicules,     setVehicules]     = useState<VehiculeSimple[]>([]);
   const [stock,         setStock]         = useState<StockRow[]>([]);
@@ -633,24 +674,52 @@ export default function TourneesPage() {
   const [error,         setError]         = useState<string | null>(null);
   const [filterStatut,  setFilterStatut]  = useState<string>('');
 
+  // Lookup rapide criseId → Crise
+  const criseMap = useMemo(() => {
+    const m = new Map<string, Crise>();
+    crises.forEach(c => m.set(c.id, c));
+    return m;
+  }, [crises]);
+
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const [t, d, v, s] = await Promise.all([
+      const [t, d, v, s, c] = await Promise.all([
         tourneeApi.getMine(),
         distributeurApi.getAll(),
         vehiculeApi.getMine(),
         stockApi.getMine().catch(() => [] as StockRow[]),
+        conditionalCriseApi.getAll().catch(() => [] as Crise[]),
       ]);
       setTournees(t);
       setDistributeurs(d);
       setVehicules(v as unknown as VehiculeSimple[]);
       setStock(s as StockRow[]);
+      setCrises(c);
     } catch (e) { setError(getApiErrorMessage(e)); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Écoute cross-onglets : BroadcastChannel (principal) + storage event (fallback)
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('najda_tournees');
+      bc.onmessage = () => load();
+    } catch { /* navigateur sans BroadcastChannel */ }
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'najda_mock_tournees') load();
+    };
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      bc?.close();
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [load]);
 
   function handleUpdate(updated: Tournee) {
     setTournees(prev => prev.map(t => t.id === updated.id ? updated : t));
@@ -663,7 +732,9 @@ export default function TourneesPage() {
     terminee:  tournees.filter(t => t.statut === 'terminee').length,
   };
 
-  const filtered = filterStatut ? tournees.filter(t => t.statut === filterStatut) : tournees;
+  // Si on arrive avec un focusTourneeId, montrer toutes les tournées (pas de filtre actif)
+  const effectiveFilter = focusTourneeId ? '' : filterStatut;
+  const filtered = effectiveFilter ? tournees.filter(t => t.statut === effectiveFilter) : tournees;
 
   return (
     <div className="space-y-6">
@@ -748,10 +819,12 @@ export default function TourneesPage() {
             <TourneeCard
               key={t.id}
               tournee={t}
+              crise={criseMap.get((t as any).criseId) ?? null}
               distributeurs={distributeurs}
               vehicules={vehicules}
               stock={stock}
               onUpdate={handleUpdate}
+              autoExpand={focusTourneeId === t.id}
             />
           ))}
         </div>

@@ -338,6 +338,16 @@ export default function PipelinePage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Recharger l'historique quand la crise sélectionnée change
+  useEffect(() => {
+    if (!criseId) return;
+    algoApi.getHistory(criseId).then(h => {
+      setHistory(h);
+      if (h.length > 0 && h[0].statut === 'completed' && !result) setResult(h[0]);
+    }).catch(() => {/* ignore */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [criseId]);
+
   async function handleRun(routesBloquees?: string[]) {
     if (!criseId) { setError('Sélectionnez une crise active.'); return; }
     const usedVehicules = vehicules.filter((v) => entrepots.find((e) => e.id === v.entrepotId));
@@ -625,8 +635,13 @@ export default function PipelinePage() {
                           <div className="flex items-center gap-2">
                             <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: TOURNEE_COLORS[i % TOURNEE_COLORS.length] }} />
                             <div>
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.entrepotNom}</p>
-                              <p className="text-xs text-gray-400">{t.etapes.length} étape(s) · {t.distanceTotale} km · {t.tempsEstime} min</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.entrepotNom}</p>
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                                  Envoyé Admin Entrepôt
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-400 mt-0.5">{t.etapes.length} douar(s) · {t.distanceTotale} km · {t.tempsEstime} min</p>
                             </div>
                           </div>
                           <div className="text-right">
@@ -670,28 +685,72 @@ export default function PipelinePage() {
           {/* Historique */}
           {history.length > 0 && (
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Historique d'exécutions</h3>
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Historique des exécutions</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">{history.length} exécution(s) — cliquer pour recharger un résultat</p>
+                </div>
+                <button
+                  onClick={() => { try { localStorage.removeItem('najda_mock_pipeline_history'); } catch { /**/ } setHistory([]); setResult(null); }}
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                >
+                  Vider
+                </button>
               </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {history.slice(0, 5).map((h) => (
-                  <div key={h.id} className="px-5 py-3 flex items-center justify-between text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                    onClick={() => setResult(h)}>
-                    <div>
-                      <p className="font-mono text-xs text-gray-500">{h.id.slice(0, 8)}…</p>
-                      <p className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString('fr-FR')}</p>
+                {history.slice(0, 8).map((h) => {
+                  const topDouar = h.topsis?.classement?.[0];
+                  const nbDouars = h.topsis?.classement?.length ?? 0;
+                  const nbTournees = h.tournees?.length ?? 0;
+                  const isActive = result?.id === h.id;
+                  return (
+                    <div key={h.id}
+                      className={`px-5 py-3 cursor-pointer transition-colors ${isActive ? 'bg-brand-50 dark:bg-brand-950/30 border-l-2 border-brand-500' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}
+                      onClick={() => setResult(h)}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs font-medium text-gray-900 dark:text-white">{new Date(h.createdAt).toLocaleString('fr-FR')}</p>
+                            {topDouar && (
+                              <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-medium truncate max-w-[140px]">
+                                #{1} {topDouar.douarNom}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            {nbDouars > 0 && <span className="text-xs text-gray-400">{nbDouars} douar(s) classés</span>}
+                            {nbTournees > 0 && (
+                              <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                {nbTournees} tournée(s) → Admin Entrepôt
+                              </span>
+                            )}
+                            {h.executionMs && <span className="text-xs text-gray-400">{h.executionMs}ms</span>}
+                          </div>
+                          {h.topsis?.classement && h.topsis.classement.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {h.topsis.classement.slice(0, 5).map((r, idx) => (
+                                <span key={r.douarId} className={`text-xs px-1.5 py-0.5 rounded font-mono ${idx === 0 ? 'bg-red-100 text-red-600' : idx === 1 ? 'bg-orange-100 text-orange-600' : idx === 2 ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-500'}`}>
+                                  {idx + 1}. {r.douarNom}
+                                </span>
+                              ))}
+                              {h.topsis.classement.length > 5 && (
+                                <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">+{h.topsis.classement.length - 5}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <StatuBadge statut={h.statut} />
+                          {h.ahp && (
+                            <span className={`text-xs font-mono ${h.ahp.coherent ? 'text-green-600' : 'text-orange-500'}`}>
+                              RC={h.ahp.rc.toFixed(3)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {h.ahp && (
-                        <span className={`text-xs font-mono font-bold ${h.ahp.coherent ? 'text-green-600' : 'text-orange-500'}`}>
-                          RC={h.ahp.rc.toFixed(3)}
-                        </span>
-                      )}
-                      {h.executionMs && <span className="text-xs text-gray-400">{h.executionMs}ms</span>}
-                      <StatuBadge statut={h.statut} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

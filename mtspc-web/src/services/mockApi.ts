@@ -17,7 +17,8 @@ import {
   MOCK_DOUBLES,
   MOCK_USERS,
 } from '../mock';
-import { tourneesStore, crisesStore, vrpTourneeToAdminTournee } from '../mock/store';
+import { ENTREPOT_A } from '../mock/entrepotA';
+import { tourneesStore, crisesStore, vrpTourneeToAdminTournee, broadcastTourneesUpdate } from '../mock/store';
 
 import type { Mission, CreateCriseDto, Crise, DouarSeverite, AdminEntrepot, SupervisionSnapshot, CreateAdminEntrepotDto, UpdateAdminStatutDto, PipelineResult, RunPipelineDto, AhpResult, TopsisRanking, VrpTournee, VrpEtape, Evenement, CreateEvenementDto, EvenementsResponse } from '../types';
 
@@ -325,9 +326,24 @@ export const douarApi = {
 
 const mockUsersStore: AdminEntrepot[] = [...MOCK_USERS];
 
+// Canal BroadcastChannel pour synchronisation temps-réel des utilisateurs entre onglets
+let _usersBroadcast: BroadcastChannel | null = null;
+function getUsersBroadcast(): BroadcastChannel | null {
+  if (typeof BroadcastChannel === 'undefined') return null;
+  if (!_usersBroadcast) _usersBroadcast = new BroadcastChannel('najda_users');
+  return _usersBroadcast;
+}
+
+function appendAuditLog(entry: Omit<typeof MOCK_AUDIT_LOGS[0], 'id'>) {
+  const nextId = MOCK_AUDIT_LOGS.length > 0
+    ? Math.max(...MOCK_AUDIT_LOGS.map(l => l.id)) + 1
+    : 1;
+  MOCK_AUDIT_LOGS.push({ id: nextId, ...entry } as typeof MOCK_AUDIT_LOGS[0]);
+}
+
 export const mockUsersApi = {
   getAdmins: async (): Promise<AdminEntrepot[]> => {
-    await delay(500);
+    await delay(300);
     return Promise.resolve([...mockUsersStore]);
   },
 
@@ -344,6 +360,20 @@ export const mockUsersApi = {
       createdAt: Date.now(),
     };
     mockUsersStore.push(newUser);
+    // Audit
+    appendAuditLog({
+      operation: 'INSERT',
+      tableCible: 'utilisateurs',
+      recordId: newUser.id,
+      acteurUserId: 'superadmin-1',
+      acteurEmail: 'superadmin@najda.ma',
+      acteurRole: 'SUPER_ADMIN',
+      ipAddress: '10.0.0.15',
+      valeursApres: { username: newUser.username, email: newUser.email, role: 'ADMIN_ENTREPOT', entrepotId: newUser.entrepotId },
+      createdAt: new Date().toISOString(),
+    });
+    // Broadcast pour mise à jour temps-réel dans les autres onglets
+    getUsersBroadcast()?.postMessage({ type: 'USER_CREATED', userId: newUser.id });
     return Promise.resolve(newUser);
   },
 
@@ -351,18 +381,62 @@ export const mockUsersApi = {
     await delay(400);
     const user = mockUsersStore.find(u => u.id === id);
     if (!user) throw new Error(`Utilisateur ${id} non trouvé`);
+    const prevEnabled = user.enabled;
     user.enabled = dto.enabled;
+    // Audit
+    appendAuditLog({
+      operation: 'UPDATE',
+      tableCible: 'utilisateurs',
+      recordId: id,
+      acteurUserId: 'superadmin-1',
+      acteurEmail: 'superadmin@najda.ma',
+      acteurRole: 'SUPER_ADMIN',
+      ipAddress: '10.0.0.15',
+      valeursApres: { username: user.username, enabled: dto.enabled, action: dto.enabled ? 'activation' : 'suspension' },
+      createdAt: new Date().toISOString(),
+    });
+    getUsersBroadcast()?.postMessage({ type: 'USER_UPDATED', userId: id, prevEnabled });
     return Promise.resolve({ ...user });
   },
 
   delete: async (id: string): Promise<void> => {
     await delay(400);
     const idx = mockUsersStore.findIndex(u => u.id === id);
+    const user = idx !== -1 ? mockUsersStore[idx] : null;
     if (idx !== -1) mockUsersStore.splice(idx, 1);
+    if (user) {
+      // Audit
+      appendAuditLog({
+        operation: 'DELETE',
+        tableCible: 'utilisateurs',
+        recordId: id,
+        acteurUserId: 'superadmin-1',
+        acteurEmail: 'superadmin@najda.ma',
+        acteurRole: 'SUPER_ADMIN',
+        ipAddress: '10.0.0.15',
+        valeursApres: null,
+        createdAt: new Date().toISOString(),
+      });
+      getUsersBroadcast()?.postMessage({ type: 'USER_DELETED', userId: id });
+    }
   },
 
-  resetPassword: async (_id: string): Promise<void> => {
+  resetPassword: async (id: string): Promise<void> => {
     await delay(600);
+    const user = mockUsersStore.find(u => u.id === id);
+    if (user) {
+      appendAuditLog({
+        operation: 'UPDATE',
+        tableCible: 'utilisateurs',
+        recordId: id,
+        acteurUserId: 'superadmin-1',
+        acteurEmail: 'superadmin@najda.ma',
+        acteurRole: 'SUPER_ADMIN',
+        ipAddress: '10.0.0.15',
+        valeursApres: { username: user.username, action: 'reset_password' },
+        createdAt: new Date().toISOString(),
+      });
+    }
     // En production: déclenche un email Keycloak de réinitialisation
   },
 };
@@ -556,7 +630,18 @@ function computeAhp(c: RunPipelineDto['ahpMatrice']['comparaisons']): AhpResult 
   };
 }
 
-const pipelineHistory: PipelineResult[] = [];
+// ── Pipeline history — persisté en localStorage (survit HMR et multi-onglets) ──
+const LS_PIPELINE = 'najda_mock_pipeline_history';
+function readPipelineHistory(): PipelineResult[] {
+  try {
+    const raw = localStorage.getItem(LS_PIPELINE);
+    if (raw) return JSON.parse(raw) as PipelineResult[];
+  } catch { /* ignore */ }
+  return [];
+}
+function writePipelineHistory(list: PipelineResult[]) {
+  try { localStorage.setItem(LS_PIPELINE, JSON.stringify(list)); } catch { /* quota */ }
+}
 
 export const mockAlgoApi = {
   runPipeline: async (dto: RunPipelineDto): Promise<PipelineResult> => {
@@ -590,32 +675,33 @@ export const mockAlgoApi = {
       .sort((a, b) => b.score - a.score)
       .map((r, i) => ({ ...r, rang: i + 1 }));
 
-    // VRP: distribute top douars across entrepots
-    const tournees: VrpTournee[] = MOCK_ENTREPOTS.map((ent, ei) => {
-      const slice = classement.filter((_, i) => i % MOCK_ENTREPOTS.length === ei).slice(0, 5);
-      const etapes: VrpEtape[] = slice.map((r, oi) => {
-        const d = sevDouars.find(s => s.douar.id === r.douarId)?.douar;
-        return {
-          douarId:    r.douarId,
-          douarNom:   r.douarNom,
-          ordre:      oi + 1,
-          latitude:   d?.latitude  ?? 32.0,
-          longitude:  d?.longitude ?? -6.0,
-          population: d?.population ?? 500,
-        };
-      });
-      const dist = Math.round(40 + Math.random() * 80);
-      const temps = Math.round(dist * 1.8);
+    // VRP: tous les douars prioritaires → une seule tournée
+    // On prend le premier entrepôt de dto (= Entrepôt Régional Azilal, entrepot-1)
+    // On force aussi entrepot-a pour que adminApi.ts le reconnaisse
+    const targetEnt = dto.contraintesVehicules[0];
+    const vrpEtapes: VrpEtape[] = classement.slice(0, 8).map((r, oi) => {
+      const d = sevDouars.find(s => s.douar.id === r.douarId)?.douar;
       return {
-        entrepotId:       ent.id,
-        entrepotNom:      ent.nom,
-        vehiculeCapacite: dto.contraintesVehicules.find(v => v.entrepotId === ent.id)?.capacite ?? 1000,
-        etapes,
-        distanceTotale:   dist,
-        tempsEstime:      temps,
-        scoreZ:           dto.lambdas.distance * dist + dto.lambdas.temps * temps - dto.lambdas.couverture * etapes.length * 10,
+        douarId:    r.douarId,
+        douarNom:   r.douarNom,
+        ordre:      oi + 1,
+        latitude:   d?.latitude  ?? 32.0,
+        longitude:  d?.longitude ?? -6.0,
+        population: d?.population ?? 500,
       };
     });
+    const dist  = Math.round(40 + Math.random() * 80);
+    const temps = Math.round(dist * 1.8);
+    const capacite = targetEnt?.capacite ?? 1000;
+    const tournees: VrpTournee[] = vrpEtapes.length > 0 ? [{
+      entrepotId:       ENTREPOT_A.id,   // 'entrepot-a' — référence de l'admin
+      entrepotNom:      ENTREPOT_A.nom,
+      vehiculeCapacite: capacite,
+      etapes:           vrpEtapes,
+      distanceTotale:   dist,
+      tempsEstime:      temps,
+      scoreZ:           dto.lambdas.distance * dist + dto.lambdas.temps * temps - dto.lambdas.couverture * vrpEtapes.length * 10,
+    }] : [];
 
     const result: PipelineResult = {
       id:          `pipeline-${Date.now()}`,
@@ -633,28 +719,85 @@ export const mockAlgoApi = {
       completedAt:  new Date().toISOString(),
       erreur:       null,
     };
-    pipelineHistory.unshift(result);
+    writePipelineHistory([result, ...readPipelineHistory()]);
 
     // ── Pont SuperAdmin → Admin Entrepôt ─────────────────────────────────────
-    // Convertir les tournées VRP au format attendu par l'Admin Entrepôt
-    // et les ajouter au store partagé (adminApi.ts lit dedans via tourneesStore)
-    // On ne garde que les tournées avec au moins une étape (évite les entrées vides)
-    const adminTournees = tournees
-      .filter(vrp => (vrp.etapes ?? []).length > 0)
-      .map((vrp, i) => vrpTourneeToAdminTournee(vrp, dto.criseId, i));
-    if (adminTournees.length > 0) tourneesStore.addMany(adminTournees);
+    // Écriture DIRECTE dans localStorage — contourne tout module intermédiaire
+    if (tournees.length > 0 && (tournees[0].etapes ?? []).length > 0) {
+      const vrp = tournees[0];
+      const tourneeId  = `tournee-vrp-${Date.now()}`;
+      const missionNum = `MS-VRP-${new Date().getFullYear()}-001`;
+
+      const etapesAdmin = (vrp.etapes ?? []).map((e: VrpEtape, i: number) => ({
+        id:             `etape-${tourneeId}-${i + 1}`,
+        ordre:          e.ordre ?? (i + 1),
+        douarId:        e.douarId,
+        douar:          { nom: e.douarNom, commune: '', province: '' },
+        douarNom:       e.douarNom,
+        lat:            e.latitude ?? 32.0,
+        lng:            e.longitude ?? -6.0,
+        distanceKm:     parseFloat((8 + Math.random() * 12).toFixed(1)),
+        tempsEstimeMin: Math.floor(15 + Math.random() * 20),
+        priorite:       i === 0 ? 'CRITIQUE' : i < 2 ? 'HAUTE' : 'MOYENNE',
+        scoreTopsis:    parseFloat((0.9 - i * 0.1).toFixed(3)),
+        population:     e.population ?? 300,
+        menages:        Math.ceil((e.population ?? 300) / 5.5),
+        statut:         'en_attente',
+        ressources: {
+          tentes:      Math.floor(Math.ceil((e.population ?? 300) / 5.5) * 0.6),
+          couvertures: Math.ceil((e.population ?? 300) / 5.5) * 4,
+          vivres:      Math.ceil((e.population ?? 300) / 5.5) * 2,
+          kits_med:    Math.floor(Math.ceil((e.population ?? 300) / 5.5) * 0.3),
+          eau_litres:  (e.population ?? 300) * 5,
+        },
+      }));
+
+      const newAdminTournee = {
+        id:                  tourneeId,
+        missionId:           `mission-vrp-${tourneeId}`,
+        missionNumero:       missionNum,
+        entrepotId:          'entrepot-a',
+        entrepot:            { id: 'entrepot-a', nom: 'Entrepôt Régional Azilal', province: 'Azilal' },
+        vehiculeId:          null,
+        distributeur:        null,
+        distanceTotale:      vrp.distanceTotale ?? 0,
+        tempsEstime:         vrp.tempsEstime ?? 0,
+        tempsEstimeTotalMin: vrp.tempsEstime ?? 0,
+        statut:              'planifiee',
+        criseId:             dto.criseId,
+        datePlanification:   new Date().toISOString(),
+        etapes:              etapesAdmin,
+        _fromPipeline:       true,
+      };
+
+      // Écriture double : mémoire partagée (même onglet) + localStorage (cross-onglets)
+      // 1. Via tourneesStore — met à jour le cache mémoire du module store.ts
+      {
+        const current = tourneesStore.getAll().filter((t: any) => !(t._fromPipeline && t.criseId === dto.criseId));
+        tourneesStore.set([...current, newAdminTournee]);
+      }
+      // 2. Écriture directe localStorage en fallback (si tourneesStore.set() a échoué à persister)
+      try {
+        const LS_KEY  = 'najda_mock_tournees';
+        const existing: unknown[] = JSON.parse(localStorage.getItem(LS_KEY) ?? '[]');
+        const filtered = existing.filter((t: any) => !(t._fromPipeline && t.criseId === dto.criseId));
+        localStorage.setItem(LS_KEY, JSON.stringify([...filtered, newAdminTournee]));
+      } catch (_e) { /* localStorage indisponible */ }
+      // 3. Broadcast cross-onglets (ne dépend pas de localStorage)
+      broadcastTourneesUpdate();
+    }
 
     return result;
   },
 
   getHistory: async (criseId: string): Promise<PipelineResult[]> => {
     await delay(300);
-    return pipelineHistory.filter(r => r.criseId === criseId);
+    return readPipelineHistory().filter(r => r.criseId === criseId);
   },
 
   getStatus: async (pipelineId: string): Promise<PipelineResult> => {
     await delay(200);
-    const r = pipelineHistory.find(p => p.id === pipelineId);
+    const r = readPipelineHistory().find(p => p.id === pipelineId);
     if (!r) throw new Error(`Pipeline ${pipelineId} non trouvé`);
     return r;
   },
