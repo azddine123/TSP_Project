@@ -15,15 +15,15 @@ import ParametresPage      from './ParametresPage';
 export default function SuperAdminDashboard() {
   return (
     <Routes>
-      <Route index               element={<SuperAdminOverview />} />
-      <Route path="crises"       element={<CrisesPage />} />
-      <Route path="pipeline"     element={<PipelinePage />} />
-      <Route path="supervision"  element={<SupervisionPage />} />
-      <Route path="incidents"    element={<IncidentsPage />} />
-      <Route path="users"        element={<UsersPage />} />
-      <Route path="audit"        element={<AuditPage />} />
-      <Route path="parametres"   element={<ParametresPage />} />
-      <Route path="*"            element={<Navigate to="/superadmin" replace />} />
+      <Route index                   element={<SuperAdminOverview />} />
+      <Route path="crises"           element={<CrisesPage />} />
+      <Route path="pipeline"         element={<PipelinePage />} />
+      <Route path="supervision"      element={<SupervisionPage />} />
+      <Route path="incidents"        element={<IncidentsPage />} />
+      <Route path="users"            element={<UsersPage />} />
+      <Route path="audit"            element={<AuditPage />} />
+      <Route path="parametres"       element={<ParametresPage />} />
+      <Route path="*"                element={<Navigate to="/superadmin" replace />} />
     </Routes>
   );
 }

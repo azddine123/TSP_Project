@@ -257,7 +257,7 @@ export default function SettingsPage() {
                     : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300'
                 }`}
               >
-                {lang === 'fr' ? '🇫🇷 Français' : '🇲🇦 العربية'}
+                {lang === 'fr' ? 'Français' : 'العربية'}
               </button>
             ))}
           </div>

@@ -100,11 +100,11 @@ function RessourcesGrid({ res, compact = false }: { res: RessourcesDouar; compac
   const cls = compact ? 'text-xs px-1.5 py-0.5' : 'text-xs px-2 py-0.5';
   return (
     <div className="flex flex-wrap gap-1.5">
-      {res.tentes      > 0 && <span className={`${cls} bg-indigo-50 text-indigo-700 rounded-full`}>⛺ {res.tentes} tentes</span>}
-      {res.couvertures > 0 && <span className={`${cls} bg-blue-50 text-blue-700 rounded-full`}>🧣 {res.couvertures} couvertures</span>}
-      {res.vivres      > 0 && <span className={`${cls} bg-yellow-50 text-yellow-700 rounded-full`}>🛒 {res.vivres} kits vivres</span>}
-      {res.kits_med    > 0 && <span className={`${cls} bg-red-50 text-red-700 rounded-full`}>🏥 {res.kits_med} kits méd.</span>}
-      {res.eau_litres  > 0 && <span className={`${cls} bg-cyan-50 text-cyan-700 rounded-full`}>💧 {res.eau_litres.toLocaleString('fr-FR')} L</span>}
+      {res.tentes      > 0 && <span className={`${cls} bg-indigo-50 text-indigo-700 rounded-full`}>{res.tentes} tentes</span>}
+      {res.couvertures > 0 && <span className={`${cls} bg-blue-50 text-blue-700 rounded-full`}>{res.couvertures} couvertures</span>}
+      {res.vivres      > 0 && <span className={`${cls} bg-yellow-50 text-yellow-700 rounded-full`}>{res.vivres} kits vivres</span>}
+      {res.kits_med    > 0 && <span className={`${cls} bg-red-50 text-red-700 rounded-full`}>{res.kits_med} kits méd.</span>}
+      {res.eau_litres  > 0 && <span className={`${cls} bg-cyan-50 text-cyan-700 rounded-full`}>{res.eau_litres.toLocaleString('fr-FR')} L</span>}
       <span className={`${cls} bg-gray-100 text-gray-600 rounded-full font-semibold`}>≈ {poids.toFixed(0)} kg</span>
     </div>
   );

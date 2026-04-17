@@ -110,23 +110,24 @@ const SettingsIcon = () => (
 type NavItem = { name: string; icon: React.ReactNode; path: string };
 
 const adminNavItems: NavItem[] = [
-  { name: 'Vue d\'ensemble',  icon: <DashboardIcon />,    path: '/admin' },
-  { name: 'Stock & Appro',    icon: <StockIcon />,        path: '/admin/stock' },
-  { name: 'Flotte Véhicules', icon: <TruckIcon />,        path: '/admin/vehicules' },
-  { name: 'Missions',         icon: <MissionIcon />,      path: '/admin/tournees' },
-  { name: 'Suivi Terrain',    icon: <MapIcon />,          path: '/admin/suivi' },
-  { name: 'Paramètres',       icon: <SettingsIcon />,     path: '/admin/settings' },
+  { name: 'Vue d\'ensemble',   icon: <DashboardIcon />,    path: '/admin' },
+  { name: 'Ordres de Mission', icon: <MissionIcon />,      path: '/admin/ordres-mission' },
+  { name: 'Stock & Appro',     icon: <StockIcon />,        path: '/admin/stock' },
+  { name: 'Flotte Véhicules',  icon: <TruckIcon />,        path: '/admin/vehicules' },
+  { name: 'Missions',          icon: <MissionIcon />,      path: '/admin/tournees' },
+  { name: 'Suivi Terrain',     icon: <MapIcon />,          path: '/admin/suivi' },
+  { name: 'Paramètres',        icon: <SettingsIcon />,     path: '/admin/settings' },
 ];
 
 const superAdminNavItems: NavItem[] = [
-  { name: 'Vue globale',   icon: <DashboardIcon />,    path: '/superadmin' },
-  { name: 'Crises',        icon: <CriseIcon />,        path: '/superadmin/crises' },
-  { name: 'Pipeline Algo', icon: <AlgoIcon />,         path: '/superadmin/pipeline' },
-  { name: 'Supervision',   icon: <SupervisionIcon />,  path: '/superadmin/supervision' },
-  { name: 'Incidents',     icon: <IncidentIcon />,     path: '/superadmin/incidents' },
-  { name: 'Utilisateurs',  icon: <UsersIcon />,        path: '/superadmin/users' },
-  { name: 'Audit Global',  icon: <AuditIcon />,        path: '/superadmin/audit' },
-  { name: 'Paramètres',    icon: <SettingsIcon />,     path: '/superadmin/parametres' },
+  { name: 'Vue globale',    icon: <DashboardIcon />,    path: '/superadmin' },
+  { name: 'Crises',         icon: <CriseIcon />,        path: '/superadmin/crises' },
+  { name: 'Pipeline Algo',  icon: <AlgoIcon />,         path: '/superadmin/pipeline' },
+  { name: 'Supervision',    icon: <SupervisionIcon />,  path: '/superadmin/supervision' },
+  { name: 'Incidents',          icon: <IncidentIcon />,     path: '/superadmin/incidents' },
+  { name: 'Utilisateurs',       icon: <UsersIcon />,        path: '/superadmin/users' },
+  { name: 'Audit Global',       icon: <AuditIcon />,        path: '/superadmin/audit' },
+  { name: 'Paramètres',         icon: <SettingsIcon />,     path: '/superadmin/parametres' },
 ];
 
 // ── Composant ────────────────────────────────────────────────────────────────

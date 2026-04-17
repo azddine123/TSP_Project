@@ -17,7 +17,7 @@ import {
   MOCK_DOUBLES,
   MOCK_USERS,
 } from '../mock';
-import { ENTREPOT_A } from '../mock/entrepotA';
+import { ENTREPOT_A, DISTRIBUTEURS_ENTREPOT_A } from '../mock/entrepotA';
 import { tourneesStore, crisesStore, vrpTourneeToAdminTournee, broadcastTourneesUpdate } from '../mock/store';
 
 import type { Mission, CreateCriseDto, Crise, DouarSeverite, AdminEntrepot, SupervisionSnapshot, CreateAdminEntrepotDto, UpdateAdminStatutDto, PipelineResult, RunPipelineDto, AhpResult, TopsisRanking, VrpTournee, VrpEtape, Evenement, CreateEvenementDto, EvenementsResponse } from '../types';
@@ -83,17 +83,51 @@ export const tourneeApi = {
     }
     return Promise.resolve(tournee);
   },
-  
+
+  /** Retourne toutes les tournées du store (ENTREPOT_A uniquement en mock) */
+  getMine: async () => {
+    await delay(300);
+    return Promise.resolve(tourneesStore.getAll());
+  },
+
+  /** Affecter un distributeur à une tournée */
+  assigner: async (id: string, dto: { distributeurId: string }) => {
+    await delay(400);
+    const dist = DISTRIBUTEURS_ENTREPOT_A.find(d => d.id === dto.distributeurId);
+    const patch = {
+      distributeurId: dto.distributeurId,
+      distributeur: dist ? { id: dist.id, nom: dist.nom, prenom: dist.prenom } : null,
+    };
+    tourneesStore.update(id, patch);
+    return Promise.resolve({ ...tourneesStore.getById(id), ...patch });
+  },
+
+  /** Démarrer une tournée planifiée → en_cours */
+  demarrer: async (id: string) => {
+    await delay(400);
+    const patch = { statut: 'en_cours', demarreeAt: new Date().toISOString() };
+    tourneesStore.update(id, patch);
+    return Promise.resolve({ ...tourneesStore.getById(id), ...patch });
+  },
+
+  /** Annuler une tournée */
+  annuler: async (id: string) => {
+    await delay(400);
+    const patch = { statut: 'annulee' };
+    tourneesStore.update(id, patch);
+    return Promise.resolve({ ...tourneesStore.getById(id), ...patch });
+  },
+
   updateEtape: async (tourneeId: string, etapeOrdre: number, data: { statut: string; heureArrivee?: string }) => {
     await delay(400);
     return Promise.resolve({ tourneeId, etapeOrdre, ...data });
   },
-  
+
   start: async (tourneeId: string) => {
     await delay(500);
     return Promise.resolve({ id: tourneeId, statut: 'en_cours', dateDebut: new Date().toISOString() });
   },
-  
+
   complete: async (tourneeId: string) => {
     await delay(500);
     return Promise.resolve({ id: tourneeId, statut: 'terminee', dateFin: new Date().toISOString() });
@@ -237,12 +271,18 @@ export const distributeurApi = {
     await delay(500);
     return Promise.resolve([...MOCK_DISTRIBUTEURS]);
   },
-  
+
+  /** Retourne les distributeurs de l'entrepôt (en mock, toujours ENTREPOT_A) */
+  getByEntrepot: async (_entrepotId: string) => {
+    await delay(200);
+    return Promise.resolve([...DISTRIBUTEURS_ENTREPOT_A]);
+  },
+
   getDisponibles: async () => {
     await delay(400);
     return Promise.resolve(MOCK_DISTRIBUTEURS.filter(d => d.statut === 'disponible'));
   },
-  
+
   getEnMission: async () => {
     await delay(400);
     return Promise.resolve(MOCK_DISTRIBUTEURS.filter(d => d.statut === 'en_mission'));
@@ -358,6 +398,7 @@ export const mockUsersApi = {
       enabled: true,
       entrepotId: dto.entrepotId ?? null,
       createdAt: Date.now(),
+      role: 'ADMIN_ENTREPOT',
     };
     mockUsersStore.push(newUser);
     // Audit
@@ -752,12 +793,22 @@ export const mockAlgoApi = {
         },
       }));
 
+      // Calcul ressourcesTotales depuis les étapes
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ressourcesTotales = etapesAdmin.reduce((acc: any, e: any) => ({
+        tentes:      (acc.tentes      ?? 0) + (e.ressources?.tentes      ?? 0),
+        couvertures: (acc.couvertures ?? 0) + (e.ressources?.couvertures ?? 0),
+        vivres:      (acc.vivres      ?? 0) + (e.ressources?.vivres      ?? 0),
+        kits_med:    (acc.kits_med    ?? 0) + (e.ressources?.kits_med    ?? 0),
+        eau_litres:  (acc.eau_litres  ?? 0) + (e.ressources?.eau_litres  ?? 0),
+      }), { tentes: 0, couvertures: 0, vivres: 0, kits_med: 0, eau_litres: 0 });
+
       const newAdminTournee = {
         id:                  tourneeId,
         missionId:           `mission-vrp-${tourneeId}`,
         missionNumero:       missionNum,
-        entrepotId:          'entrepot-a',
-        entrepot:            { id: 'entrepot-a', nom: 'Entrepôt Régional Azilal', province: 'Azilal' },
+        entrepotId:          ENTREPOT_A.id,
+        entrepot:            { id: ENTREPOT_A.id, nom: ENTREPOT_A.nom, province: ENTREPOT_A.province },
         vehiculeId:          null,
         distributeur:        null,
         distanceTotale:      vrp.distanceTotale ?? 0,
@@ -765,8 +816,10 @@ export const mockAlgoApi = {
         tempsEstimeTotalMin: vrp.tempsEstime ?? 0,
         statut:              'planifiee',
         criseId:             dto.criseId,
+        createdAt:           new Date().toISOString(),
         datePlanification:   new Date().toISOString(),
         etapes:              etapesAdmin,
+        ressourcesTotales,
         _fromPipeline:       true,
       };
 

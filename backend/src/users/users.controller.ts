@@ -11,6 +11,13 @@ import { Roles }                    from '../auth/decorators/roles.decorator';
 export class UsersController {
   constructor(private readonly service: UsersService) {}
 
+  /** GET /users/all — liste TOUS les utilisateurs Keycloak avec leur rôle */
+  @Get('all')
+  @Roles('SUPER_ADMIN')
+  findAllUsers() {
+    return this.service.findAllUsers();
+  }
+
   /** GET /users/admins — liste tous les ADMIN_ENTREPOT */
   @Get('admins')
   @Roles('SUPER_ADMIN')

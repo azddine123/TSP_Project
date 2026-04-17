@@ -169,6 +169,7 @@ export const MOCK_USERS: AdminEntrepot[] = [
     enabled: true,
     entrepotId: 'entrepot-1',
     createdAt: 1709200000000,
+    role: 'ADMIN_ENTREPOT',
   },
   {
     id: 'user-ae-002',
@@ -179,6 +180,7 @@ export const MOCK_USERS: AdminEntrepot[] = [
     enabled: true,
     entrepotId: 'entrepot-2',
     createdAt: 1709300000000,
+    role: 'ADMIN_ENTREPOT',
   },
   {
     id: 'user-ae-006',
@@ -189,6 +191,7 @@ export const MOCK_USERS: AdminEntrepot[] = [
     enabled: true,
     entrepotId: null,
     createdAt: 1712000000000,
+    role: 'ADMIN_ENTREPOT',
   },
 ];
 

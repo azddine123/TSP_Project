@@ -2,20 +2,8 @@
  * PAGE UTILISATEURS — Groupement par Entrepôt → Rôle
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { conditionalUsersApi as usersApi, conditionalEntrepotApi as entrepotApi, getApiErrorMessage } from '../../services/api';
-import { MOCK_DISTRIBUTEURS } from '../../mock';
+import { conditionalUsersApi as usersApi, entrepotApi as realEntrepotApi, getApiErrorMessage } from '../../services/api';
 import type { AdminEntrepot, CreateAdminEntrepotDto, Entrepot } from '../../types';
-
-// ── Types locaux ───────────────────────────────────────────────────────────────
-
-interface DistributeurRow {
-  id: string;
-  prenom: string;
-  nom: string;
-  email: string;
-  statut: string;
-  entrepotId: string;
-}
 
 // ── Modal création ─────────────────────────────────────────────────────────────
 
@@ -131,14 +119,73 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   );
 }
 
+// ── Modal assignation entrepôt ────────────────────────────────────────────────
+
+function AssignEntrepotModal({
+  user, entrepots, onClose, onSaved,
+}: { user: AdminEntrepot; entrepots: Entrepot[]; onClose: () => void; onSaved: () => void }) {
+  const [entrepotId, setEntrepotId] = useState(user.entrepotId ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState<string | null>(null);
+
+  async function handleConfirm() {
+    if (!entrepotId) { setError('Sélectionnez un entrepôt.'); return; }
+    setSaving(true); setError(null);
+    try {
+      await realEntrepotApi.assignAdmin(entrepotId, user.id);
+      onSaved();
+    } catch (e) {
+      setError(getApiErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-theme-lg w-full max-w-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">Assigner un entrepôt</h2>
+            <p className="text-xs text-gray-400 mt-0.5">@{user.username}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Entrepôt <span className="text-red-500">*</span></label>
+            <select value={entrepotId} onChange={e => setEntrepotId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-brand-400 outline-none">
+              <option value="">-- Sélectionner --</option>
+              {entrepots.map(e => <option key={e.id} value={e.id}>{e.nom} · {e.province}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 transition-colors">Annuler</button>
+          <button onClick={handleConfirm} disabled={saving || !entrepotId}
+            className="px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2">
+            {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            Confirmer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Ligne admin ────────────────────────────────────────────────────────────────
 
-function AdminRow({ user, busy, onToggle, onDelete, onReset }: {
+function AdminRow({ user, busy, onToggle, onDelete, onReset, onAssign }: {
   user: AdminEntrepot;
   busy: boolean;
   onToggle: () => void;
   onDelete: () => void;
   onReset: () => void;
+  onAssign: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30">
@@ -152,6 +199,16 @@ function AdminRow({ user, busy, onToggle, onDelete, onReset }: {
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
+        {user.role && user.role !== 'AUCUN' && (
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide hidden sm:inline-flex ${
+            user.role === 'SUPER_ADMIN'    ? 'bg-purple-100 text-purple-700' :
+            user.role === 'ADMIN_ENTREPOT' ? 'bg-brand-100 text-brand-700'  :
+            user.role === 'DISTRIBUTEUR'   ? 'bg-teal-100 text-teal-700'    :
+            'bg-gray-100 text-gray-500'
+          }`}>
+            {user.role === 'ADMIN_ENTREPOT' ? 'Admin' : user.role === 'SUPER_ADMIN' ? 'Super Admin' : user.role === 'DISTRIBUTEUR' ? 'Distrib.' : user.role}
+          </span>
+        )}
         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${user.enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
           {user.enabled ? 'Actif' : 'Suspendu'}
         </span>
@@ -159,6 +216,12 @@ function AdminRow({ user, busy, onToggle, onDelete, onReset }: {
           <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
         ) : (
           <div className="flex items-center gap-1">
+            <button onClick={onAssign} title="Assigner un entrepôt"
+              className="p-1.5 rounded-lg text-brand-600 hover:bg-brand-50 transition-colors">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><line x1="3" y1="9" x2="21" y2="9"/>
+              </svg>
+            </button>
             <button onClick={onToggle} title={user.enabled ? 'Suspendre' : 'Activer'}
               className={`p-1.5 rounded-lg transition-colors ${user.enabled ? 'text-yellow-600 hover:bg-yellow-50' : 'text-green-600 hover:bg-green-50'}`}>
               {user.enabled
@@ -185,40 +248,14 @@ function AdminRow({ user, busy, onToggle, onDelete, onReset }: {
   );
 }
 
-// ── Ligne distributeur (lecture seule) ────────────────────────────────────────
-
-function DistributeurRow({ dist }: { dist: DistributeurRow }) {
-  const statusCls: Record<string, string> = {
-    disponible: 'bg-green-100 text-green-700',
-    en_mission: 'bg-blue-100 text-blue-700',
-    inactif:    'bg-gray-100 text-gray-600',
-  };
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/30">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 text-xs font-bold shrink-0">
-          {dist.prenom[0].toUpperCase()}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{dist.prenom} {dist.nom}</p>
-          <p className="text-xs text-gray-400 truncate">{dist.email}</p>
-        </div>
-      </div>
-      <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${statusCls[dist.statut] ?? 'bg-gray-100 text-gray-600'}`}>
-        {dist.statut.replace('_', ' ')}
-      </span>
-    </div>
-  );
-}
 
 // ── Groupe entrepôt ────────────────────────────────────────────────────────────
 
 function EntrepotGroup({
-  entrepot, admins, distributeurs, openIds, onToggle, actionId, onAdminToggle, onAdminDelete, onAdminReset, onSetConfirm,
+  entrepot, users, openIds, onToggle, actionId, onAdminToggle, onAdminDelete, onAdminReset, onSetConfirm, onAdminAssign,
 }: {
   entrepot: Entrepot | null;
-  admins: AdminEntrepot[];
-  distributeurs: DistributeurRow[];
+  users: AdminEntrepot[];
   openIds: Set<string>;
   onToggle: (id: string) => void;
   actionId: string | null;
@@ -226,10 +263,11 @@ function EntrepotGroup({
   onAdminDelete: (id: string) => void;
   onAdminReset: (id: string, email: string) => void;
   onSetConfirm: (c: { message: string; action: () => void; danger?: boolean }) => void;
+  onAdminAssign: (u: AdminEntrepot) => void;
 }) {
   const groupId = entrepot?.id ?? '__unassigned__';
   const isOpen = openIds.has(groupId);
-  const total = admins.length + distributeurs.length;
+  const total = users.length;
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-theme-sm overflow-hidden">
@@ -253,55 +291,32 @@ function EntrepotGroup({
       </button>
 
       {isOpen && (
-        <div className="border-t border-gray-100 dark:border-gray-800">
-          {/* Section ADMIN_ENTREPOT */}
-          {admins.length > 0 && (
-            <div>
-              <div className="px-5 py-1.5 bg-brand-50 dark:bg-brand-950/20">
-                <span className="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wider">
-                  Admin Entrepôt ({admins.length})
-                </span>
-              </div>
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {admins.map(u => (
-                  <AdminRow
-                    key={u.id}
-                    user={u}
-                    busy={actionId === u.id}
-                    onToggle={() => onSetConfirm({
-                      message: u.enabled ? `Suspendre le compte de ${u.username} ?` : `Réactiver le compte de ${u.username} ?`,
-                      action: () => onAdminToggle(u),
-                    })}
-                    onDelete={() => onSetConfirm({
-                      message: `Supprimer définitivement le compte "${u.username}" ? Cette action est irréversible.`,
-                      action: () => onAdminDelete(u.id),
-                      danger: true,
-                    })}
-                    onReset={() => onSetConfirm({
-                      message: `Envoyer un email de réinitialisation du mot de passe à ${u.email} ?`,
-                      action: () => onAdminReset(u.id, u.email),
-                    })}
-                  />
-                ))}
-              </div>
+        <div className="border-t border-gray-100 dark:divide-gray-800">
+          {users.length > 0 ? (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {users.map(u => (
+                <AdminRow
+                  key={u.id}
+                  user={u}
+                  busy={actionId === u.id}
+                  onAssign={() => onAdminAssign(u)}
+                  onToggle={() => onSetConfirm({
+                    message: u.enabled ? `Suspendre le compte de ${u.username} ?` : `Réactiver le compte de ${u.username} ?`,
+                    action: () => onAdminToggle(u),
+                  })}
+                  onDelete={() => onSetConfirm({
+                    message: `Supprimer définitivement le compte "${u.username}" ? Cette action est irréversible.`,
+                    action: () => onAdminDelete(u.id),
+                    danger: true,
+                  })}
+                  onReset={() => onSetConfirm({
+                    message: `Envoyer un email de réinitialisation du mot de passe à ${u.email} ?`,
+                    action: () => onAdminReset(u.id, u.email),
+                  })}
+                />
+              ))}
             </div>
-          )}
-
-          {/* Section DISTRIBUTEUR */}
-          {distributeurs.length > 0 && (
-            <div>
-              <div className="px-5 py-1.5 bg-gray-50 dark:bg-gray-800/60 border-t border-gray-100 dark:border-gray-800">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Distributeurs ({distributeurs.length})
-                </span>
-              </div>
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {distributeurs.map(d => <DistributeurRow key={d.id} dist={d} />)}
-              </div>
-            </div>
-          )}
-
-          {total === 0 && (
+          ) : (
             <p className="px-5 py-4 text-sm text-gray-400 italic">Aucun utilisateur pour cet entrepôt</p>
           )}
         </div>
@@ -326,8 +341,8 @@ export default function UsersPage() {
   const [filterEntrepot,setFilterEntrepot]= useState('');
   const [filterStatut,  setFilterStatut]  = useState('');
   const [filterRole,    setFilterRole]    = useState('');
+  const [assignUser,    setAssignUser]    = useState<AdminEntrepot | null>(null);
 
-  const distributeurs: DistributeurRow[] = MOCK_DISTRIBUTEURS as DistributeurRow[];
   const [liveIndicator, setLiveIndicator] = useState(false);
   const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevCount  = useRef(0);   // ref → pas de re-render, utilisé pour détecter les nouveaux comptes
@@ -335,7 +350,7 @@ export default function UsersPage() {
   const load = useCallback(async (silent = false) => {
     if (!silent) { setLoading(true); setError(null); }
     try {
-      const [u, e] = await Promise.all([usersApi.getAdmins(), entrepotApi.getAll()]);
+      const [u, e] = await Promise.all([usersApi.getAll(), realEntrepotApi.getAll()]);
       // Détecter un nouvel utilisateur ajouté depuis un autre onglet ou poll
       if (prevCount.current > 0 && u.length > prevCount.current) {
         const diff = u.length - prevCount.current;
@@ -418,15 +433,23 @@ export default function UsersPage() {
     finally { setActionId(null); }
   }
 
-  const enabled  = users.filter(u => u.enabled).length;
-  const disabled = users.filter(u => !u.enabled).length;
+  async function handleAssigned() {
+    setAssignUser(null);
+    await load(true);
+    setToast('Entrepôt associé avec succès');
+  }
+
+  const superAdminCount  = users.filter(u => u.role === 'SUPER_ADMIN').length;
+  const adminCount       = users.filter(u => u.role === 'ADMIN_ENTREPOT').length;
+  const distCount        = users.filter(u => u.role === 'DISTRIBUTEUR').length;
+  const enabled          = users.filter(u => u.enabled).length;
 
   // Filtrage utilisateurs
   const filteredUsers = users.filter(u => {
     if (filterEntrepot && u.entrepotId !== filterEntrepot) return false;
     if (filterStatut === 'actif'    && !u.enabled)  return false;
     if (filterStatut === 'suspendu' &&  u.enabled)  return false;
-    if (filterRole === 'distributeur') return false; // admins seulement
+    if (filterRole && u.role !== filterRole) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
@@ -438,35 +461,18 @@ export default function UsersPage() {
     return true;
   });
 
-  const filteredDistributeurs = distributeurs.filter(d => {
-    if (filterEntrepot && d.entrepotId !== filterEntrepot) return false;
-    if (filterStatut === 'actif'    && d.statut !== 'disponible' && d.statut !== 'en_mission') return false;
-    if (filterStatut === 'suspendu' && d.statut !== 'inactif')  return false;
-    if (filterRole === 'admin') return false; // admins seulement
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        (d.email ?? '').toLowerCase().includes(q) ||
-        `${d.prenom ?? ''} ${d.nom ?? ''}`.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-
-  const displayedCount = filteredUsers.length + filteredDistributeurs.length;
+  const displayedCount = filteredUsers.length;
   const hasFilters = !!(searchQuery || filterEntrepot || filterStatut || filterRole);
 
   // Groupes : un par entrepôt + un "non assigné"
   const groups = [
     ...entrepots.map(e => ({
       entrepot: e,
-      admins: filteredUsers.filter(u => u.entrepotId === e.id),
-      distributeurs: filteredDistributeurs.filter(d => d.entrepotId === e.id),
+      users: filteredUsers.filter(u => u.entrepotId === e.id),
     })),
     {
       entrepot: null,
-      admins: filteredUsers.filter(u => !u.entrepotId),
-      distributeurs: [] as DistributeurRow[],
+      users: filteredUsers.filter(u => !u.entrepotId),
     },
   ];
 
@@ -483,7 +489,7 @@ export default function UsersPage() {
               En direct
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">Par entrepôt · Admin Entrepôt & Distributeurs · Actualisation auto toutes les 8 s</p>
+          <p className="text-sm text-gray-500 mt-0.5">Tous les utilisateurs Keycloak · Groupés par entrepôt · Actualisation auto toutes les 8 s</p>
         </div>
         <button onClick={() => setShowCreate(true)}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors">
@@ -501,10 +507,10 @@ export default function UsersPage() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Admins Entrepôt', count: users.length,               color: 'text-brand-600',  bg: 'bg-brand-50' },
-          { label: 'Distributeurs',   count: distributeurs.length,        color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: 'Comptes actifs',  count: enabled,                     color: 'text-green-600',  bg: 'bg-green-50' },
-          { label: 'Suspendus',       count: disabled,                    color: 'text-red-600',    bg: 'bg-red-50' },
+          { label: 'Super Admins',    count: superAdminCount, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Admins Entrepôt', count: adminCount,      color: 'text-brand-600',  bg: 'bg-brand-50'  },
+          { label: 'Distributeurs',   count: distCount,       color: 'text-teal-600',   bg: 'bg-teal-50'   },
+          { label: 'Comptes actifs',  count: enabled,         color: 'text-green-600',  bg: 'bg-green-50'  },
         ].map(({ label, count, color, bg }) => (
           <div key={label} className={`${bg} rounded-2xl p-5 flex items-center gap-3`}>
             <p className={`text-3xl font-bold ${color}`}>{count}</p>
@@ -554,8 +560,10 @@ export default function UsersPage() {
             className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:border-brand-400 outline-none"
           >
             <option value="">Tous rôles</option>
-            <option value="admin">Admin Entrepôt</option>
-            <option value="distributeur">Distributeur</option>
+            <option value="SUPER_ADMIN">Super Admin</option>
+            <option value="ADMIN_ENTREPOT">Admin Entrepôt</option>
+            <option value="DISTRIBUTEUR">Distributeur</option>
+            <option value="AUCUN">Sans rôle</option>
           </select>
           {/* Compteur + reset */}
           <div className="flex items-center gap-2 ml-auto">
@@ -579,14 +587,13 @@ export default function UsersPage() {
         <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" /></div>
       ) : (
         <div className="space-y-3">
-          {groups.map(({ entrepot, admins, distributeurs: dists }) => {
-            if (admins.length === 0 && dists.length === 0 && entrepot) return null;
+          {groups.map(({ entrepot, users: groupUsers }) => {
+            if (groupUsers.length === 0 && entrepot) return null;
             return (
               <EntrepotGroup
                 key={entrepot?.id ?? '__unassigned__'}
                 entrepot={entrepot}
-                admins={admins}
-                distributeurs={dists}
+                users={groupUsers}
                 openIds={openIds}
                 onToggle={toggleGroup}
                 actionId={actionId}
@@ -594,6 +601,7 @@ export default function UsersPage() {
                 onAdminDelete={handleDelete}
                 onAdminReset={handleReset}
                 onSetConfirm={setConfirm}
+                onAdminAssign={setAssignUser}
               />
             );
           })}
@@ -605,6 +613,15 @@ export default function UsersPage() {
           entrepots={entrepots}
           onClose={() => setShowCreate(false)}
           onCreated={handleUserCreated}
+        />
+      )}
+
+      {assignUser && (
+        <AssignEntrepotModal
+          user={assignUser}
+          entrepots={entrepots}
+          onClose={() => setAssignUser(null)}
+          onSaved={handleAssigned}
         />
       )}
 

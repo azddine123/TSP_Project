@@ -283,7 +283,7 @@ export default function ParametresPage() {
                         : 'border-gray-200 dark:border-gray-700 text-gray-600 hover:border-gray-300'
                     }`}
                   >
-                    {lang === 'fr' ? '🇫🇷 Français' : lang === 'ar' ? '🇲🇦 العربية' : '🇬🇧 English'}
+                    {lang === 'fr' ? 'Français' : lang === 'ar' ? 'العربية' : 'English'}
                   </button>
                 ))}
               </div>
@@ -324,7 +324,7 @@ export default function ParametresPage() {
               <p className="text-xs text-amber-700 dark:text-amber-400">
                 Somme λ1+λ2+λ3 = {(p.algorithmes.lambdasDefaut.distance + p.algorithmes.lambdasDefaut.temps + p.algorithmes.lambdasDefaut.couverture).toFixed(2)}
                 {Math.abs(p.algorithmes.lambdasDefaut.distance + p.algorithmes.lambdasDefaut.temps + p.algorithmes.lambdasDefaut.couverture - 1) > 0.01
-                  ? ' — ⚠️ doit être égal à 1'
+                  ? ' — doit être égal à 1'
                   : ' ✓'}
               </p>
             </div>

@@ -88,6 +88,43 @@ export class KeycloakAdminService {
     }
   }
 
+  // ── Lister TOUS les utilisateurs du realm avec leur rôle principal ─────────
+
+  async listAll(): Promise<(KeycloakUser & { role: string })[]> {
+    try {
+      const headers = await this.authHeaders();
+
+      // Role-based queries work with query-users permission (already proven to work)
+      const [superUsers, adminUsers, distUsers] = await Promise.all([
+        this.http.get<KeycloakUser[]>('/roles/SUPER_ADMIN/users',    { headers }).then(r => r.data).catch(() => []),
+        this.http.get<KeycloakUser[]>('/roles/ADMIN_ENTREPOT/users', { headers }).then(r => r.data).catch(() => []),
+        this.http.get<KeycloakUser[]>('/roles/DISTRIBUTEUR/users',   { headers }).then(r => r.data).catch(() => []),
+      ]);
+
+      // Build map with role priority: SUPER_ADMIN > ADMIN_ENTREPOT > DISTRIBUTEUR
+      const seen = new Map<string, KeycloakUser & { role: string }>();
+      for (const u of superUsers) seen.set(u.id, { ...u, role: 'SUPER_ADMIN' });
+      for (const u of adminUsers) if (!seen.has(u.id)) seen.set(u.id, { ...u, role: 'ADMIN_ENTREPOT' });
+      for (const u of distUsers)  if (!seen.has(u.id)) seen.set(u.id, { ...u, role: 'DISTRIBUTEUR' });
+
+      // Try to include users without any role — requires view-users permission (optional)
+      try {
+        const allUsers = await this.http.get<KeycloakUser[]>('/users?max=200', { headers }).then(r => r.data);
+        for (const u of allUsers) {
+          if (!seen.has(u.id)) seen.set(u.id, { ...u, role: 'AUCUN' });
+        }
+      } catch {
+        // view-users not granted — only role-based users returned, which is acceptable
+        this.logger.warn('listAll: /users?max=200 inaccessible (view-users permission missing) — showing role-based users only');
+      }
+
+      return [...seen.values()];
+    } catch (err: unknown) {
+      this.logger.error('listAll failed', err);
+      throw new InternalServerErrorException('Impossible de récupérer les utilisateurs Keycloak');
+    }
+  }
+
   // ── Créer un utilisateur ADMIN_ENTREPOT ───────────────────────────────────
 
   async createAdminEntrepot(dto: CreateAdminEntrepotDto): Promise<KeycloakUser> {

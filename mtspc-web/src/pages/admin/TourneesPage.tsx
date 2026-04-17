@@ -137,11 +137,11 @@ function RessourcesGrid({ res, label }: { res: RessourcesDouar; label?: string }
     <div>
       {label && <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{label}</p>}
       <div className="flex flex-wrap gap-1.5">
-        {res.tentes > 0      && <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">⛺ {res.tentes} tentes</span>}
-        {res.couvertures > 0 && <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">🧣 {res.couvertures} couvertures</span>}
-        {res.vivres > 0      && <span className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-full">🛒 {res.vivres} kits vivres</span>}
-        {res.kits_med > 0    && <span className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded-full">🏥 {res.kits_med} kits méd.</span>}
-        {res.eau_litres > 0  && <span className="text-xs px-2 py-0.5 bg-cyan-50 text-cyan-700 rounded-full">💧 {res.eau_litres.toLocaleString('fr-FR')} L</span>}
+        {res.tentes > 0      && <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">{res.tentes} tentes</span>}
+        {res.couvertures > 0 && <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">{res.couvertures} couvertures</span>}
+        {res.vivres > 0      && <span className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-full">{res.vivres} kits vivres</span>}
+        {res.kits_med > 0    && <span className="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded-full">{res.kits_med} kits méd.</span>}
+        {res.eau_litres > 0  && <span className="text-xs px-2 py-0.5 bg-cyan-50 text-cyan-700 rounded-full">{res.eau_litres.toLocaleString('fr-FR')} L</span>}
         <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-semibold">≈ {poids.toFixed(0)} kg</span>
       </div>
     </div>
@@ -390,7 +390,7 @@ function TourneeCard({
                         {vehicules.filter(v => v.statut === 'disponible').map(v => (
                           <option key={v.id} value={v.id}>
                             {v.immatriculation} · {v.type} · {v.capacite.toLocaleString('fr-FR')} kg
-                            {calculerPoids(ressTotal) > v.capacite ? ' ⚠️ insuffisant' : ' ✓'}
+                            {calculerPoids(ressTotal) > v.capacite ? ' ! insuffisant' : ' ✓'}
                           </option>
                         ))}
                       </select>
@@ -400,7 +400,7 @@ function TourneeCard({
                     {vehiculeId && depasseCapacite && voyages && (
                       <div className="mt-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-3">
                         <p className="text-xs font-bold text-orange-700 dark:text-orange-300 mb-2">
-                          ⚠️ Capacité insuffisante ({poidsTotal.toFixed(0)} kg &gt; {capaciteKg.toLocaleString()} kg) — Mission divisée en <strong>{voyages.length} voyages</strong>
+                          Capacité insuffisante ({poidsTotal.toFixed(0)} kg &gt; {capaciteKg.toLocaleString()} kg) — Mission divisée en <strong>{voyages.length} voyages</strong>
                         </p>
                         {voyages.map((voy, vi) => {
                           const res = voy.reduce((acc, e) => addRessources(acc, e.ressources ?? ZERO_RES), ZERO_RES);
@@ -507,7 +507,7 @@ function TourneeCard({
                       if (alertes.length === 0) return null;
                       return (
                         <div className="mt-3 space-y-1.5">
-                          <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">⚠ Stock insuffisant</p>
+                          <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">Stock insuffisant</p>
                           {alertes.map(a => (
                             <div key={a.nom} className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2 text-xs text-red-700 dark:text-red-300">
                               <strong>{a.nom}</strong> — Prévu: {a.prevu}, Disponible: <strong className="text-red-600">{a.dispo}</strong>

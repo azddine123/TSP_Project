@@ -14,8 +14,9 @@
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { tourneeApi, criseApi, distributeurApi, getApiErrorMessage } from '../../services/api';
-import type { Tournee, TourneeEtape, Crise, Distributeur } from '../../types';
+import { conditionalTourneeApi as tourneeApi, conditionalCriseApi as criseApi, conditionalDistributeurApi, conditionalStockApi, getApiErrorMessage } from '../../services/api';
+import type { Tournee, TourneeEtape, Crise, Distributeur, StockRow } from '../../types';
+import { tourneesStore } from '../../mock/store';
 
 // ── Constantes visuelles ──────────────────────────────────────────────────────
 
@@ -68,7 +69,7 @@ function AssignModal({
   const [err,    setErr]    = useState('');
 
   const dispos = distributeurs.filter(
-    d => (d.statut === 'disponible') || d.id === tournee.distributeur?.id,
+    d => (d.statut === 'disponible' || d.statut === 'en_mission') || d.id === tournee.distributeur?.id,
   );
 
   async function confirm() {
@@ -155,6 +156,180 @@ function AssignModal({
   );
 }
 
+// ── Modal validation inventaire ──────────────────────────────────────────────
+
+const CAT_MAP: Record<string, keyof import('../../types').RessourcesDouar> = {
+  TENTE:      'tentes',
+  EQUIPEMENT: 'couvertures',
+  NOURRITURE: 'vivres',
+  MEDICAMENT: 'kits_med',
+  EAU:        'eau_litres',
+};
+
+const LABEL_MAP: Record<string, string> = {
+  tentes:      'Tentes',
+  couvertures: 'Couvertures',
+  vivres:      'Kits vivres',
+  kits_med:    'Kits médicaux',
+  eau_litres:  'Eau (litres)',
+};
+
+function InventaireModal({
+  tournee, onClose, onConfirmed,
+}: {
+  tournee: Tournee;
+  onClose: () => void;
+  onConfirmed: (t: Tournee) => void;
+}) {
+  const [stock,  setStock]  = useState<StockRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy,   setBusy]   = useState(false);
+  const [err,    setErr]    = useState('');
+
+  useEffect(() => {
+    conditionalStockApi.getMine()
+      .then(s => { setStock(s); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  // Map ressource key → stock quantité disponible
+  const stockByKey: Record<string, number> = {};
+  stock.forEach(s => {
+    const key = CAT_MAP[s.materiel.categorie];
+    if (key) stockByKey[key] = (stockByKey[key] ?? 0) + s.quantite;
+  });
+
+  const ressTotal = tournee.ressourcesTotales;
+  const rows = ressTotal
+    ? (Object.keys(LABEL_MAP) as (keyof typeof LABEL_MAP)[]).map(key => {
+        const requis = (ressTotal as unknown as Record<string, number>)[key] ?? 0;
+        const dispo  = stockByKey[key] ?? 0;
+        const ok     = dispo >= requis;
+        return { key, label: LABEL_MAP[key], requis, dispo, ok };
+      }).filter(r => r.requis > 0)
+    : [];
+
+  const hasAlerte = rows.some(r => !r.ok);
+
+  async function handleConfirm() {
+    setBusy(true); setErr('');
+    try {
+      const updated = await tourneeApi.demarrer(tournee.id);
+      onConfirmed(updated);
+    } catch (e) {
+      setErr(getApiErrorMessage(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-800">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Validation Inventaire</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {tournee.entrepot.nom} · {tournee.etapes.length} douar(s) · {tournee.distanceTotale.toFixed(1)} km
+              </p>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Corps */}
+          <div className="px-5 py-4">
+            {err && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-3">{err}</p>
+            )}
+
+            {hasAlerte && (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3 text-xs text-amber-700">
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Stock insuffisant sur certains articles — vous pouvez quand même démarrer la mission.
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+              </div>
+            ) : rows.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-6">Aucune ressource requise pour cette mission.</p>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-gray-800 text-gray-500 uppercase tracking-wider text-[10px]">
+                      <th className="text-left px-3 py-2 font-semibold">Article</th>
+                      <th className="text-right px-3 py-2 font-semibold">Requis</th>
+                      <th className="text-right px-3 py-2 font-semibold">Stock</th>
+                      <th className="text-center px-3 py-2 font-semibold">Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {rows.map(({ key, label, requis, dispo, ok }) => (
+                      <tr key={key} className={`${ok ? '' : 'bg-amber-50/50 dark:bg-amber-900/10'}`}>
+                        <td className="px-3 py-2.5 font-medium text-gray-700 dark:text-gray-300">{label}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums text-gray-600 dark:text-gray-400">
+                          {requis.toLocaleString()}
+                        </td>
+                        <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${ok ? 'text-green-600' : 'text-amber-600'}`}>
+                          {dispo.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          {ok ? (
+                            <span className="inline-flex items-center gap-1 text-green-600 font-semibold text-[10px]">
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                              OK
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-amber-600 font-semibold text-[10px]">
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                              </svg>
+                              Alerte
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 pb-4 flex gap-2 justify-end border-t border-gray-100 dark:border-gray-800 pt-4">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
+              Annuler
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={busy || loading}
+              className="px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              {busy && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              {busy ? 'Démarrage…' : 'Confirmer et Démarrer'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Carte mission ─────────────────────────────────────────────────────────────
 
 function MissionCard({
@@ -166,28 +341,16 @@ function MissionCard({
   onUpdate: (t: Tournee) => void;
 }) {
   const navigate = useNavigate();
-  const [expanded,  setExpanded]  = useState(false);
-  const [assigning, setAssigning] = useState(false);
-  const [busy,      setBusy]      = useState(false);
+  const [expanded,    setExpanded]    = useState(false);
+  const [assigning,   setAssigning]   = useState(false);
+  const [inventaire,  setInventaire]  = useState(false);
+  const [busy,        setBusy]        = useState(false);
 
   const etapes  = useMemo(() => [...tournee.etapes].sort((a, b) => a.ordre - b.ordre), [tournee.etapes]);
   const livrees = etapes.filter(e => e.statut === 'livree').length;
   const pct     = etapes.length > 0 ? Math.round(livrees / etapes.length * 100) : 0;
   const crise   = criseMap.get(tournee.criseId);
   const cfg     = STATUT_CONFIG[tournee.statut] ?? STATUT_CONFIG.planifiee;
-
-  async function handleDemarrer() {
-    if (!confirm(`Démarrer la mission de ${tournee.entrepot.nom} ?`)) return;
-    setBusy(true);
-    try {
-      const updated = await tourneeApi.demarrer(tournee.id);
-      onUpdate(updated);
-    } catch (e) {
-      alert(getApiErrorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleAnnuler() {
     if (!confirm(`Annuler la mission de ${tournee.entrepot.nom} ? Cette action est irréversible.`)) return;
@@ -218,7 +381,13 @@ function MissionCard({
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-bold text-gray-900 dark:text-white font-mono">
-                MS-{tournee.entrepot.province.slice(0, 1).toUpperCase()}-{new Date(tournee.createdAt).getFullYear()}-{tournee.id.slice(-3).toUpperCase()}
+                {(() => {
+                  const d    = new Date(tournee.createdAt);
+                  const year = isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+                  const prov = tournee.entrepot.province.slice(0, 1).toUpperCase();
+                  const num  = tournee.id.replace(/\D/g, '').slice(-4).padStart(3, '0');
+                  return `MS-${prov}-${year}-${num}`;
+                })()}
               </span>
               {crise && (
                 <span className="text-xs text-gray-400 font-mono">· {crise.reference}</span>
@@ -282,17 +451,17 @@ function MissionCard({
 
             {tournee.statut === 'planifiee' && tournee.distributeur && (
               <button
-                onClick={handleDemarrer}
+                onClick={() => setInventaire(true)}
                 disabled={busy}
                 className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors disabled:opacity-50"
               >
-                {busy ? '…' : 'Démarrer'}
+                Valider & Démarrer
               </button>
             )}
 
             {tournee.statut === 'en_cours' && (
               <button
-                onClick={() => navigate('/superadmin/supervision')}
+                onClick={() => navigate('/admin/suivi')}
                 className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 transition-colors"
               >
                 Voir carte
@@ -446,46 +615,22 @@ function MissionCard({
             {/* Liens rapides */}
             <div className="flex flex-wrap gap-2 pt-1">
               {crise && (
-                <Link
-                  to={`/superadmin/crises`}
-                  className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
-                >
+                <span className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400">
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                     <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                   </svg>
                   Crise {crise.reference}
-                </Link>
+                </span>
               )}
               <Link
-                to="/superadmin/supervision"
+                to="/admin/suivi"
                 className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
               >
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
                 </svg>
-                Supervision temps réel
-              </Link>
-              {crise && (
-                <Link
-                  to="/superadmin/incidents"
-                  className="inline-flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400 hover:underline"
-                >
-                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                  </svg>
-                  Incidents de la crise
-                </Link>
-              )}
-              <Link
-                to="/superadmin/audit"
-                className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:underline"
-              >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
-                </svg>
-                Audit trail
+                Suivi terrain
               </Link>
             </div>
           </div>
@@ -499,6 +644,15 @@ function MissionCard({
           distributeurs={distributeurs}
           onClose={() => setAssigning(false)}
           onSaved={(updated) => { onUpdate(updated); setAssigning(false); }}
+        />
+      )}
+
+      {/* Modal validation inventaire + démarrer */}
+      {inventaire && (
+        <InventaireModal
+          tournee={tournee}
+          onClose={() => setInventaire(false)}
+          onConfirmed={(updated) => { onUpdate(updated); setInventaire(false); }}
         />
       )}
     </>
@@ -529,13 +683,15 @@ export default function SuperAdminMissionsPage() {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const [t, c, d] = await Promise.all([
-        tourneeApi.getAll(),
+      const [t, c] = await Promise.all([
+        tourneeApi.getMine(),
         criseApi.getAll(),
-        distributeurApi.getAll(),
       ]);
       setTournees(t);
       setCrises(c);
+      // Charger les distributeurs par entrepôt (utilise le 1er entrepôt trouvé dans les tournées)
+      const entrepotId = t.length > 0 ? t[0].entrepot.id : '';
+      const d = await conditionalDistributeurApi.getByEntrepot(entrepotId);
       setDistributeurs(d);
     } catch (e) {
       setError(getApiErrorMessage(e));
@@ -545,6 +701,16 @@ export default function SuperAdminMissionsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-refresh quand le pipeline Super Admin génère de nouvelles tournées
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('najda_tournees');
+      bc.onmessage = () => { load(); };
+    } catch { /* navigateur sans support BroadcastChannel */ }
+    return () => { bc?.close(); };
+  }, [load]);
 
   // Mise à jour locale après action
   function handleUpdate(updated: Tournee) {
@@ -603,19 +769,39 @@ export default function SuperAdminMissionsPage() {
             Ordres de Mission
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Toutes les tournées VRP assignées par le Super Admin · Douars prioritaires et besoins
+            Tournées VRP assignées à votre entrepôt · Douars prioritaires et besoins
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            to="/superadmin/pipeline"
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-800 rounded-xl hover:bg-brand-100 transition-colors"
+          <button
+            onClick={() => {
+              if (!confirm('Réinitialiser les statuts ? Toutes les missions reviendront à l\'état Planifiée (les missions du pipeline sont conservées).')) return;
+              // Remet toutes les missions à planifiée sans effacer les données pipeline
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const all = tourneesStore.getAll();
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const reset = all.map((t: any) => ({
+                ...t,
+                statut: 'planifiee',
+                distributeur: null,
+                distributeurId: null,
+                demarreeAt: null,
+                termineeAt: null,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                etapes: (t.etapes ?? []).map((e: any) => ({ ...e, statut: 'en_attente' })),
+              }));
+              // Si localStorage vide → seed data, on les persiste aussi
+              if (reset.length === 0) { tourneesStore.reset(); } else { tourneesStore.set(reset); }
+              load();
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            title="Remettre toutes les missions à Planifiée (données conservées)"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
             </svg>
-            Nouveau pipeline VRP
-          </Link>
+            Réinitialiser
+          </button>
           <button
             onClick={load}
             disabled={loading}
@@ -665,15 +851,9 @@ export default function SuperAdminMissionsPage() {
                     {' '}· Étape {etape.ordre}
                   </p>
                 </div>
-                <Link
-                  to={`/superadmin/pipeline?criseId=${tournee.criseId}&routeBloquee=${etape.douar.id}`}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-                  </svg>
-                  Recalculer VRP
-                </Link>
+                <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 rounded-xl">
+                  Route bloquée — contacter le Super Admin
+                </span>
               </div>
             ))}
           </div>
@@ -785,9 +965,7 @@ export default function SuperAdminMissionsPage() {
           <p className="text-sm font-medium">Aucune mission trouvée</p>
           {tournees.length === 0 ? (
             <p className="text-xs mt-1">
-              Lancez d'abord le{' '}
-              <Link to="/superadmin/pipeline" className="text-brand-500 hover:underline">Pipeline Algo</Link>
-              {' '}pour générer des tournées.
+              Aucune tournée n'a encore été assignée à votre entrepôt par le Super Admin.
             </p>
           ) : (
             <p className="text-xs mt-1">Essayez de modifier vos filtres.</p>

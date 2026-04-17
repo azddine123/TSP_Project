@@ -246,7 +246,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className={`font-bold ${alerte ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
-                                {alerte && <span className="mr-1">⚠</span>}{row.quantite}
+                                {row.quantite}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-gray-500">{row.materiel.unite}</td>

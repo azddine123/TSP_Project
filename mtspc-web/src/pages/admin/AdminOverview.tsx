@@ -220,16 +220,16 @@ function MissionAssigneeCard({ tournee }: { tournee: Tournee & { missionNumero?:
                   {etape.ressources && (
                     <div className="flex flex-wrap gap-1.5">
                       {etape.ressources.tentes != null && etape.ressources.tentes > 0 && (
-                        <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded">⛺ {etape.ressources.tentes} tentes</span>
+                        <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded">{etape.ressources.tentes} tentes</span>
                       )}
                       {etape.ressources.vivres != null && etape.ressources.vivres > 0 && (
-                        <span className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-600 rounded">🛒 {etape.ressources.vivres} kits vivres</span>
+                        <span className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-600 rounded">{etape.ressources.vivres} kits vivres</span>
                       )}
                       {etape.ressources.eau_litres != null && etape.ressources.eau_litres > 0 && (
-                        <span className="text-xs px-2 py-0.5 bg-cyan-50 text-cyan-600 rounded">💧 {etape.ressources.eau_litres.toLocaleString('fr-FR')} L</span>
+                        <span className="text-xs px-2 py-0.5 bg-cyan-50 text-cyan-600 rounded">{etape.ressources.eau_litres.toLocaleString('fr-FR')} L</span>
                       )}
                       {etape.ressources.kits_med != null && etape.ressources.kits_med > 0 && (
-                        <span className="text-xs px-2 py-0.5 bg-red-50 text-red-600 rounded">🏥 {etape.ressources.kits_med} kits méd.</span>
+                        <span className="text-xs px-2 py-0.5 bg-red-50 text-red-600 rounded">{etape.ressources.kits_med} kits méd.</span>
                       )}
                     </div>
                   )}
@@ -381,7 +381,7 @@ export default function AdminOverview() {
             </div>
             <p className="text-xs text-gray-400">{v.type}{(v as unknown as { marque?: string }).marque ? ` · ${(v as unknown as { marque: string }).marque}` : ''}</p>
             {v.distributeur && (
-              <p className="text-xs text-gray-500 mt-1">👤 {v.distributeur.prenom} {v.distributeur.nom}</p>
+              <p className="text-xs text-gray-500 mt-1">{v.distributeur.prenom} {v.distributeur.nom}</p>
             )}
           </div>
         ))}

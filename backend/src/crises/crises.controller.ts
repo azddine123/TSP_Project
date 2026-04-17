@@ -12,21 +12,21 @@ export class CrisesController {
 
   /** GET /crises — liste toutes les crises */
   @Get()
-  @Roles('SUPER_ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN_ENTREPOT')
   findAll() {
     return this.service.findAll();
   }
 
   /** GET /crises/active — crise actuellement active (null si aucune) */
   @Get('active')
-  @Roles('SUPER_ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN_ENTREPOT')
   findActive() {
     return this.service.findActive();
   }
 
   /** GET /crises/:id */
   @Get(':id')
-  @Roles('SUPER_ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN_ENTREPOT')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
   }

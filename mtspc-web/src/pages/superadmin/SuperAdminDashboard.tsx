@@ -337,7 +337,7 @@ export default function SuperAdminOverview() {
                       <p style={{ fontSize: '0.78rem', color: '#374151', marginBottom: 4 }}>
                         Pop. <strong>{d.population.toLocaleString('fr-MA')}</strong>
                         {d.zoneVulnerable && (
-                          <span style={{ marginLeft: 6, color: '#ef4444', fontWeight: 700 }}>⚠ Zone vulnérable</span>
+                          <span style={{ marginLeft: 6, color: '#ef4444', fontWeight: 700 }}>Zone vulnérable</span>
                         )}
                       </p>
                       <span style={{
@@ -360,7 +360,7 @@ export default function SuperAdminOverview() {
               >
                 <Popup minWidth={150}>
                   <div>
-                    <p style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 2 }}>🚚 {v.immatriculation}</p>
+                    <p style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 2 }}>{v.immatriculation}</p>
                     <p style={{ fontSize: '0.78rem', color: '#3b82f6', fontWeight: 600 }}>En mission</p>
                     <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
                       GPS: {v.localisation!.lat.toFixed(4)}, {v.localisation!.lng.toFixed(4)}

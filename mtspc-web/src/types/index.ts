@@ -394,6 +394,7 @@ export interface AdminEntrepot {
   enabled:    boolean;
   entrepotId: string | null;
   createdAt:  number;   // timestamp ms (format Keycloak)
+  role:       string;   // ADMIN_ENTREPOT | SUPER_ADMIN | DISTRIBUTEUR | AUCUN
 }
 
 export interface CreateAdminEntrepotDto {

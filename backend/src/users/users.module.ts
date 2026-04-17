@@ -3,9 +3,10 @@ import { HttpModule } from '@nestjs/axios';
 import { KeycloakAdminService } from './keycloak-admin.service';
 import { UsersService }         from './users.service';
 import { UsersController }      from './users.controller';
+import { EntrepotsModule }      from '../entrepots/entrepots.module';
 
 @Module({
-  imports:     [HttpModule],
+  imports:     [HttpModule, EntrepotsModule],
   providers:   [KeycloakAdminService, UsersService],
   controllers: [UsersController],
   exports:     [UsersService],

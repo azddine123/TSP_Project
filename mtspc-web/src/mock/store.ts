@@ -68,6 +68,7 @@ const SEED_TOURNEES: any[] = [
     tempsEstimeTotalMin: 220,
     statut: 'planifiee',
     criseId: 'crise-001',
+    createdAt: '2026-04-10T08:00:00Z',
     datePlanification: '2026-04-10T08:00:00Z',
     ressourcesTotales: { tentes: 58, couvertures: 384, vivres: 192, kits_med: 29, eau_litres: 8250 },
     _fromPipeline: true,
@@ -135,6 +136,7 @@ const SEED_TOURNEES: any[] = [
     tempsEstimeTotalMin: 155,
     statut: 'planifiee',
     criseId: 'crise-001',
+    createdAt: '2026-04-10T08:05:00Z',
     datePlanification: '2026-04-10T08:05:00Z',
     ressourcesTotales: { tentes: 38, couvertures: 253, vivres: 126, kits_med: 19, eau_litres: 5425 },
     _fromPipeline: true,
@@ -288,6 +290,16 @@ export function vrpTourneeToAdminTournee(vrp: any, criseId: string, index: numbe
     },
   }));
 
+  // Calculer les ressources totales en sommant les étapes
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ressourcesTotales = etapes.reduce((acc: any, e: any) => ({
+    tentes:      (acc.tentes      ?? 0) + (e.ressources?.tentes      ?? 0),
+    couvertures: (acc.couvertures ?? 0) + (e.ressources?.couvertures ?? 0),
+    vivres:      (acc.vivres      ?? 0) + (e.ressources?.vivres      ?? 0),
+    kits_med:    (acc.kits_med    ?? 0) + (e.ressources?.kits_med    ?? 0),
+    eau_litres:  (acc.eau_litres  ?? 0) + (e.ressources?.eau_litres  ?? 0),
+  }), { tentes: 0, couvertures: 0, vivres: 0, kits_med: 0, eau_litres: 0 });
+
   return {
     id:                  tourneeId,
     missionId:           `mission-vrp-${tourneeId}`,
@@ -301,8 +313,10 @@ export function vrpTourneeToAdminTournee(vrp: any, criseId: string, index: numbe
     tempsEstimeTotalMin: vrp.tempsEstime ?? 0,
     statut:              'planifiee' as const,
     criseId,
+    createdAt:           new Date().toISOString(),
     datePlanification:   new Date().toISOString(),
     etapes,
+    ressourcesTotales,
     _fromPipeline:       true,
   };
 }

@@ -108,6 +108,9 @@ export const entrepotApi = {
   getAll:  () => api.get<Entrepot[]>('/entrepots').then((r) => r.data),
   /** Entrepôt de l'Admin Entrepôt connecté */
   getMine: () => api.get<Entrepot>('/entrepots/mine').then((r) => r.data),
+  /** Super Admin — associer un compte Keycloak à un entrepôt */
+  assignAdmin: (entrepotId: string, keycloakAdminId: string) =>
+    api.patch<Entrepot>(`/entrepots/${entrepotId}/assign-admin`, { keycloakAdminId }).then((r) => r.data),
 };
 
 export const distributeurApi = {
@@ -288,6 +291,10 @@ export const evenementApi = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const usersApi = {
+  /** Liste TOUS les utilisateurs Keycloak avec leur rôle */
+  getAll: () =>
+    api.get<AdminEntrepot[]>('/users/all').then((r) => r.data),
+
   /** Liste tous les comptes Admin Entrepôt */
   getAdmins: () =>
     api.get<AdminEntrepot[]>('/users/admins').then((r) => r.data),
@@ -348,7 +355,8 @@ export const conditionalEntrepotApi = {
 };
 
 export const conditionalDistributeurApi = {
-  getAll: () => MOCK_ENABLED ? mockApi.distributeurApi.getAll() : distributeurApi.getAll(),
+  getAll:        () => MOCK_ENABLED ? mockApi.distributeurApi.getAll() : distributeurApi.getAll(),
+  getByEntrepot: (id: string) => MOCK_ENABLED ? mockApi.distributeurApi.getByEntrepot(id) : distributeurApi.getAll(),
 };
 
 export const conditionalDouarApi = {
@@ -378,14 +386,18 @@ export const conditionalVehiculeApi = {
 };
 
 export const conditionalTourneeApi = {
-  getAll: () => tourneeApi.getAll(),
+  getAll:     () => tourneeApi.getAll(),
   getByCrise: (criseId: string) => tourneeApi.getByCrise(criseId),
-  getMine: () => tourneeApi.getMine(),
-  getById: (id: string) => tourneeApi.getById(id),
-  assigner: (id: string, dto: AssignerTourneeDto) => tourneeApi.assigner(id, dto),
-  reassigner: (id: string, dto: AssignerTourneeDto) => tourneeApi.reassigner(id, dto),
-  demarrer: (id: string) => tourneeApi.demarrer(id),
-  annuler: (id: string) => tourneeApi.annuler(id),
+  getMine:    () => MOCK_ENABLED ? mockApi.tourneeApi.getMine()    : tourneeApi.getMine(),
+  getById:    (id: string) => tourneeApi.getById(id),
+  assigner:   (id: string, dto: AssignerTourneeDto) =>
+    MOCK_ENABLED ? mockApi.tourneeApi.assigner(id, dto) : tourneeApi.assigner(id, dto),
+  reassigner: (id: string, dto: AssignerTourneeDto) =>
+    MOCK_ENABLED ? mockApi.tourneeApi.assigner(id, dto) : tourneeApi.reassigner(id, dto),
+  demarrer:   (id: string) =>
+    MOCK_ENABLED ? mockApi.tourneeApi.demarrer(id) : tourneeApi.demarrer(id),
+  annuler:    (id: string) =>
+    MOCK_ENABLED ? mockApi.tourneeApi.annuler(id)  : tourneeApi.annuler(id),
 };
 
 export const conditionalAlgoApi = {
@@ -409,6 +421,7 @@ export const conditionalEvenementApi = {
 };
 
 export const conditionalUsersApi = {
+  getAll: () => usersApi.getAll(),
   getAdmins: () => MOCK_ENABLED ? mockApi.mockUsersApi.getAdmins() : usersApi.getAdmins(),
   getById: (id: string) => usersApi.getById(id),
   create: (dto: CreateAdminEntrepotDto) => MOCK_ENABLED ? mockApi.mockUsersApi.create(dto) : usersApi.create(dto),

@@ -30,4 +30,25 @@ export class EntrepotsService {
       where: { keycloakAdminId: keycloakUserId },
     });
   }
+
+  /**
+   * Associe un compte Keycloak à un entrepôt.
+   * Met à jour keycloak_admin_id pour l'entrepôt ET retire l'ancien admin
+   * si un autre entrepôt portait déjà ce keycloakAdminId.
+   */
+  async assignAdmin(entrepotId: string, keycloakAdminId: string): Promise<Entrepot | null> {
+    // Retirer l'association précédente si cet admin était déjà lié à un autre entrepôt
+    await this.repo.createQueryBuilder()
+      .update(Entrepot)
+      .set({ keycloakAdminId: () => 'NULL' })
+      .where('keycloak_admin_id = :adminId', { adminId: keycloakAdminId })
+      .execute();
+    // Associer l'entrepôt cible à cet admin
+    await this.repo.createQueryBuilder()
+      .update(Entrepot)
+      .set({ keycloakAdminId })
+      .where('id = :id', { id: entrepotId })
+      .execute();
+    return this.repo.findOne({ where: { id: entrepotId } });
+  }
 }

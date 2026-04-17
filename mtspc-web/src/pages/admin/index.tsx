@@ -10,6 +10,7 @@ import SuiviTerrainPage from './SuiviTerrainPage';
 import SettingsPage        from './SettingsPage';
 import CreateMissionPage   from './CreateMissionPage';
 import OrdresRecusPage     from './OrdresRecusPage';
+import OrdresMissionPage   from '../superadmin/MissionsPage';
 
 export default function AdminDashboard() {
   return (
@@ -18,6 +19,7 @@ export default function AdminDashboard() {
       <Route path="stock"               element={<StockPage />} />
       <Route path="vehicules"           element={<VehiculesPage />} />
       <Route path="ordres-recus"        element={<OrdresRecusPage />} />
+      <Route path="ordres-mission"      element={<OrdresMissionPage />} />
       <Route path="tournees"            element={<TourneesPage />} />
       <Route path="tournees/create"     element={<CreateMissionPage />} />
       <Route path="suivi"               element={<SuiviTerrainPage />} />
