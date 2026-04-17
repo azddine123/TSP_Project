@@ -131,6 +131,16 @@ export const MOCK_ADMIN_MISSIONS: Mission[] = [
     destinationNom: 'Takout, Akdi n\'Lkhir',
     createdAt: '2026-04-01T11:00:00Z',
   },
+  {
+    id: 'mission-007',
+    numeroMission: 'MS-2026-007',
+    statut: 'pending',
+    priorite: 'critique',
+    dateEcheance: '2026-04-25T17:00:00Z',
+    destinationNom: 'Tournée — Ouled Bouazza · Tighanimin · Tizguit · Takout · Ait Ouadrim · Aska',
+    distributeur: { id: 'dist-001', prenom: 'Ahmed', nom: 'Benali' },
+    createdAt: '2026-04-17T09:00:00Z',
+  },
 ];
 
 export const mockAdminApi = {

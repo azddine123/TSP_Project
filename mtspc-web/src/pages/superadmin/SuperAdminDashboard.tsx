@@ -15,10 +15,11 @@ import {
   TOURNEES_ENTREPOT_A,
   STOCK_ENTREPOT_A,
   VEHICULES_ENTREPOT_A,
-  DISTRIBUTEURS_ENTREPOT_A,
+
   ENTREPOT_A,
   MOCK_AUDIT_LOGS,
 } from '../../mock';
+import { crisesStore, tourneesStore } from '../../mock/store';
 import { formatDateTime } from '../../constants';
 
 // ── Palettes & icônes ─────────────────────────────────────────────────────────
@@ -166,12 +167,19 @@ export default function SuperAdminOverview() {
   const handleRefresh = useCallback(() => setRefresh(r => r + 1), []);
 
   // ── KPIs cross-acteurs ────────────────────────────────────────────────────
-  const entrepotsActifs  = MOCK_ENTREPOTS.filter(e => e.statut === 'actif').length;
-  const tourneesEnCours  = TOURNEES_ENTREPOT_A.filter(t => t.statut === 'en_cours').length;
-  const stockEnAlerte    = STOCK_ENTREPOT_A.filter(s => s.quantite <= s.seuilAlerte).length;
-  const douarsServis     = MOCK_DOUBLES.filter(d => d.servi).length;
-  const distributeursActifs = DISTRIBUTEURS_ENTREPOT_A.filter(d => d.statut === 'en_mission').length;
-  const popCouverte      = MOCK_DOUBLES.filter(d => d.servi).reduce((s, d) => s + d.population, 0);
+  const entrepotsActifs    = MOCK_ENTREPOTS.filter(e => e.statut === 'actif').length;
+  const tourneesEnCours    = TOURNEES_ENTREPOT_A.filter(t => t.statut === 'en_cours').length;
+  const crisesActives      = crisesStore.getActive().length;
+  const douarsServis       = MOCK_DOUBLES.filter(d => d.servi).length;
+
+  const popCouverte        = MOCK_DOUBLES.filter(d => d.servi).reduce((s, d) => s + d.population, 0);
+
+  // ── Pipeline missions live ────────────────────────────────────────────────
+  const allTournees       = tourneesStore.getAll();
+  const missionsPlanif    = allTournees.filter((t: any) => t.statut === 'planifiee').length;
+  const missionsEnCours   = allTournees.filter((t: any) => t.statut === 'en_cours').length;
+  const missionsTerminees = allTournees.filter((t: any) => t.statut === 'terminee').length;
+  const recentMissions    = [...allTournees].reverse().slice(0, 5);
 
   // ── Liaison entrepôt ──────────────────────────────────────────────────────
   const stockAlertCount  = STOCK_ENTREPOT_A.filter(s => s.quantite <= s.seuilAlerte).length;
@@ -213,7 +221,7 @@ export default function SuperAdminOverview() {
         </button>
       </div>
 
-      {/* ── 6 KPIs cross-acteurs ───────────────────────────────────────────── */}
+      {/* ── KPIs cross-acteurs ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard
           label="Entrepôts actifs" value={entrepotsActifs}
@@ -222,28 +230,28 @@ export default function SuperAdminOverview() {
           icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><line x1="3" y1="9" x2="21" y2="9"/></svg>}
         />
         <KpiCard
-          label="Tournées en cours" value={tourneesEnCours}
+          label="Crises actives" value={crisesActives}
+          color={{ text: crisesActives > 0 ? 'text-red-600' : 'text-green-600', bg: crisesActives > 0 ? 'bg-red-50' : 'bg-green-50' }}
+          to="/superadmin/crises"
+          icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
+        />
+        <KpiCard
+          label="Tournées en cours" value={missionsEnCours}
           color={{ text: 'text-indigo-600', bg: 'bg-indigo-50' }}
           to="/superadmin/supervision"
           icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg>}
         />
         <KpiCard
-          label="Stock en alerte" value={stockEnAlerte}
-          color={{ text: stockEnAlerte > 0 ? 'text-red-600' : 'text-green-600', bg: stockEnAlerte > 0 ? 'bg-red-50' : 'bg-green-50' }}
-          to="/admin/stock"
-          icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}
+          label="Missions planifiées" value={missionsPlanif}
+          color={{ text: 'text-amber-600', bg: 'bg-amber-50' }}
+          to="/superadmin/pipeline"
+          icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>}
         />
         <KpiCard
           label="Douars servis" value={`${douarsServis}/${MOCK_DOUBLES.length}`}
           color={{ text: 'text-green-600', bg: 'bg-green-50' }}
           to="/superadmin/supervision"
           icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>}
-        />
-        <KpiCard
-          label="Distributeurs actifs" value={distributeursActifs}
-          color={{ text: 'text-amber-600', bg: 'bg-amber-50' }}
-          to="/superadmin/supervision"
-          icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8l5 2v7h-5V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>}
         />
         <KpiCard
           label="Population couverte" value={popCouverte.toLocaleString('fr-MA')}
@@ -377,6 +385,95 @@ export default function SuperAdminOverview() {
           <MapLegend />
         </div>
       </div>
+
+      {/* ── Barre de progression pipeline ─────────────────────────────────── */}
+      {allTournees.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-theme-sm p-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Suivi Pipeline — Missions générées</h2>
+              <p className="text-xs text-gray-400 mt-0.5">{allTournees.length} mission(s) au total</p>
+            </div>
+            <Link to="/superadmin/pipeline" className="text-xs text-brand-600 hover:underline font-medium">
+              Lancer pipeline →
+            </Link>
+          </div>
+
+          {/* Barre de progression globale */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-3 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden flex">
+              {missionsTerminees > 0 && (
+                <div
+                  className="h-full bg-green-500 transition-all"
+                  style={{ width: `${(missionsTerminees / allTournees.length) * 100}%` }}
+                  title="Terminées"
+                />
+              )}
+              {missionsEnCours > 0 && (
+                <div
+                  className="h-full bg-indigo-500 transition-all"
+                  style={{ width: `${(missionsEnCours / allTournees.length) * 100}%` }}
+                  title="En cours"
+                />
+              )}
+              {missionsPlanif > 0 && (
+                <div
+                  className="h-full bg-amber-400 transition-all"
+                  style={{ width: `${(missionsPlanif / allTournees.length) * 100}%` }}
+                  title="Planifiées"
+                />
+              )}
+            </div>
+            <span className="text-xs text-gray-500 shrink-0">
+              {Math.round((missionsTerminees / allTournees.length) * 100)}% terminé
+            </span>
+          </div>
+
+          {/* Légende + liste récente */}
+          <div className="flex flex-wrap gap-4 mb-4 text-xs">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block"/>
+              <span className="text-gray-600 dark:text-gray-400">{missionsPlanif} planifiée{missionsPlanif !== 1 ? 's' : ''}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block"/>
+              <span className="text-gray-600 dark:text-gray-400">{missionsEnCours} en cours</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block"/>
+              <span className="text-gray-600 dark:text-gray-400">{missionsTerminees} terminée{missionsTerminees !== 1 ? 's' : ''}</span>
+            </span>
+          </div>
+
+          {/* 5 missions récentes */}
+          {recentMissions.length > 0 && (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+              {recentMissions.map((m: any) => {
+                const statusMap: Record<string, { label: string; cls: string }> = {
+                  planifiee:  { label: 'Planifiée',  cls: 'bg-amber-100 text-amber-700' },
+                  en_cours:   { label: 'En cours',   cls: 'bg-indigo-100 text-indigo-700' },
+                  terminee:   { label: 'Terminée',   cls: 'bg-green-100 text-green-700' },
+                  annulee:    { label: 'Annulée',    cls: 'bg-red-100 text-red-600' },
+                };
+                const st = statusMap[m.statut] ?? { label: m.statut, cls: 'bg-gray-100 text-gray-600' };
+                const d  = new Date(m.createdAt);
+                const dateStr = isNaN(d.getTime()) ? '—' : d.toLocaleDateString('fr-MA', { day: '2-digit', month: 'short' });
+                return (
+                  <div key={m.id} className="flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/40 text-xs">
+                    <span className="font-mono text-gray-500 shrink-0 w-24 truncate">{m.id}</span>
+                    <span className="flex-1 text-gray-700 dark:text-gray-300 truncate">
+                      {m.etapes?.length ?? 0} étape{(m.etapes?.length ?? 0) !== 1 ? 's' : ''}
+                      {m.distributeur ? ` · ${m.distributeur.prenom} ${m.distributeur.nom}` : ''}
+                    </span>
+                    <span className="text-gray-400 shrink-0">{dateStr}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold shrink-0 ${st.cls}`}>{st.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Panneau bas : liaison entrepôts + journal ──────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

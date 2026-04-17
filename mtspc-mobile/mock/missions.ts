@@ -12,6 +12,7 @@
  * mission-004 (pending)     ↔  tournee-a-004 (planifiee)  — non assigné     — Khouribga
  * mission-005 (pending)     ↔  (hors entrepôt A)          — non assigné     — Khénifra
  * mission-006 (annulee)     ↔  (annulée — pas de tournée) — —               — Azilal
+ * mission-007 (pending)     ↔  tournee-007 (assignee)    — Ahmed Benali    — Azilal/FBS  (non signée)
  * ─────────────────────────────────────────────────────────────────────────────
  * Douars de référence : mtspc-web/src/mock/douars.ts  (16 douars réels)
  * Entrepôt principal : mtspc-web/src/mock/entrepotA.ts (TOURNEES_ENTREPOT_A)
@@ -109,6 +110,70 @@ export const DOUARS_DATA: DouarInfo[] = [
     douar: 'Takout',
     nbMenages: 120,
     population: 682,
+  },
+];
+
+// Douars de la tournée prioritaire MS-2026-007 (scores AHP-TOPSIS : 0.479 → 0.475)
+export const MISSION_007_DOUARS: DouarInfo[] = [
+  {
+    codeGeo: '2550505201003',
+    region: 'Béni Mellal-Khénifra',
+    province: 'Fquih Ben Salah',
+    commune: 'Ouled Bourhmoun',
+    fraction: 'Ouled Bouazza',
+    douar: 'Ouled Bouazza',
+    nbMenages: 987,
+    population: 4442,
+  },
+  {
+    codeGeo: '810301101002',
+    region: 'Béni Mellal-Khénifra',
+    province: 'Azilal',
+    commune: 'Ait Bou Oulli',
+    fraction: 'Tighanimin',
+    douar: 'Tighanimin',
+    nbMenages: 72,
+    population: 320,
+  },
+  {
+    codeGeo: '810301102003',
+    region: 'Béni Mellal-Khénifra',
+    province: 'Azilal',
+    commune: 'Ait Abbas',
+    fraction: 'Tizguit',
+    douar: 'Tizguit',
+    nbMenages: 65,
+    population: 290,
+  },
+  {
+    codeGeo: '810301202002',
+    region: 'Béni Mellal-Khénifra',
+    province: 'Azilal',
+    commune: 'Akdi n\'Lkhir',
+    fraction: 'Ait Berk',
+    douar: 'Takout',
+    nbMenages: 53,
+    population: 198,
+  },
+  {
+    codeGeo: '810301103004',
+    region: 'Béni Mellal-Khénifra',
+    province: 'Azilal',
+    commune: 'Ait Abbas',
+    fraction: 'Ait Ouadrim',
+    douar: 'Ait Ouadrim',
+    nbMenages: 55,
+    population: 231,
+  },
+  {
+    codeGeo: '810301201001',
+    region: 'Béni Mellal-Khénifra',
+    province: 'Azilal',
+    commune: 'Akdi n\'Lkhir',
+    fraction: 'Ait Ofza',
+    douar: 'Aska',
+    nbMenages: 62,
+    population: 264,
   },
 ];
 
@@ -244,6 +309,30 @@ export const MOCK_MISSIONS: MissionMock[] = [
       { id: 'item-9', materielNom: 'Tentes familiales', quantitePrevue: calculerQuantite(DOUARS_DATA[4], 1), unite: 'unité' },
       { id: 'item-10', materielNom: 'Couvertures thermiques', quantitePrevue: calculerQuantite(DOUARS_DATA[4], 2), unite: 'unité' },
       { id: 'item-11', materielNom: 'Kits d\'hygiène', quantitePrevue: calculerQuantite(DOUARS_DATA[4], 3), unite: 'kit' },
+    ],
+  },
+  {
+    id: 'mission-007',
+    numeroMission: 'MS-2026-007',
+    statut: 'pending',
+    priorite: 'critique',
+    dateCreation: '2026-04-17T09:00:00Z',
+    dateEcheance: '2026-04-25T17:00:00Z',
+    dateAffectation: '2026-04-17T09:00:00Z',
+    destinationLat: 31.9615,
+    destinationLng: -6.5717,
+    destinationNom: 'Tournée — 6 douars prioritaires (Azilal)',
+    entrepotNom: 'Entrepôt A',
+    description:
+      'Tournée prioritaire AHP-TOPSIS couvrant 6 douars : Ouled Bouazza (score 0.479), Tighanimin (0.479), Tizguit (0.478), Takout (0.477), Ait Ouadrim (0.476), Aska (0.475). Mission non encore signée.',
+    douarInfo: MISSION_007_DOUARS[0],
+    typeAide: 'Aide complète',
+    items: [
+      { id: 'item-007-1', materielNom: 'Kits alimentaires',    quantitePrevue: 320, unite: 'kit'   },
+      { id: 'item-007-2', materielNom: 'Tentes familiales',    quantitePrevue: 85,  unite: 'unité' },
+      { id: 'item-007-3', materielNom: 'Couvertures thermiques', quantitePrevue: 640, unite: 'unité' },
+      { id: 'item-007-4', materielNom: 'Kits d\'hygiène',      quantitePrevue: 320, unite: 'kit'   },
+      { id: 'item-007-5', materielNom: 'Eau potable',          quantitePrevue: 9000, unite: 'litre' },
     ],
   },
   {

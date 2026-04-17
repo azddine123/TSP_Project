@@ -4,8 +4,8 @@
  * Données fictives de tournées optimisées avec 7 douars chacune.
  * Ordre calculé par AHP → TOPSIS → VRP (OR-Tools)
  */
-import { Tournee, EtapeVRP } from '../types/app';
-import { DOUARS_DATA } from './missions';
+import { Tournee, EtapeVRP, NiveauPriorite } from '../types/app';
+import { DOUARS_DATA, MISSION_007_DOUARS } from './missions';
 
 /**
  * Coordonnées RÉELLES de villages/douars accessibles par route dans chaque province.
@@ -58,6 +58,41 @@ const PROVINCE_WAYPOINTS: Record<string, Array<{ lat: number; lng: number; nom: 
     { lat: 32.8500, lng: -5.4500, nom: 'Sidi Lamine' },
   ],
 };
+
+// Waypoints GPS réels pour la tournée MS-2026-007 (6 douars AHP-TOPSIS)
+const WAYPOINTS_TOURNEE_007: Array<{ lat: number; lng: number; nom: string; scoreTopsis: number; population: number }> = [
+  { lat: 32.5035, lng: -6.6884, nom: 'Ouled Bouazza',  scoreTopsis: 0.479, population: 4442 },
+  { lat: 31.9100, lng: -6.6500, nom: 'Tighanimin',     scoreTopsis: 0.479, population: 320  },
+  { lat: 31.8800, lng: -6.4800, nom: 'Tizguit',        scoreTopsis: 0.478, population: 290  },
+  { lat: 31.9200, lng: -6.5800, nom: 'Takout',         scoreTopsis: 0.477, population: 198  },
+  { lat: 31.8700, lng: -6.5000, nom: 'Ait Ouadrim',    scoreTopsis: 0.476, population: 231  },
+  { lat: 31.9000, lng: -6.5700, nom: 'Aska',           scoreTopsis: 0.475, population: 264  },
+];
+
+const DISTANCES_007 = [0, 45.2, 18.6, 12.4, 8.9, 11.3];
+const TEMPS_007      = [0, 68,   28,   19,   14,   17  ];
+
+function generateEtapesTournee007(): EtapeVRP[] {
+  return WAYPOINTS_TOURNEE_007.map((wp, i) => ({
+    ordre: i + 1,
+    douarId: `douar-007-${i + 1}`,
+    douarNom: wp.nom,
+    lat: wp.lat,
+    lng: wp.lng,
+    distanceKm: DISTANCES_007[i],
+    tempsEstimeMin: TEMPS_007[i],
+    priorite: (i < 2 ? 'CRITIQUE' : i < 4 ? 'HAUTE' : 'MOYENNE') as NiveauPriorite,
+    scoreTopsis: wp.scoreTopsis,
+    population: wp.population,
+    ressources: {
+      tentes:      Math.round(wp.population * 0.25 / 4),
+      couvertures: Math.round(wp.population * 0.5 / 4),
+      vivres:      Math.round(wp.population / 4),
+      kits_med:    Math.round(wp.population * 0.15 / 4),
+      eau_litres:  wp.population * 15,
+    },
+  }));
+}
 
 // Priorités et données fixes par ordre d'étape
 const PRIORITES: Array<'CRITIQUE' | 'HAUTE' | 'MOYENNE' | 'BASSE'> = [
@@ -168,6 +203,17 @@ export const MOCK_TOURNEES: Record<string, Tournee> = {
     distanceTotaleKm: 0,
     tempsEstimeTotalMin: 0,
     etapes: [],
+    statut: 'assignee',
+    criseId: 'crise-2026-001',
+  },
+  'mission-007': {
+    id: 'tournee-007',
+    missionId: 'mission-007',
+    entrepotId: 'entrepot-a',
+    vehiculeId: 'veh-a-002',
+    distanceTotaleKm: DISTANCES_007.reduce((a, b) => a + b, 0),
+    tempsEstimeTotalMin: TEMPS_007.reduce((a, b) => a + b, 0),
+    etapes: generateEtapesTournee007(),
     statut: 'assignee',
     criseId: 'crise-2026-001',
   },
