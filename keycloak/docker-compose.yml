@@ -7,7 +7,8 @@ version: '3.8'
 # DÉMARRAGE :
 #   cd keycloak/ && docker-compose up -d
 #   → Interface Admin : http://localhost:8180
-#   → Identifiants   : admin / admin
+#   → Identifiants   : définis dans keycloak/.env (voir .env.example)
+#     → cp .env.example .env  puis choisir les mots de passe
 # ============================================================
 
 services:
@@ -19,15 +20,15 @@ services:
     container_name: mtspc26-keycloak-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB:       keycloak_db
-      POSTGRES_USER:     keycloak_user
-      POSTGRES_PASSWORD: keycloak_pass_2024
+      POSTGRES_DB:       ${KC_DB_NAME:-keycloak_db}
+      POSTGRES_USER:     ${KC_DB_USERNAME:-keycloak_user}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:?Définir KC_DB_PASSWORD dans keycloak/.env}
     ports:
       - "5433:5432"
     volumes:
       - keycloak_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak_user -d keycloak_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,14 +43,14 @@ services:
     command: start-dev   # Mode développement : HTTP, logs détaillés
     environment:
       # Compte administrateur de la console Keycloak
-      KEYCLOAK_ADMIN:          admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN:          ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Définir KEYCLOAK_ADMIN_PASSWORD dans keycloak/.env}
 
       # Connexion à sa BDD PostgreSQL dédiée
       KC_DB:          postgres
-      KC_DB_URL:      jdbc:postgresql://keycloak-db:5432/keycloak_db
-      KC_DB_USERNAME: keycloak_user
-      KC_DB_PASSWORD: keycloak_pass_2024
+      KC_DB_URL:      jdbc:postgresql://keycloak-db:5432/${KC_DB_NAME:-keycloak_db}
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-keycloak_user}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?Définir KC_DB_PASSWORD dans keycloak/.env}
 
       # Désactiver les contraintes hostname en dev local
       KC_HOSTNAME_STRICT:          "false"
