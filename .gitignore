@@ -1,4 +1,31 @@
+# Dependencies
 node_modules/
-*.log
+
+# Build output (generated, never commit)
+dist/
+build/
+web-build/
+.expo/
+.expo-shared/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets — keep only the .env.example templates
 .env
+.env.*
+!.env.example
+
+# Logs, OS and editor files
+*.log
 .DS_Store
+Thumbs.db
+.idea/
+
+# LibreOffice / MS Office lock files
+.~lock.*#
+~$*
