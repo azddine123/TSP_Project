@@ -5,6 +5,7 @@ version: '3.8'
 # PostgreSQL 15 — Port 5432
 #
 # DÉMARRER  : docker-compose up -d
+# SECRETS   : cp .env.example .env  puis choisir le mot de passe
 # ARRÊTER   : docker-compose down
 # ============================================================
 
@@ -15,9 +16,9 @@ services:
     container_name: mtspc26-app-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB:       mtspc_logistique
-      POSTGRES_USER:     admin
-      POSTGRES_PASSWORD: admin_password
+      POSTGRES_DB:       ${DB_NAME:-mtspc_logistique}
+      POSTGRES_USER:     ${DB_USERNAME:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Définir DB_PASSWORD dans database/.env}
     ports:
       - "5432:5432"
     volumes:
@@ -33,7 +34,7 @@ services:
       - ../database/migrations/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d mtspc_logistique"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
